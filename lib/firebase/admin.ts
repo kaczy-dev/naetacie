@@ -15,9 +15,15 @@ function getAdminApp(): App {
     return getApp();
   }
 
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-    : undefined;
+  let serviceAccount: Record<string, string> | undefined;
+  try {
+    serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
+      : undefined;
+  } catch {
+    console.warn('[Firebase Admin] Invalid FIREBASE_SERVICE_ACCOUNT_KEY — running without credentials');
+    serviceAccount = undefined;
+  }
 
   return initializeApp(
     serviceAccount
