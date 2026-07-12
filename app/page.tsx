@@ -27,6 +27,8 @@ import { useJobPreferences } from '@/lib/hooks/useJobPreferences';
 import { useApplicationTracking, STATUS_META, type ApplicationStatus } from '@/lib/hooks/useApplicationTracking';
 import { scoreMatch, hasNoPreferences } from '@/lib/matching/engine';
 import { useShare } from '@/lib/hooks/useShare';
+import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
+import { useToast } from '@/components/feedback/ToastProvider';
 import { AppShell, type TabId } from '@/components/navigation/AppShell';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 import { JobPreferencesPanel } from '@/components/list/JobPreferencesPanel';
@@ -384,6 +386,8 @@ export default function HomePage() {
 
   const [prefsPanelOpen, setPrefsPanelOpen] = useState(false);
   const [showTrackedOnly, setShowTrackedOnly] = useState(false);
+  const { show: showToast } = useToast();
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<TabId>('map');
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -566,6 +570,13 @@ export default function HomePage() {
     setActiveTab(tab);
   }
 
+  // Power-user keyboard shortcuts
+  useKeyboardShortcuts({
+    onFocusSearch: () => { setActiveTab('list'); setTimeout(() => searchInputRef.current?.focus(), 60); },
+    onEscape: () => { setPrefsPanelOpen(false); setGuestPrompt(null); },
+    onTab: (t) => handleTabChange(t as TabId),
+  });
+
   function renderContent() {
     switch (activeTab) {
       case 'map':
@@ -606,8 +617,9 @@ export default function HomePage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
+                    ref={searchInputRef}
                     type="text"
-                    placeholder="Szukaj ogłoszeń..."
+                    placeholder="Szukaj ogłoszeń... (naciśnij /)"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9 h-9"
@@ -741,9 +753,16 @@ export default function HomePage() {
                       isSelected={ad.id === selectedId}
                       match={prefsActive ? matchMap.get(ad.id) ?? null : null}
                       status={getStatus(ad.id)}
-                      onToggleFavorite={() => toggleFavorite(ad.id)}
+                      onToggleFavorite={() => {
+                        const wasFav = isFavorite(ad.id);
+                        toggleFavorite(ad.id);
+                        showToast('success', wasFav ? 'Usunięto z ulubionych' : 'Dodano do ulubionych ❤️');
+                      }}
                       onShowOnMap={() => handleShowOnMap(ad.id)}
-                      onSetStatus={(s) => setStatus(ad.id, s)}
+                      onSetStatus={(s) => {
+                        setStatus(ad.id, s);
+                        showToast('info', `Status: ${STATUS_META[s].label}`);
+                      }}
                     />
                   </div>
                 ))}
