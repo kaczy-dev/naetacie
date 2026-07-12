@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation';
 import {
   MapPin, Clock, Sparkles, X, ArrowRight, RefreshCw, Loader2,
   Search, Heart, ExternalLink, SlidersHorizontal, Map as MapIcon,
-  Target, Briefcase,
+  Target, Briefcase, Share2, Check,
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -26,10 +26,13 @@ import { useFavorites } from '@/lib/hooks/useFavorites';
 import { useJobPreferences } from '@/lib/hooks/useJobPreferences';
 import { useApplicationTracking, STATUS_META, type ApplicationStatus } from '@/lib/hooks/useApplicationTracking';
 import { scoreMatch, hasNoPreferences } from '@/lib/matching/engine';
+import { useShare } from '@/lib/hooks/useShare';
 import { AppShell, type TabId } from '@/components/navigation/AppShell';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 import { JobPreferencesPanel } from '@/components/list/JobPreferencesPanel';
 import { QuickSearchChips } from '@/components/list/QuickSearchChips';
+import { MarketStats } from '@/components/list/MarketStats';
+import { computeMarketOverview } from '@/lib/stats/market';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -103,6 +106,7 @@ function AnnouncementCard({
   onSetStatus: (s: ApplicationStatus) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { share, copied } = useShare();
   const priceDisplay = ad.price
     ? typeof ad.price === 'number' ? `${ad.price} zł/mies.` : ad.price
     : null;
@@ -289,6 +293,18 @@ function AnnouncementCard({
                         <MapIcon className="w-3.5 h-3.5" /> Na mapie
                       </Button>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        share({ title: ad.title, text: `${ad.title} — ${ad.location_text}`, url: ad.source_url || window.location.href });
+                      }}
+                      className="gap-1.5 text-xs"
+                      title="Udostępnij"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Share2 className="w-3.5 h-3.5" />}
+                    </Button>
                   </div>
                 </div>
               </motion.div>
@@ -446,6 +462,9 @@ export default function HomePage() {
   }, [allAnnouncements, preferences]);
 
   const prefsActive = !hasNoPreferences(preferences);
+
+  // Market statistics over all announcements (salary levels, top location)
+  const marketOverview = useMemo(() => computeMarketOverview(allAnnouncements), [allAnnouncements]);
 
   const isSearching = tokenize(searchQuery).length > 0;
 
@@ -682,6 +701,11 @@ export default function HomePage() {
                 {lastScrapedAt && <span>Scraping: {formatTimeAgo(lastScrapedAt)}</span>}
               </div>
             </div>
+
+            {/* Market insights — only when not actively searching/filtering to favorites */}
+            {!isSearching && !showFavoritesOnly && !showTrackedOnly && (
+              <MarketStats overview={marketOverview} />
+            )}
 
             {/* List */}
             {scrapeLoading && allAnnouncements.length === 0 ? (
