@@ -1,0 +1,136 @@
+/*
+ * Design System Tokens
+ * CSS custom properties for the Construction Ads Aggregator
+ *
+ * Validates: Requirements 13.1, 13.2, 13.3, 13.6
+ */
+
+/* ==========================================================================
+   Light Theme (Default)
+   ========================================================================== */
+
+:root {
+  /* --- Color Palette: Primary --- */
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-primary-light: #3b82f6;
+
+  /* --- Color Palette: Semantic --- */
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+
+  /* --- Color Palette: Neutral Scale --- */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
+  /* --- Semantic Surface & Background (Light) --- */
+  --color-background: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-raised: var(--color-gray-50);
+
+  /* --- Semantic Text (Light) --- */
+  --color-text-primary: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-600);
+  --color-text-disabled: var(--color-gray-400);
+  --color-text-inverse: #ffffff;
+
+  /* --- Semantic Border (Light) --- */
+  --color-border: var(--color-gray-200);
+  --color-border-strong: var(--color-gray-300);
+
+  /* --- Typography Scale --- */
+  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --font-size-caption: 12px;
+  --font-size-body-sm: 14px;
+  --font-size-body: 16px;
+  --font-size-h3: 18px;
+  --font-size-h2: 22px;
+  --font-size-h1: 28px;
+
+  --line-height: 1.5;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* --- Spacing Scale (4px grid) --- */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+
+  /* --- Border Radius --- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* --- Shadows (Light) --- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+  /* --- Transitions --- */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+}
+
+/* ==========================================================================
+   Dark Theme
+   Applied via data-theme="dark" attribute on <html> or parent element.
+   Dark surfaces: gray-900 background, gray-800 cards
+   Light text: gray-100 primary, gray-400 secondary
+   Adjusted primary brightness for minimum 4.5:1 contrast ratio
+   ========================================================================== */
+
+[data-theme='dark'] {
+  /* --- Semantic Surface & Background (Dark) --- */
+  --color-background: var(--color-gray-900);
+  --color-surface: var(--color-gray-800);
+  --color-surface-raised: var(--color-gray-700);
+
+  /* --- Semantic Text (Dark) --- */
+  --color-text-primary: var(--color-gray-100);
+  --color-text-secondary: var(--color-gray-400);
+  --color-text-disabled: var(--color-gray-600);
+  --color-text-inverse: var(--color-gray-900);
+
+  /* --- Semantic Border (Dark) --- */
+  --color-border: var(--color-gray-700);
+  --color-border-strong: var(--color-gray-600);
+
+  /*
+   * Adjusted primary color for dark mode accessibility.
+   * #60a5fa (blue-400) on gray-900 (#111827) achieves ~4.7:1 contrast ratio,
+   * meeting WCAG AA minimum of 4.5:1 for normal text.
+   */
+  --color-primary: #60a5fa;
+  --color-primary-dark: #3b82f6;
+  --color-primary-light: #93c5fd;
+
+  /* --- Adjusted Semantic Colors (Dark) --- */
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+
+  /* --- Shadows (Dark) --- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+}

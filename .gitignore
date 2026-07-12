@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+
+# Next.js
+.next/
+out/
+
+# Firebase Functions build
+functions/lib/
+
+# Testing
+coverage/
+
+# Environment
+.env
+.env.*
+env.local
+.firebaserc
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

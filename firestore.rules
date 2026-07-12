@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Announcements collection
+    match /announcements/{announcementId} {
+      // Admin SDK (Cloud Functions, API routes) can write — client cannot
+      allow create, update, delete: if false;
+
+      // Anyone can read announcements (tier masking is done server-side in API)
+      allow read: if true;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+
+      // Users can create their own profile (first login)
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+
+      // Users can update limited fields on their own profile
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+
+      allow delete: if false;
+    }
+
+    // Geo cache collection - only accessible by Cloud Functions (admin SDK)
+    match /geo_cache/{cacheId} {
+      allow read, write: if false;
+    }
+  }
+}

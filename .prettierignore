@@ -1,0 +1,5 @@
+node_modules/
+.next/
+functions/lib/
+coverage/
+*.md

@@ -1,0 +1,85 @@
+/**
+ * Geocoding resolution service with Firestore cache.
+ *
+ * Resolves location text to geographic coordinates using a cache-first strategy:
+ * 1. Empty/whitespace-only input → skip geocoding entirely
+ * 2. Normalize text → look up in geo_cache collection
+ * 3. Cache hit (not stale) → return cached coordinates
+ * 4. Cache miss or stale → query Nominatim, store result in geo_cache
+ *
+ * Negative cache entries (null coords) are treated as valid cache hits within TTL.
+ * TTL: 30 days from resolved_at timestamp.
+ */
+
+import type { Firestore } from 'firebase-admin/firestore';
+import type { GeocodingResult } from '../../../lib/types/geo';
+import { normalizeLocationText } from './normalize';
+import { NominatimRateLimiter } from './nominatim';
+
+/** 30 days in milliseconds */
+const GEO_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Shared rate limiter instance (1 request per second) */
+const rateLimiter = new NominatimRateLimiter(1000);
+
+/**
+ * Resolves a location text string to geographic coordinates using a cache-first strategy.
+ *
+ * @param locationText - Raw location text from a scraped ad
+ * @param firestore - Firestore instance for cache reads/writes
+ * @returns GeocodingResult with coordinates (or null) and cache status
+ */
+export async function resolveLocation(
+  locationText: string,
+  firestore: Firestore
+): Promise<GeocodingResult> {
+  // Step 1: If locationText is empty or whitespace-only, skip geocoding entirely
+  if (!locationText || locationText.trim().length === 0) {
+    return { latitude: null, longitude: null, fromCache: false };
+  }
+
+  // Step 2: Normalize the text for cache lookup
+  const normalized = normalizeLocationText(locationText);
+
+  // Step 3: Look up in geo_cache collection (normalized text as doc ID)
+  const cacheRef = firestore.collection('geo_cache').doc(normalized);
+  const cacheDoc = await cacheRef.get();
+
+  if (cacheDoc.exists) {
+    const data = cacheDoc.data()!;
+    const resolvedAt = data.resolved_at?.toDate?.()
+      ? data.resolved_at.toDate()
+      : new Date(data.resolved_at);
+    const age = Date.now() - resolvedAt.getTime();
+
+    // Step 4/5: Check TTL — if not stale, return cached result
+    if (age < GEO_CACHE_TTL_MS) {
+      // Step 6: Negative cache entries (null coords) are valid cache hits
+      return {
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
+        fromCache: true,
+      };
+    }
+    // If stale (older than 30 days), fall through to re-fetch
+  }
+
+  // Step 7: Cache miss or stale — query Nominatim
+  const result = await rateLimiter.query(normalized);
+
+  const latitude = result?.lat ?? null;
+  const longitude = result?.lng ?? null;
+
+  // Store result in geo_cache (positive or negative)
+  await cacheRef.set({
+    location_text: normalized,
+    latitude,
+    longitude,
+    resolved_at: new Date(),
+  });
+
+  return { latitude, longitude, fromCache: false };
+}
+
+export { normalizeLocationText } from './normalize';
+export { buildNominatimQuery, NominatimRateLimiter } from './nominatim';

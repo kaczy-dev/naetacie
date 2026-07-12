@@ -1,0 +1,8 @@
+functions/
+.kiro/
+tests/
+scripts/
+coverage/
+*.test.ts
+*.property.test.ts
+.env.local

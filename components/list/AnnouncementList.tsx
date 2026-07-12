@@ -1,0 +1,457 @@
+'use client';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { useAuth } from '@/lib/auth/AuthContext';
+import ListSkeleton from '@/components/feedback/ListSkeleton';
+import type { MaskedAnnouncement } from '@/lib/types/announcement';
+import type { PaginatedResponse } from '@/lib/types/api';
+
+export interface AnnouncementListProps {
+  onItemClick?: (id: string) => void;
+}
+
+/**
+ * Format price for display in list cards.
+ * Returns "N/A" when price is null.
+ */
+function formatPrice(price: number | null): string {
+  if (price === null) {
+    return 'N/A';
+  }
+  return `${price.toLocaleString('pl-PL')} PLN`;
+}
+
+/**
+ * Format scraped_at as a relative time string (e.g., "2h ago", "3d ago").
+ */
+function formatRelativeTime(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+  const diffWeek = Math.floor(diffDay / 7);
+
+  if (diffSec < 60) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  if (diffWeek < 4) return `${diffWeek}w ago`;
+  return d.toLocaleDateString('pl-PL', { month: 'short', day: 'numeric' });
+}
+
+/**
+ * Get display label for source portal badge.
+ */
+function getPortalLabel(portal: string): string {
+  switch (portal) {
+    case 'olx':
+      return 'OLX';
+    case 'oferteo':
+      return 'Oferteo';
+    case 'fixly':
+      return 'Fixly';
+    default:
+      return portal;
+  }
+}
+
+/** Map pin icon SVG rendered inline at 14px. */
+function MapPinIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{ flexShrink: 0 }}
+    >
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+/**
+ * Stagger delay computation for card entrance animation.
+ * Each card is delayed by index * 50ms.
+ */
+export function computeStaggerDelay(index: number): number {
+  return index * 50;
+}
+
+/**
+ * Card entrance animation variants for Framer Motion.
+ */
+const cardVariants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: (index: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: computeStaggerDelay(index) / 1000,
+      duration: 0.3,
+      ease: 'easeOut' as const,
+    },
+  }),
+};
+
+/**
+ * Reduced motion variants — no animation, instant appearance.
+ */
+const reducedMotionVariants = {
+  hidden: { opacity: 1, y: 0 },
+  visible: { opacity: 1, y: 0 },
+} as const;
+
+/**
+ * AnnouncementList component displaying announcement cards with infinite scroll.
+ * Fetches from /api/announcements?page=N&limit=20, sorted by scraped_at descending.
+ * Uses Intersection Observer to detect when the user scrolls to the bottom.
+ *
+ * Card design per Requirement 11.1-11.4:
+ * - Title (bold, 16-18px)
+ * - Location (14px, map pin icon)
+ * - Price (semi-bold, 16px, accent color)
+ * - Source portal badge (chip)
+ * - scraped_at relative time (12px, muted)
+ *
+ * Supports guest mode: when unauthenticated, fetches without Bearer token.
+ * The API returns free-tier masked data for guest requests (Requirement 1.1, 1.6).
+ */
+export default function AnnouncementList({ onItemClick }: AnnouncementListProps) {
+  const { isGuest, refreshToken } = useAuth();
+  const prefersReducedMotion = useReducedMotion();
+
+  const [announcements, setAnnouncements] = useState<MaskedAnnouncement[]>([]);
+  const [, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const isLoadingRef = useRef(false);
+
+  const fetchAnnouncements = useCallback(async (pageNum: number) => {
+    if (isLoadingRef.current) return;
+
+    isLoadingRef.current = true;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const headers: Record<string, string> = {};
+
+      // Only attach Authorization header for authenticated users
+      if (!isGuest) {
+        const token = await refreshToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+
+      const response = await fetch(`/api/announcements?page=${pageNum}&limit=20`, {
+        headers,
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        setError(body.error || `Request failed with status ${response.status}`);
+        setIsLoading(false);
+        isLoadingRef.current = false;
+        return;
+      }
+
+      const result: PaginatedResponse<MaskedAnnouncement> = await response.json();
+
+      if (result.data.length === 0) {
+        setHasMore(false);
+      } else {
+        setAnnouncements((prev) => [...prev, ...result.data]);
+        // Check if we've reached the end
+        if (pageNum >= result.metadata.total_pages) {
+          setHasMore(false);
+        }
+      }
+    } catch (err) {
+      setError('Failed to load announcements');
+    } finally {
+      setIsLoading(false);
+      isLoadingRef.current = false;
+    }
+  }, [isGuest, refreshToken]);
+
+  // Initial load
+  useEffect(() => {
+    fetchAnnouncements(1);
+  }, [fetchAnnouncements]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && hasMore && !isLoadingRef.current) {
+          setPage((prev) => {
+            const nextPage = prev + 1;
+            fetchAnnouncements(nextPage);
+            return nextPage;
+          });
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sentinelRef.current) {
+      observerRef.current.observe(sentinelRef.current);
+    }
+
+    return () => {
+      observerRef.current?.disconnect();
+    };
+  }, [hasMore, fetchAnnouncements]);
+
+  const variants = prefersReducedMotion ? reducedMotionVariants : cardVariants;
+
+  return (
+    <div className="announcement-list">
+      {/* Guest mode banner (Requirement 1.4) */}
+      {isGuest && announcements.length > 0 && (
+        <div className="announcement-list__guest-banner" role="status">
+          <span>Viewing delayed data (48h+). Register for full access.</span>
+        </div>
+      )}
+
+      {announcements.map((announcement, index) => {
+        const portalLabel = getPortalLabel(announcement.source_portal);
+
+        return (
+          <motion.button
+            key={announcement.deduplication_key}
+            className="announcement-card"
+            custom={index}
+            initial="hidden"
+            animate="visible"
+            variants={variants}
+            whileTap={prefersReducedMotion ? undefined : { scale: 0.98, transition: { duration: 0.1 } }}
+            onClick={() => onItemClick?.(announcement.deduplication_key)}
+            type="button"
+            aria-label={`View details for ${announcement.title}`}
+          >
+            {/* Header: title + portal badge */}
+            <div className="announcement-card__header">
+              <h3 className="announcement-card__title">{announcement.title}</h3>
+              <span className="announcement-card__badge">
+                {portalLabel}
+              </span>
+            </div>
+
+            {/* Location with map pin icon */}
+            <div className="announcement-card__location">
+              <MapPinIcon />
+              <span>{announcement.location_text}</span>
+            </div>
+
+            {/* Footer: price + relative time */}
+            <div className="announcement-card__footer">
+              <span className="announcement-card__price">
+                {formatPrice(announcement.price)}
+              </span>
+              <time
+                className="announcement-card__time"
+                dateTime={
+                  typeof announcement.scraped_at === 'string'
+                    ? announcement.scraped_at
+                    : announcement.scraped_at.toISOString()
+                }
+              >
+                {formatRelativeTime(announcement.scraped_at)}
+              </time>
+            </div>
+          </motion.button>
+        );
+      })}
+
+      {/* Loading skeleton placeholder (Requirement 12.1) */}
+      {isLoading && <ListSkeleton />}
+
+      {/* End of list message */}
+      {!hasMore && announcements.length > 0 && !isLoading && (
+        <div className="announcement-list__end" aria-live="polite">
+          No more announcements
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <div className="announcement-list__error" role="alert">
+          {error}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && !error && announcements.length === 0 && !hasMore && (
+        <div className="announcement-list__empty">
+          No announcements available
+        </div>
+      )}
+
+      {/* Sentinel element for Intersection Observer */}
+      {hasMore && <div ref={sentinelRef} className="announcement-list__sentinel" />}
+
+      <style>{`
+        .announcement-list {
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-3, 12px);
+          padding: var(--spacing-4, 16px);
+        }
+
+        .announcement-list__guest-banner {
+          padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+          background: var(--color-primary, #2563eb);
+          color: var(--color-text-inverse, #ffffff);
+          border-radius: var(--radius-md, 8px);
+          font-size: var(--font-size-caption, 12px);
+          text-align: center;
+        }
+
+        .announcement-card {
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-2, 8px);
+          padding: var(--spacing-4, 16px);
+          border-radius: 14px;
+          background: var(--color-surface, #ffffff);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+          border: none;
+          text-align: left;
+          cursor: pointer;
+          font-family: var(--font-family);
+          width: 100%;
+          transition: box-shadow var(--transition-fast, 150ms ease);
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .announcement-card:hover {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+
+        .announcement-card:focus-visible {
+          outline: 2px solid var(--color-primary, #2563eb);
+          outline-offset: 2px;
+        }
+
+        .announcement-card__header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: var(--spacing-2, 8px);
+        }
+
+        .announcement-card__title {
+          margin: 0;
+          font-size: var(--font-size-body, 16px);
+          font-weight: var(--font-weight-bold, 700);
+          color: var(--color-text-primary);
+          line-height: var(--line-height, 1.5);
+          flex: 1;
+          /* Limit to 2 lines */
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .announcement-card__badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 2px 8px;
+          border-radius: var(--radius-full, 9999px);
+          font-size: var(--font-size-caption, 12px);
+          font-weight: var(--font-weight-medium, 500);
+          background: var(--color-surface-raised, #f9fafb);
+          color: var(--color-text-secondary, #4b5563);
+          border: 1px solid var(--color-border, #e5e7eb);
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .announcement-card__location {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-1, 4px);
+          font-size: var(--font-size-body-sm, 14px);
+          font-weight: var(--font-weight-normal, 400);
+          color: var(--color-text-secondary);
+          line-height: var(--line-height, 1.5);
+        }
+
+        .announcement-card__footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: var(--spacing-1, 4px);
+        }
+
+        .announcement-card__price {
+          font-size: var(--font-size-body, 16px);
+          font-weight: var(--font-weight-semibold, 600);
+          color: var(--color-primary, #2563eb);
+        }
+
+        .announcement-card__time {
+          font-size: var(--font-size-caption, 12px);
+          font-weight: var(--font-weight-normal, 400);
+          color: var(--color-text-disabled, #9ca3af);
+        }
+
+        .announcement-list__end {
+          padding: var(--spacing-4, 16px);
+          text-align: center;
+          font-size: var(--font-size-body-sm, 14px);
+          color: var(--color-text-disabled, #9ca3af);
+        }
+
+        .announcement-list__error {
+          padding: var(--spacing-4, 16px);
+          text-align: center;
+          font-size: var(--font-size-body-sm, 14px);
+          color: var(--color-error, #dc2626);
+          background: rgba(220, 38, 38, 0.05);
+          border-radius: var(--radius-md, 8px);
+        }
+
+        .announcement-list__empty {
+          padding: var(--spacing-12, 48px) var(--spacing-4, 16px);
+          text-align: center;
+          font-size: var(--font-size-body-sm, 14px);
+          color: var(--color-text-disabled, #9ca3af);
+        }
+
+        .announcement-list__sentinel {
+          height: 1px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .announcement-card {
+            transition: none;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
