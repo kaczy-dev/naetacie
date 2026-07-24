@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
-import { isPointInPolygon } from './utils';
 
 export type TransportMode = 'car' | 'bike' | 'walk';
 

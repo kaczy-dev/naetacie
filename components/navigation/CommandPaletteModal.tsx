@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Map, List, Calculator, Scale, FileSpreadsheet,
+  Search, Map, List, Calculator, Scale,
   Moon, Sun, X, ArrowRight, Sparkles
 } from 'lucide-react';
 import type { DisplayAnnouncement } from '@/lib/types/display';

@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Activity, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 export function SystemHealthBadge() {
-  const [status, setStatus] = useState<'healthy' | 'degraded'>('healthy');
   const [latencyMs, setLatencyMs] = useState<number>(35);
 
   useEffect(() => {
@@ -14,9 +13,8 @@ export function SystemHealthBadge() {
       .then(() => {
         const duration = Math.round(performance.now() - start);
         setLatencyMs(duration);
-        setStatus('healthy');
       })
-      .catch(() => setStatus('degraded'));
+      .catch(() => {});
   }, []);
 
   return (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion, useDragControls, type PanInfo } from 'framer-motion';
+import { motion, type PanInfo } from 'framer-motion';
 import {
   MapPin,
   ChevronUp,
@@ -19,7 +19,6 @@ import {
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { normalizeCategory, CATEGORIES } from '@/lib/data/categories';
 import { triggerHaptic } from '@/lib/utils';
-import { GSAPMagnetic } from '@/components/ui/GSAPMagnetic';
 
 export interface MobileBottomSheetProps {
   ads: DisplayAnnouncement[];
@@ -60,7 +59,6 @@ export function MobileBottomSheet({
   isDark,
 }: MobileBottomSheetProps) {
   const [snapState, setSnapState] = useState<SheetSnapState>('medium');
-  const dragControls = useDragControls();
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {

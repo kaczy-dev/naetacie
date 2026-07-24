@@ -6,14 +6,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import {
-  User,
   Mail,
-  Shield,
   Sparkles,
   Sliders,
-  Bell,
   MapPin,
   Eye,
   Car,
@@ -21,11 +17,8 @@ import {
   Footprints,
   Bus,
   Download,
-  Trash2,
   CheckCircle2,
   Moon,
-  Sun,
-  Volume2,
   HardDrive,
   RefreshCw,
   LogOut,
@@ -402,6 +395,64 @@ export function ProfileSettings() {
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-foreground">Motyw kolorystyczny</span>
           <ThemeToggle />
+        </div>
+
+        <div className="flex items-center justify-between pt-3 border-t border-border/40">
+          <div className="space-y-0.5">
+            <span className="text-xs font-bold text-foreground block">Powiadomienia Push PWA</span>
+            <span className="text-[11px] text-muted-foreground">Alert o nowych ofertach spełniających kryteria</span>
+          </div>
+          <button
+            onClick={() => updatePref('naetacie_pref_push', !pushNotifications, setPushNotifications)}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              pushNotifications ? 'bg-primary' : 'bg-muted'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                pushNotifications ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between pt-3 border-t border-border/40">
+          <div className="space-y-0.5">
+            <span className="text-xs font-bold text-foreground block">Automatyczne dopasowanie granic mapy</span>
+            <span className="text-[11px] text-muted-foreground">Zoom na obszar wyszukiwanych markerów</span>
+          </div>
+          <button
+            onClick={() => updatePref('naetacie_pref_autofit', !autoFitBounds, setAutoFitBounds)}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              autoFitBounds ? 'bg-primary' : 'bg-muted'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                autoFitBounds ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between pt-3 border-t border-border/40">
+          <div className="space-y-0.5">
+            <span className="text-xs font-bold text-foreground block">Gęstość Interfejsu (UI Density)</span>
+            <span className="text-[11px] text-muted-foreground">Kompaktowy vs komfortowy układy kart</span>
+          </div>
+          <div className="flex gap-1">
+            {(['compact', 'comfortable', 'spacious'] as const).map((d) => (
+              <button
+                key={d}
+                onClick={() => updatePref('naetacie_pref_density', d, setUiDensity)}
+                className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-colors ${
+                  uiDensity === d ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {d === 'compact' ? 'Kompakt' : d === 'comfortable' ? 'Komfort' : 'Duży'}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-border/40">

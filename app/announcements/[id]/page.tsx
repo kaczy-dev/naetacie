@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { AnnouncementDetail } from '@/components/list';
 import { SEED_DATA } from '@/lib/data/announcements';
 import { ensureAbsoluteUrl } from '@/lib/utils';
-import type { MaskedAnnouncement } from '@/lib/types/announcement';
+import type { MaskedAnnouncement, SourcePortal } from '@/lib/types/announcement';
 
 /**
  * Announcement detail page.
@@ -43,7 +43,7 @@ export default function AnnouncementDetailPage() {
           deduplication_key: seedItem.id,
           title: seedItem.title,
           description: seedItem.description,
-          source_portal: seedItem.source_portal as any,
+          source_portal: seedItem.source_portal as SourcePortal,
           category: seedItem.category,
           location_text: seedItem.location_text,
           latitude: seedItem.latitude,

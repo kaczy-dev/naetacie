@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scale, X, MapPin, DollarSign, ExternalLink, Briefcase } from 'lucide-react';
+import { Scale, X, MapPin, ExternalLink } from 'lucide-react';
 import { ensureAbsoluteUrl } from '@/lib/utils';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { calculateNetSalary } from '@/lib/salary/calculator';

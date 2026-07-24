@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { filterGeocodedAnnouncements, formatPrice } from './utils';
 import { DisplayAnnouncement } from '@/lib/types/display';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Sparkles, TrendingUp, Briefcase, Zap } from 'lucide-react';
+import { TrendingUp, Zap } from 'lucide-react';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 
 export interface MarketPulseBarProps {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 import { DisplayAnnouncement } from '@/lib/types/display';
 
@@ -15,7 +15,7 @@ export interface MapDistrictAnalyticsProps {
   map: maplibregl.Map | null;
   ads: DisplayAnnouncement[];
   visible: boolean;
-  ui: {
+  ui?: {
     surface: string;
     border: string;
     text: string;
@@ -38,7 +38,7 @@ export function MapDistrictAnalytics({
   map,
   ads,
   visible,
-  ui,
+  ui: _ui,
   isDark,
 }: MapDistrictAnalyticsProps) {
   const markersRef = useRef<maplibregl.Marker[]>([]);
