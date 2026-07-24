@@ -134,7 +134,10 @@ describe('Property 8: Input sanitization removes dangerous patterns', () => {
     const safeCharArb = fc.constantFrom(
       ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,!?:()[]{}@$%^&*+_=~'.split('')
     );
-    const safeTextArb = fc.array(safeCharArb, { minLength: 1, maxLength: 80 }).map((chars) => chars.join(''));
+    const safeTextArb = fc
+      .array(safeCharArb, { minLength: 1, maxLength: 80 })
+      .map((chars) => chars.join(''))
+      .filter((text) => !/\bon\w+\s*=/i.test(text));
 
     fc.assert(
       fc.property(safeTextArb, (input) => {
