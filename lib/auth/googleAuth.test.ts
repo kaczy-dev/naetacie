@@ -33,7 +33,9 @@ vi.mock('firebase/firestore', () => ({
 // Mock firebase client
 vi.mock('@/lib/firebase/client', () => ({
   clientAuth: { currentUser: null },
+  getClientAuth: () => ({}),
   getClientFirestore: vi.fn().mockReturnValue({}),
+  isFirebaseConfigValid: () => true,
 }));
 
 import { signInWithGoogle } from './googleAuth';

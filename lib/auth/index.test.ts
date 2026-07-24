@@ -36,6 +36,7 @@ vi.mock('@/lib/firebase/client', () => ({
   clientAuth: { currentUser: null },
   clientFirestore: {},
   getClientFirestore: () => ({}),
+  isFirebaseConfigValid: () => true,
 }));
 
 // Mock firebase admin

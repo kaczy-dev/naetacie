@@ -8,6 +8,7 @@ vi.mock('@/lib/firebase/client', () => ({
       getIdToken: vi.fn().mockResolvedValue('mock-token'),
     },
   },
+  isFirebaseConfigValid: () => true,
 }));
 
 // We test the data fetching logic by extracting it and testing the URL construction

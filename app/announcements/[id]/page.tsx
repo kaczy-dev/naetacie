@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { onAuthStateChanged } from 'firebase/auth';
-import { clientAuth } from '@/lib/firebase/client';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { AnnouncementDetail } from '@/components/list';
 import type { MaskedAnnouncement } from '@/lib/types/announcement';
 
@@ -17,34 +16,32 @@ import type { MaskedAnnouncement } from '@/lib/types/announcement';
 export default function AnnouncementDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { user, loading: authLoading, isGuest } = useAuth();
   const [announcement, setAnnouncement] = useState<MaskedAnnouncement | null>(null);
   const [tier, setTier] = useState<'free' | 'premium'>('free');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(clientAuth, (user) => {
-      if (!user) {
-        router.replace('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router]);
+    if (!authLoading && (isGuest || !user)) {
+      router.replace('/login');
+    }
+  }, [authLoading, isGuest, user, router]);
 
   useEffect(() => {
     async function fetchAnnouncement() {
+      if (authLoading) return;
+
+      if (!user) {
+        setError('Authentication required');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
       try {
-        const user = clientAuth.currentUser;
-        if (!user) {
-          setError('Authentication required');
-          setLoading(false);
-          return;
-        }
-
         const token = await user.getIdToken();
         const id = params.id;
 
@@ -112,7 +109,7 @@ export default function AnnouncementDetailPage() {
     if (params.id) {
       fetchAnnouncement();
     }
-  }, [params.id]);
+  }, [params.id, authLoading, user]);
 
   function handleBack() {
     router.back();

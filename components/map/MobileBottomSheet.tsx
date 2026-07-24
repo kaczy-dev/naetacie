@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, useDragControls, type PanInfo } from 'framer-motion';
 import {
   MapPin,
@@ -14,6 +14,7 @@ import {
   List,
   Map as MapIcon,
   ChevronDown,
+  CheckCircle2,
 } from 'lucide-react';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { normalizeCategory, CATEGORIES } from '@/lib/data/categories';
@@ -60,6 +61,16 @@ export function MobileBottomSheet({
 }: MobileBottomSheetProps) {
   const [snapState, setSnapState] = useState<SheetSnapState>('medium');
   const dragControls = useDragControls();
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  useEffect(() => {
+    if (selectedId && snapState === 'expanded') {
+      const cardEl = cardRefs.current.get(selectedId);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [selectedId, snapState]);
 
   const updateSnapState = (newState: SheetSnapState) => {
     setSnapState(newState);
@@ -262,22 +273,33 @@ export function MobileBottomSheet({
                 return (
                   <div
                     key={ad.id}
+                    ref={(el) => {
+                      if (el) cardRefs.current.set(ad.id, el);
+                      else cardRefs.current.delete(ad.id);
+                    }}
                     onClick={() => {
                       onSelectAd(ad.id);
                       onShowOnMap(ad.id);
-                      setSnapState('medium');
+                      updateSnapState('medium');
                     }}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer space-y-2 ${
                       isSelected
-                        ? 'border-primary bg-primary/10 shadow-md ring-1 ring-primary/30'
+                        ? 'border-primary bg-primary/10 shadow-md ring-2 ring-primary/40'
                         : 'border-border/60 bg-card/80 hover:bg-card active:scale-[0.99]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                        <span>{cat?.icon}</span>
-                        <span>{cat?.label || ad.category}</span>
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                          <span>{cat?.icon}</span>
+                          <span>{cat?.label || ad.category}</span>
+                        </span>
+                        {isSelected && (
+                          <span className="text-[9px] font-extrabold text-primary bg-primary/20 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> Wybrana
+                          </span>
+                        )}
+                      </div>
                       <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
                         {typeof ad.price === 'number'
                           ? `${ad.price.toLocaleString('pl-PL')} zł`

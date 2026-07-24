@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 
-import { clientAuth, getClientFirestore } from '@/lib/firebase/client';
+import { getClientAuth, getClientFirestore } from '@/lib/firebase/client';
 import type { AuthResult, LoginResult } from './types';
 
 // --- Types ---
@@ -32,25 +32,32 @@ const SERVICE_UNAVAILABLE_CODES = [
   'auth/internal-error',
   'auth/too-many-requests',
   'auth/popup-blocked',
+  'auth/invalid-api-key',
+  'auth/api-key-not-valid',
 ];
 
 // --- Public API ---
 
 /**
  * Sign in with Google using Firebase popup flow.
- *
- * - On first login: creates a Firestore user profile with Google profile data.
- * - On subsequent logins: signs in without modifying the existing profile.
- * - On OAuth cancellation: returns gracefully without error display.
- * - On other errors: returns error result for toast display.
  */
 export async function signInWithGoogle(): Promise<AuthResult<GoogleSignInResult>> {
-  const provider = new GoogleAuthProvider();
+  const auth = typeof getClientAuth === 'function' ? getClientAuth() : null;
+  if (!auth) {
+    return {
+      success: false,
+      error: {
+        code: 'service_unavailable',
+        message: 'Konto Google nie zostało skonfigurowane. Aplikacja działa w trybie odczytu (Gość).',
+      },
+    };
+  }
 
+  const provider = new GoogleAuthProvider();
   let credential: UserCredential;
 
   try {
-    credential = await signInWithPopup(clientAuth, provider);
+    credential = await signInWithPopup(auth, provider);
   } catch (error: unknown) {
     return handleGoogleAuthError(error);
   }
@@ -60,14 +67,15 @@ export async function signInWithGoogle(): Promise<AuthResult<GoogleSignInResult>
 
   try {
     const firestore = getClientFirestore();
-    const userDocRef = doc(firestore, 'users', user.uid);
-    const userDoc = await getDoc(userDocRef);
+    if (firestore) {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
 
-    if (!userDoc.exists()) {
-      // First-time Google login: create user profile
-      const now = Timestamp.now();
-      await setDoc(userDocRef, {
-        uid: user.uid,
+      if (!userDoc.exists()) {
+        // First-time Google login: create user profile
+        const now = Timestamp.now();
+        await setDoc(userDocRef, {
+          uid: user.uid,
         email: user.email!,
         display_name: user.displayName || user.email!.split('@')[0],
         tier: 'free',
@@ -79,7 +87,8 @@ export async function signInWithGoogle(): Promise<AuthResult<GoogleSignInResult>
       });
       isNewUser = true;
     }
-    // If profile exists, do nothing (idempotent re-authentication)
+  }
+  // If profile exists, do nothing (idempotent re-authentication)
   } catch (error: unknown) {
     console.error('Failed to check/create user profile in Firestore:', error);
     // Auth succeeded even if Firestore profile creation failed

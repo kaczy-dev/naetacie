@@ -1,6 +1,7 @@
 import type { PortalScraper, ScraperConfig, Browser, ScrapedAd } from '../types';
 import { getNextUserAgent } from '../user-agents';
 import { getRandomDelay } from '../config';
+import { parseCleanPrice, normalizeLocationText } from '../extractor';
 
 /**
  * Playwright Page-like interface for type safety without requiring
@@ -72,46 +73,16 @@ function extractNativeId(url: string, dataId: string | null): string | null {
 
 /**
  * Parses a price string from OLX listing into a numeric value in PLN.
- * Handles formats like "1 500 zł", "do negocjacji", "Zamienię", etc.
- * Returns null if price cannot be parsed or is "do negocjacji".
  */
 function parsePrice(priceText: string | null): number | null {
-  if (!priceText) return null;
-
-  // Common non-numeric price labels
-  const nonNumeric = ['do negocjacji', 'zamienię', 'za darmo', 'bezpłatne'];
-  const lowerText = priceText.toLowerCase().trim();
-  if (nonNumeric.some((label) => lowerText.includes(label))) return null;
-
-  const cleaned = priceText
-    .replace(/\s/g, '')
-    .replace(/zł/gi, '')
-    .replace(/PLN/gi, '')
-    .replace(/,/g, '.');
-
-  const match = cleaned.match(/(\d+(?:\.\d+)?)/);
-  if (!match) return null;
-
-  const value = parseFloat(match[1]);
-  return isNaN(value) ? null : value;
+  return parseCleanPrice(priceText);
 }
 
 /**
  * Extracts the location portion from OLX's combined location-date text.
- * OLX typically formats as "Szczecin, Niebuszewo - dzisiaj 14:30"
- * or "Szczecin - 25 maj".
  */
 function extractLocation(locationDateText: string | null): string {
-  if (!locationDateText) return 'Szczecin';
-
-  const trimmed = locationDateText.trim();
-  // OLX separates location from date with " - " (with spaces)
-  const dashIndex = trimmed.indexOf(' - ');
-  if (dashIndex > 0) {
-    return trimmed.substring(0, dashIndex).trim();
-  }
-
-  return trimmed || 'Szczecin';
+  return normalizeLocationText(locationDateText, 'Szczecin');
 }
 
 /**

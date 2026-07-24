@@ -2,6 +2,7 @@ import type { PortalScraper, ScraperConfig, Browser } from '../types';
 import type { ScrapedAd } from '@lib/types/announcement';
 import { getNextUserAgent } from '../user-agents';
 import { getRandomDelay } from '../config';
+import { parseCleanPrice, normalizeLocationText } from '../extractor';
 
 /**
  * Base URL for Oferteo construction services in the Szczecin area.
@@ -11,15 +12,12 @@ const BASE_URL =
 
 /**
  * Extracts a native identifier from an Oferteo listing URL or data attribute.
- * Falls back to null if no ID can be determined.
  */
 function extractNativeId(url: string): string | null {
-  // Oferteo URLs often contain a slug with a numeric suffix, e.g. /firma/nazwa-12345
   const match = url.match(/\/(\d+)(?:[/?#]|$)/);
   if (match) {
     return match[1];
   }
-  // Try slug as fallback identifier
   const slugMatch = url.match(/\/([^/]+)\/?$/);
   return slugMatch ? slugMatch[1] : null;
 }
@@ -28,10 +26,7 @@ function extractNativeId(url: string): string | null {
  * Parses a price string from Oferteo into a numeric value in PLN or null.
  */
 function parsePrice(priceText: string | null): number | null {
-  if (!priceText) return null;
-  const cleaned = priceText.replace(/[^\d.,]/g, '').replace(',', '.');
-  const value = parseFloat(cleaned);
-  return Number.isFinite(value) ? value : null;
+  return parseCleanPrice(priceText);
 }
 
 /**

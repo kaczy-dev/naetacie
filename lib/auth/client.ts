@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 
-import { clientAuth, getClientFirestore } from '@/lib/firebase/client';
+import { clientAuth, getClientFirestore, isFirebaseConfigValid } from '@/lib/firebase/client';
 import type { UserProfile } from '@/lib/types/user';
 import type { AuthResult, AuthError, RegistrationResult, LoginResult } from './types';
 
@@ -35,6 +35,8 @@ const SERVICE_UNAVAILABLE_CODES = [
   'auth/network-request-failed',
   'auth/internal-error',
   'auth/too-many-requests',
+  'auth/invalid-api-key',
+  'auth/api-key-not-valid',
 ];
 
 // --- Public API ---
@@ -44,8 +46,17 @@ export async function registerUser(
   password: string,
   displayName: string
 ): Promise<AuthResult<RegistrationResult>> {
-  const truncatedDisplayName = displayName.slice(0, MAX_DISPLAY_NAME_LENGTH);
+  if (typeof isFirebaseConfigValid === 'function' && !isFirebaseConfigValid()) {
+    return {
+      success: false,
+      error: {
+        code: 'service_unavailable',
+        message: 'Serwer rejestracji nie jest skonfigurowany. Aplikacja działa w trybie odczytu (Gość).',
+      },
+    };
+  }
 
+  const truncatedDisplayName = displayName.slice(0, MAX_DISPLAY_NAME_LENGTH);
   let credential: UserCredential;
 
   try {
@@ -57,23 +68,26 @@ export async function registerUser(
   const user = credential.user;
 
   try {
-    const now = Timestamp.now();
-    const userProfile: Omit<UserProfile, 'created_at' | 'updated_at'> & {
-      created_at: typeof now;
-      updated_at: typeof now;
-    } = {
-      uid: user.uid,
-      email: user.email!,
-      display_name: truncatedDisplayName,
-      tier: 'free',
-      auth_provider: 'email',
-      email_verified: false,
-      created_at: now,
-      updated_at: now,
-      notification_prefs: null,
-    };
+    const firestore = getClientFirestore();
+    if (firestore) {
+      const now = Timestamp.now();
+      const userProfile: Omit<UserProfile, 'created_at' | 'updated_at'> & {
+        created_at: typeof now;
+        updated_at: typeof now;
+      } = {
+        uid: user.uid,
+        email: user.email!,
+        display_name: truncatedDisplayName,
+        tier: 'free',
+        auth_provider: 'email',
+        email_verified: false,
+        created_at: now,
+        updated_at: now,
+        notification_prefs: null,
+      };
 
-    await setDoc(doc(getClientFirestore(), 'users', user.uid), userProfile);
+      await setDoc(doc(firestore, 'users', user.uid), userProfile);
+    }
   } catch (error: unknown) {
     console.error('Failed to create user profile in Firestore:', error);
   }
@@ -99,6 +113,16 @@ export async function loginUser(
   email: string,
   password: string
 ): Promise<AuthResult<LoginResult>> {
+  if (typeof isFirebaseConfigValid === 'function' && !isFirebaseConfigValid()) {
+    return {
+      success: false,
+      error: {
+        code: 'service_unavailable',
+        message: 'Serwer logowania nie jest skonfigurowany. Aplikacja działa w trybie odczytu (Gość).',
+      },
+    };
+  }
+
   let credential: UserCredential;
 
   try {

@@ -30,7 +30,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 
-import { getClientAuth, getClientFirestore } from '@/lib/firebase/client';
+import { getClientAuth, getClientFirestore, isFirebaseConfigValid } from '@/lib/firebase/client';
 import type { UserProfile } from '@/lib/types/user';
 import type { AuthResult, LoginResult, RegistrationResult } from './types';
 
@@ -70,30 +70,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Listen to Firebase auth state changes
   useEffect(() => {
-    const auth = getClientAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // User is signed in — fetch profile
-        let profile: UserProfile | null = null;
-        try {
-          const firestore = getClientFirestore();
-          const profileDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-          if (profileDoc.exists()) {
-            profile = profileDoc.data() as UserProfile;
-          }
-        } catch (error) {
-          console.error('Failed to fetch user profile:', error);
-        }
+    if (typeof isFirebaseConfigValid === 'function' && !isFirebaseConfigValid()) {
+      setState({
+        user: null,
+        profile: null,
+        isGuest: true,
+        isEmailVerified: false,
+        loading: false,
+      });
+      return;
+    }
 
-        setState({
-          user: firebaseUser,
-          profile,
-          isGuest: false,
-          isEmailVerified: firebaseUser.emailVerified,
-          loading: false,
-        });
-      } else {
-        // No user — guest mode
+    try {
+      const auth = typeof getClientAuth === 'function' ? getClientAuth() : null;
+      if (!auth || !auth.onAuthStateChanged) {
         setState({
           user: null,
           profile: null,
@@ -101,16 +91,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isEmailVerified: false,
           loading: false,
         });
+        return;
       }
-    });
 
-    return () => unsubscribe();
+      const unsubscribe = onAuthStateChanged(
+        auth,
+        async (firebaseUser) => {
+          if (firebaseUser) {
+            // User is signed in — fetch profile
+            let profile: UserProfile | null = null;
+            try {
+              const firestore = getClientFirestore();
+              if (firestore) {
+                const profileDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+                if (profileDoc.exists()) {
+                  profile = profileDoc.data() as UserProfile;
+                }
+              }
+            } catch (error) {
+              console.error('Failed to fetch user profile:', error);
+            }
+
+            setState({
+              user: firebaseUser,
+              profile,
+              isGuest: false,
+              isEmailVerified: firebaseUser.emailVerified,
+              loading: false,
+            });
+          } else {
+            // No user — guest mode
+            setState({
+              user: null,
+              profile: null,
+              isGuest: true,
+              isEmailVerified: false,
+              loading: false,
+            });
+          }
+        },
+        (error) => {
+          console.warn('[AuthContext] Auth state listener notice:', error);
+          setState({
+            user: null,
+            profile: null,
+            isGuest: true,
+            isEmailVerified: false,
+            loading: false,
+          });
+        }
+      );
+
+      return () => unsubscribe();
+    } catch (err) {
+      console.warn('[AuthContext] Auth setup notice:', err);
+      setState({
+        user: null,
+        profile: null,
+        isGuest: true,
+        isEmailVerified: false,
+        loading: false,
+      });
+    }
   }, []);
 
   // --- Auth Methods ---
 
   const signInWithEmail = useCallback(
     async (email: string, password: string): Promise<AuthResult<LoginResult>> => {
+      if (!isFirebaseConfigValid()) {
+        return {
+          success: false,
+          error: {
+            code: 'service_unavailable',
+            message: 'Serwer logowania nie jest skonfigurowany. Aplikacja działa w trybie odczytu (Gość).',
+          },
+        };
+      }
       try {
         const auth = getClientAuth();
         const credential = await signInWithEmailAndPassword(auth, email, password);
@@ -128,6 +185,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signInWithGoogle = useCallback(async (): Promise<AuthResult<LoginResult>> => {
+    if (!isFirebaseConfigValid()) {
+      return {
+        success: false,
+        error: {
+          code: 'service_unavailable',
+          message: 'Konto Google nie zostało skonfigurowane. Aplikacja działa w trybie odczytu (Gość).',
+        },
+      };
+    }
     try {
       const auth = getClientAuth();
       const provider = new GoogleAuthProvider();
@@ -137,23 +203,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Create profile if first-time Google user
       try {
         const firestore = getClientFirestore();
-        const profileRef = doc(firestore, 'users', user.uid);
-        const profileDoc = await getDoc(profileRef);
+        if (firestore) {
+          const profileRef = doc(firestore, 'users', user.uid);
+          const profileDoc = await getDoc(profileRef);
 
-        if (!profileDoc.exists()) {
-          const now = Timestamp.now();
-          const newProfile = {
-            uid: user.uid,
-            email: user.email!,
-            display_name: user.displayName || '',
-            tier: 'free' as const,
-            auth_provider: 'google' as const,
-            email_verified: user.emailVerified,
-            created_at: now,
-            updated_at: now,
-            notification_prefs: null,
-          };
-          await setDoc(profileRef, newProfile);
+          if (!profileDoc.exists()) {
+            const now = Timestamp.now();
+            const newProfile = {
+              uid: user.uid,
+              email: user.email!,
+              display_name: user.displayName || '',
+              tier: 'free' as const,
+              auth_provider: 'google' as const,
+              email_verified: user.emailVerified,
+              created_at: now,
+              updated_at: now,
+              notification_prefs: null,
+            };
+            await setDoc(profileRef, newProfile);
+          }
         }
       } catch (profileError) {
         console.error('Failed to create/check Google user profile:', profileError);
@@ -175,6 +243,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string,
       displayName: string
     ): Promise<AuthResult<RegistrationResult>> => {
+      if (!isFirebaseConfigValid()) {
+        return {
+          success: false,
+          error: {
+            code: 'service_unavailable',
+            message: 'Serwer rejestracji nie jest skonfigurowany. Aplikacja działa w trybie odczytu (Gość).',
+          },
+        };
+      }
       try {
         const auth = getClientAuth();
         const credential = await createUserWithEmailAndPassword(auth, email, password);
@@ -190,19 +267,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Create Firestore profile
         try {
           const firestore = getClientFirestore();
-          const now = Timestamp.now();
-          const newProfile = {
-            uid: user.uid,
-            email: user.email!,
-            display_name: displayName.slice(0, 100),
-            tier: 'free' as const,
-            auth_provider: 'email' as const,
-            email_verified: false,
-            created_at: now,
-            updated_at: now,
-            notification_prefs: null,
-          };
-          await setDoc(doc(firestore, 'users', user.uid), newProfile);
+          if (firestore) {
+            const now = Timestamp.now();
+            const newProfile = {
+              uid: user.uid,
+              email: user.email!,
+              display_name: displayName.slice(0, 100),
+              tier: 'free' as const,
+              auth_provider: 'email' as const,
+              email_verified: false,
+              created_at: now,
+              updated_at: now,
+              notification_prefs: null,
+            };
+            await setDoc(doc(firestore, 'users', user.uid), newProfile);
+          }
         } catch (profileError) {
           console.error('Failed to create user profile:', profileError);
         }
@@ -220,24 +299,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async (): Promise<void> => {
-    const auth = getClientAuth();
-    await firebaseSignOut(auth);
-    // State is cleared via the onAuthStateChanged listener
+    if (!isFirebaseConfigValid()) return;
+    try {
+      const auth = getClientAuth();
+      await firebaseSignOut(auth);
+    } catch (err) {
+      console.warn('[AuthContext] SignOut notice:', err);
+    }
   }, []);
 
   const resendVerificationEmail = useCallback(async (): Promise<void> => {
-    const auth = getClientAuth();
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      await sendEmailVerification(currentUser);
+    if (!isFirebaseConfigValid()) return;
+    try {
+      const auth = getClientAuth();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        await sendEmailVerification(currentUser);
+      }
+    } catch (err) {
+      console.warn('[AuthContext] Resend verification notice:', err);
     }
   }, []);
 
   const refreshToken = useCallback(async (): Promise<string | null> => {
-    const auth = getClientAuth();
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      return currentUser.getIdToken(true);
+    if (!isFirebaseConfigValid()) return null;
+    try {
+      const auth = getClientAuth();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        return currentUser.getIdToken(true);
+      }
+    } catch (err) {
+      console.warn('[AuthContext] Refresh token notice:', err);
     }
     return null;
   }, []);
@@ -276,6 +369,8 @@ const SERVICE_UNAVAILABLE_CODES = [
   'auth/network-request-failed',
   'auth/internal-error',
   'auth/too-many-requests',
+  'auth/invalid-api-key',
+  'auth/api-key-not-valid',
 ];
 
 const EMAIL_EXISTS_CODES = [

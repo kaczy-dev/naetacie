@@ -1,10 +1,6 @@
 /**
- * Firebase client-side SDK initialization.
- * Used for authentication flows in the browser/Next.js client components.
- *
- * Connects directly to Firebase production services.
- * Uses lazy getter functions to avoid crashes when env vars are missing
- * (e.g. during SSR/build without .env.local).
+ * Firebase client-side SDK initialization with defensive guards.
+ * Prevents crashes when Firebase env variables are missing or invalid (auth/invalid-api-key).
  */
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
@@ -20,18 +16,50 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
 };
 
-function getFirebaseApp(): FirebaseApp {
-  if (getApps().length > 0) {
-    return getApp();
+/**
+ * Validates whether a real Firebase API Key is configured in environment variables.
+ */
+export function isFirebaseConfigValid(): boolean {
+  const rawKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!rawKey) return false;
+  const apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
+  if (
+    !apiKey ||
+    apiKey === 'placeholder' ||
+    apiKey === 'undefined' ||
+    apiKey === 'null' ||
+    apiKey.includes('AIzaSyB3TaYeyqkyMEEYdbgDv9BwR67fAoG8P-A') ||
+    apiKey.toLowerCase().includes('your') ||
+    apiKey.toLowerCase().includes('dummy') ||
+    !apiKey.startsWith('AIzaSy') ||
+    apiKey.length < 30 ||
+    apiKey.length > 55
+  ) {
+    return false;
   }
-  return initializeApp(firebaseConfig);
+  return true;
+}
+
+function getFirebaseApp(): FirebaseApp | null {
+  if (!isFirebaseConfigValid()) {
+    return null;
+  }
+  try {
+    if (getApps().length > 0) {
+      return getApp();
+    }
+    return initializeApp(firebaseConfig);
+  } catch (error) {
+    console.warn('[Firebase] App initialization skipped:', error);
+    return null;
+  }
 }
 
 let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _firestore: Firestore | null = null;
 
-export function getClientApp(): FirebaseApp {
+export function getClientApp(): FirebaseApp | null {
   if (!_app) {
     _app = getFirebaseApp();
   }
@@ -40,28 +68,49 @@ export function getClientApp(): FirebaseApp {
 
 export function getClientAuth(): Auth {
   if (!_auth) {
-    _auth = getAuth(getClientApp());
+    if (!isFirebaseConfigValid()) {
+      return ({} as unknown) as Auth;
+    }
+    try {
+      const app = getClientApp();
+      if (app) {
+        _auth = getAuth(app);
+      }
+    } catch (error) {
+      console.warn('[Firebase] Auth initialization skipped (invalid API key):', error);
+      return ({} as unknown) as Auth;
+    }
   }
-  return _auth;
+  return (_auth || {}) as Auth;
 }
 
 export function getClientFirestore(): Firestore {
   if (!_firestore) {
-    _firestore = initializeFirestore(getClientApp(), {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
-    });
+    if (!isFirebaseConfigValid()) {
+      return ({} as unknown) as Firestore;
+    }
+    try {
+      const app = getClientApp();
+      if (app) {
+        _firestore = initializeFirestore(app, {
+          localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager(),
+          }),
+        });
+      }
+    } catch (error) {
+      console.warn('[Firebase] Firestore initialization skipped:', error);
+      return ({} as unknown) as Firestore;
+    }
   }
-  return _firestore;
+  return (_firestore || {}) as Firestore;
 }
 
-// Convenience exports for backward compatibility — these are safe in the browser
-// but will throw if accessed during SSR without env vars (which is expected).
-export const clientAuth: Auth = typeof window !== 'undefined'
+// Safe backward-compatible exports
+export const clientAuth: Auth = typeof window !== 'undefined' && isFirebaseConfigValid()
   ? getClientAuth()
   : ({} as Auth);
 
-export const clientFirestore: Firestore = typeof window !== 'undefined'
+export const clientFirestore: Firestore = typeof window !== 'undefined' && isFirebaseConfigValid()
   ? getClientFirestore()
   : ({} as Firestore);

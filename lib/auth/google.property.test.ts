@@ -32,7 +32,9 @@ vi.mock('firebase/firestore', () => ({
 // Mock @/lib/firebase/client
 vi.mock('@/lib/firebase/client', () => ({
   clientAuth: {},
+  getClientAuth: () => ({}),
   getClientFirestore: () => ({}),
+  isFirebaseConfigValid: () => true,
 }));
 
 // Import after mocks are set up

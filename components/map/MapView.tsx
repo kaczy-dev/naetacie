@@ -791,6 +791,7 @@ export default function MapView({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showDistrictAnalytics, setShowDistrictAnalytics] = useState(false);
+  const [sheetSnapState, setSheetSnapState] = useState<'collapsed' | 'medium' | 'expanded'>('medium');
   const [moved, setMoved] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [tilesLoading, setTilesLoading] = useState(true);
@@ -1574,9 +1575,19 @@ export default function MapView({
     const position = jitteredPosition(ad.latitude!, ad.longitude!, ad.id);
     const coordinates: [number, number] = [position[1], position[0]];
 
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const bottomPadding = isMobile
+      ? sheetSnapState === 'expanded'
+        ? window.innerHeight * 0.85
+        : sheetSnapState === 'medium'
+        ? window.innerHeight * 0.42
+        : 90
+      : 0;
+
     map.flyTo({
       center: coordinates,
       zoom: Math.max(map.getZoom(), FLY_TO_ZOOM),
+      padding: { top: 60, bottom: bottomPadding, left: 0, right: 0 },
       essential: true,
       duration: prefersReducedMotion ? 0 : 1200,
     });
@@ -1586,22 +1597,32 @@ export default function MapView({
     }, prefersReducedMotion ? 50 : 700);
 
     return () => clearTimeout(timeout);
-  }, [selectedId, flyToken, geocodedAds, mapLoaded, openPopup, prefersReducedMotion]);
+  }, [selectedId, flyToken, geocodedAds, mapLoaded, openPopup, prefersReducedMotion, sheetSnapState]);
 
   const handleCarouselSelect = useCallback((id: string) => {
     onMarkerClick?.(id);
     const ad = geocodedAds.find(a => a.id === id);
     if (ad && mapRef.current) {
       const position = jitteredPosition(ad.latitude!, ad.longitude!, ad.id);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const bottomPadding = isMobile
+        ? sheetSnapState === 'expanded'
+          ? window.innerHeight * 0.85
+          : sheetSnapState === 'medium'
+          ? window.innerHeight * 0.42
+          : 90
+        : 0;
+
       mapRef.current.flyTo({
         center: [position[1], position[0]],
         zoom: Math.max(mapRef.current.getZoom(), FLY_TO_ZOOM),
+        padding: { top: 60, bottom: bottomPadding, left: 0, right: 0 },
         essential: true,
         duration: prefersReducedMotion ? 0 : 1000,
       });
       openPopup(ad, [position[1], position[0]]);
     }
-  }, [geocodedAds, onMarkerClick, openPopup, prefersReducedMotion]);
+  }, [geocodedAds, onMarkerClick, openPopup, prefersReducedMotion, sheetSnapState]);
 
   // Search Area button click handler
   const handleSearchAreaClick = useCallback(() => {
@@ -1848,6 +1869,7 @@ export default function MapView({
         isFavorite={isFavorite}
         onToggleFavorite={onToggleFavorite}
         onShowOnMap={(id: string) => onMarkerClick?.(id)}
+        onSnapStateChange={setSheetSnapState}
         ui={ui}
         isDark={isDark}
       />

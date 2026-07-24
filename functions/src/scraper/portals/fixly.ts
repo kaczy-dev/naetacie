@@ -1,6 +1,7 @@
 import type { PortalScraper, ScraperConfig, Browser, ScrapedAd } from '../types';
 import { getNextUserAgent } from '../user-agents';
 import { getRandomDelay } from '../config';
+import { parseCleanPrice, normalizeLocationText } from '../extractor';
 
 /**
  * Playwright Page-like interface for type safety without requiring
@@ -72,21 +73,9 @@ function extractNativeId(url: string, dataId: string | null): string | null {
 
 /**
  * Parses a price string from Fixly listing into a numeric value in PLN.
- * Returns null if price cannot be parsed or is not present.
  */
 function parsePrice(priceText: string | null): number | null {
-  if (!priceText) return null;
-  const cleaned = priceText
-    .replace(/\s/g, '')
-    .replace(/zł/gi, '')
-    .replace(/PLN/gi, '')
-    .replace(/,/g, '.');
-
-  const match = cleaned.match(/(\d+(?:\.\d+)?)/);
-  if (!match) return null;
-
-  const value = parseFloat(match[1]);
-  return isNaN(value) ? null : value;
+  return parseCleanPrice(priceText);
 }
 
 /**

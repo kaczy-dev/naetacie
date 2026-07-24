@@ -356,17 +356,23 @@ export default function LoginPage() {
               </button>
             </p>
 
-            {/* Guest mode */}
-            <div className="mt-6 pt-4 border-t border-border">
+            {/* Guest / Read-Only mode */}
+            <div className="mt-6 pt-4 border-t border-border space-y-2">
               <Button
-                variant="ghost"
-                className="w-full text-muted-foreground gap-2"
-                onClick={() => router.replace('/')}
+                variant="outline"
+                className="w-full text-foreground font-semibold gap-2 border-primary/30 hover:bg-primary/5 hover:border-primary/60 transition-all shadow-xs"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('naetacie_read_only_guest', 'true');
+                  }
+                  router.replace('/');
+                }}
               >
-                🏗️ Przeglądaj oferty bez konta
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                👀 Wejdź bez rejestracji (Tryb Odczytu / Read-Only)
               </Button>
-              <p className="text-[11px] text-center text-muted-foreground/60 mt-2">
-                Dane odświeżane co 6h z OLX, Pracuj.pl, Indeed
+              <p className="text-[11px] text-center text-muted-foreground/80">
+                Pełny dostęp do podglądu mapy i wyszukiwania ofert • Bez podawania emaila
               </p>
             </div>
           </CardContent>

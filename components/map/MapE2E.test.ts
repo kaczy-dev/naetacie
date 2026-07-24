@@ -6,7 +6,7 @@ import { DisplayAnnouncement } from '@/lib/types/display';
 vi.mock('maplibre-gl', () => {
   class MockMap {
     options: any;
-    events: Record<string, Function[]> = {};
+    events: Record<string, Array<(...args: any[]) => any>> = {};
     pitch = 0;
     bearing = 0;
     center = [14.5528, 53.4285];
@@ -22,7 +22,7 @@ vi.mock('maplibre-gl', () => {
     addControl = vi.fn();
     remove = vi.fn();
     
-    on = vi.fn().mockImplementation((event: string, callback: Function) => {
+    on = vi.fn().mockImplementation((event: string, callback: (...args: any[]) => any) => {
       if (!this.events[event]) this.events[event] = [];
       this.events[event].push(callback);
     });

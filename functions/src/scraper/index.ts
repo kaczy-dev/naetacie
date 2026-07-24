@@ -31,6 +31,8 @@ import { processNotifications } from '../notifications';
 import type { PortalScraper, ScrapingResult, Browser } from './types';
 import type { ScrapedAd, Announcement } from '@lib/types/announcement';
 
+import { CircuitBreaker } from './circuit-breaker';
+
 // Ensure Firebase Admin is initialized
 if (getApps().length === 0) {
   initializeApp();
@@ -38,6 +40,13 @@ if (getApps().length === 0) {
 
 /** All portal scrapers to orchestrate */
 const PORTAL_SCRAPERS: PortalScraper[] = [olxScraper, oferteoScraper, fixlyScraper];
+
+/** Circuit breakers per portal to prevent IP bans during outages */
+const PORTAL_CIRCUIT_BREAKERS = new Map<string, CircuitBreaker>([
+  ['olx', new CircuitBreaker({ failureThreshold: 3, cooldownMs: 60_000 })],
+  ['oferteo', new CircuitBreaker({ failureThreshold: 3, cooldownMs: 60_000 })],
+  ['fixly', new CircuitBreaker({ failureThreshold: 3, cooldownMs: 60_000 })],
+]);
 
 /**
  * Launches Playwright browser with stealth plugin enabled.
@@ -74,9 +83,21 @@ async function processPortal(
     errors: [],
   };
 
+  const cb = PORTAL_CIRCUIT_BREAKERS.get(scraper.portal) ?? new CircuitBreaker();
+  if (!cb.canExecute()) {
+    logger.warn(`[Scraper] Circuit breaker is OPEN for portal ${scraper.portal}. Skipping run.`);
+    result.errors.push({
+      portal: scraper.portal,
+      timestamp: new Date(),
+      reason: `Circuit breaker is OPEN for portal ${scraper.portal}`,
+      retryAttempt: 0,
+    });
+    return result;
+  }
+
   // Step 1: Scrape ads from the portal with retry logic
   const scrapedAds = await retryWithBackoff<ScrapedAd[]>(
-    () => scraper.scrape(browser, config),
+    () => cb.execute(() => scraper.scrape(browser, config)),
     {
       maxRetries: config.maxRetries,
       baseDelayMs: config.retryBaseDelayMs,

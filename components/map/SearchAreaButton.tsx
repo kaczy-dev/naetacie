@@ -6,6 +6,7 @@ export interface SearchAreaButtonProps {
   visible?: boolean;
   onClick: () => void;
   ui?: { surface: string; border: string; text: string; shadow: string };
+  top?: string | number;
 }
 
 /**
@@ -21,6 +22,7 @@ export function SearchAreaButton({
     text: '#1f2937',
     shadow: '0 4px 12px rgba(0,0,0,0.15)',
   },
+  top = '88px',
 }: SearchAreaButtonProps) {
   const handleClick = useCallback(() => {
     onClick();
@@ -33,10 +35,10 @@ export function SearchAreaButton({
       onClick={handleClick}
       style={{
         position: 'absolute',
-        top: '16px',
+        top: typeof top === 'number' ? `${top}px` : top,
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 10,
+        zIndex: 15,
         padding: '8px 18px',
         background: ui.surface,
         border: `1.5px solid ${ui.border}`,
