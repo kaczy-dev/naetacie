@@ -3,6 +3,8 @@
 import { motion } from 'framer-motion';
 import { TrendingUp, Zap } from 'lucide-react';
 import type { DisplayAnnouncement } from '@/lib/types/display';
+import { GSAPNumberCounter } from '@/components/ui/GSAPNumberCounter';
+import { GSAPMagnetic } from '@/components/ui/GSAPMagnetic';
 
 export interface MarketPulseBarProps {
   ads: DisplayAnnouncement[];
@@ -24,25 +26,37 @@ export function MarketPulseBar({ ads, totalCount }: MarketPulseBarProps) {
       className="w-full bg-gradient-to-r from-primary/10 via-emerald-500/10 to-primary/5 border border-primary/20 rounded-2xl p-3.5 shadow-sm backdrop-blur-md flex flex-wrap items-center justify-between gap-3 text-xs"
     >
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0">
-          <Zap className="w-4 h-4 text-primary animate-pulse" />
-        </div>
+        <GSAPMagnetic strength={0.2}>
+          <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0 cursor-pointer shadow-xs hover:scale-105 transition-transform">
+            <Zap className="w-4.5 h-4.5 text-primary animate-pulse" />
+          </div>
+        </GSAPMagnetic>
         <div>
-          <div className="font-extrabold text-foreground flex items-center gap-1.5">
+          <div className="font-extrabold text-foreground flex items-center gap-1.5 text-xs md:text-sm">
             <span>Puls Rynku Szczecin</span>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
           </div>
-          <div className="text-[11px] text-muted-foreground">
-            Aktywne oferty: <strong>{totalCount}</strong> • Średnia stawka: <strong>{avgPrice ? `${avgPrice.toLocaleString('pl-PL')} zł` : 'b.d.'}</strong>
+          <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-1.5">
+            <span>Aktywne oferty:</span>
+            <span className="font-extrabold text-foreground">
+              <GSAPNumberCounter value={totalCount} duration={0.8} />
+            </span>
+            <span>• Średnia stawka:</span>
+            <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+              {avgPrice ? <GSAPNumberCounter value={avgPrice} suffix=" zł" duration={1.2} /> : 'b.d.'}
+            </span>
           </div>
         </div>
       </div>
 
       {maxPrice && (
-        <div className="flex items-center gap-1.5 bg-background/60 px-3 py-1.5 rounded-xl border border-border/50 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-          <TrendingUp className="w-3.5 h-3.5" />
-          Najwyższa oferta: {maxPrice.toLocaleString('pl-PL')} zł
-        </div>
+        <GSAPMagnetic strength={0.15}>
+          <div className="flex items-center gap-1.5 bg-background/80 px-3 py-1.5 rounded-xl border border-emerald-500/30 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 shadow-2xs backdrop-blur-md">
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>Najwyższa oferta:</span>
+            <GSAPNumberCounter value={maxPrice} suffix=" zł" duration={1.5} />
+          </div>
+        </GSAPMagnetic>
       )}
     </motion.div>
   );
