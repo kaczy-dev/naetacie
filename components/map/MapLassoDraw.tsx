@@ -1,0 +1,243 @@
+'use client';
+
+import { useEffect, useRef, useState, useCallback } from 'react';
+import maplibregl from 'maplibre-gl';
+
+export interface MapLassoDrawProps {
+  map: maplibregl.Map | null;
+  onPolygonChange: (polygonCoords: Array<[number, number]> | null) => void;
+  ui: {
+    surface: string;
+    border: string;
+    text: string;
+    shadow: string;
+  };
+}
+
+/**
+ * Custom Lasso / Polygon Drawing tool for MapLibre GL JS.
+ * Allows users to draw custom boundaries on the map to filter announcements.
+ */
+export function MapLassoDraw({ map, onPolygonChange, ui }: MapLassoDrawProps) {
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [points, setPoints] = useState<Array<[number, number]>>([]);
+  const pointsRef = useRef<Array<[number, number]>>([]);
+
+  const updateSourceAndLayers = useCallback(
+    (currentPoints: Array<[number, number]>) => {
+      if (!map) return;
+
+      const sourceId = 'lasso-draw-source';
+      const fillLayerId = 'lasso-draw-fill';
+      const lineLayerId = 'lasso-draw-line';
+
+      const geometry: GeoJSON.Geometry = currentPoints.length >= 3
+        ? {
+            type: 'Polygon',
+            coordinates: [[...currentPoints, currentPoints[0]]],
+          }
+        : {
+            type: 'LineString',
+            coordinates: currentPoints,
+          };
+
+      const geojson: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: currentPoints.length > 0 ? [
+          {
+            type: 'Feature',
+            geometry,
+            properties: {},
+          },
+        ] : [],
+      };
+
+      if (!map.getSource(sourceId)) {
+        map.addSource(sourceId, {
+          type: 'geojson',
+          data: geojson,
+        });
+
+        map.addLayer({
+          id: fillLayerId,
+          type: 'fill',
+          source: sourceId,
+          paint: {
+            'fill-color': '#10b981',
+            'fill-opacity': 0.15,
+          },
+        });
+
+        map.addLayer({
+          id: lineLayerId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': '#10b981',
+            'line-width': 2.5,
+            'line-dasharray': [2, 2],
+          },
+        });
+      } else {
+        (map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geojson);
+      }
+    },
+    [map]
+  );
+
+  useEffect(() => {
+    if (!map) return;
+
+    const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+      if (!isDrawing) return;
+
+      const newPoint: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+      const nextPoints = [...pointsRef.current, newPoint];
+      pointsRef.current = nextPoints;
+      setPoints(nextPoints);
+      updateSourceAndLayers(nextPoints);
+    };
+
+    if (isDrawing) {
+      map.getCanvas().style.cursor = 'crosshair';
+      map.on('click', handleMapClick);
+    } else {
+      map.getCanvas().style.cursor = '';
+    }
+
+    return () => {
+      map.off('click', handleMapClick);
+      map.getCanvas().style.cursor = '';
+    };
+  }, [map, isDrawing, updateSourceAndLayers]);
+
+  const handleStartDrawing = () => {
+    setIsDrawing(true);
+    setPoints([]);
+    pointsRef.current = [];
+    updateSourceAndLayers([]);
+    onPolygonChange(null);
+  };
+
+  const handleFinishDrawing = () => {
+    setIsDrawing(false);
+    if (points.length >= 3) {
+      onPolygonChange(points);
+    } else {
+      onPolygonChange(null);
+    }
+  };
+
+  const handleClearDrawing = () => {
+    setIsDrawing(false);
+    setPoints([]);
+    pointsRef.current = [];
+    updateSourceAndLayers([]);
+    onPolygonChange(null);
+  };
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '238px',
+        right: '10px',
+        zIndex: 10,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        alignItems: 'flex-end',
+      }}
+    >
+      {!isDrawing && points.length === 0 && (
+        <button
+          onClick={handleStartDrawing}
+          title="Narysuj własny obszar na mapie"
+          className="w-8 h-8 text-xs md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
+          style={{
+            background: ui.surface,
+            border: `1px solid ${ui.border}`,
+            boxShadow: ui.shadow,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: ui.text,
+          }}
+        >
+          ✏️
+        </button>
+      )}
+
+      {isDrawing && (
+        <div
+          style={{
+            background: ui.surface,
+            border: `1.5px solid ${ui.border}`,
+            borderRadius: '12px',
+            boxShadow: ui.shadow,
+            padding: '8px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '12px',
+            color: ui.text,
+          }}
+        >
+          <span>Kliknij punkty na mapie ({points.length})</span>
+          {points.length >= 3 && (
+            <button
+              onClick={handleFinishDrawing}
+              style={{
+                padding: '4px 10px',
+                background: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Zastosuj
+            </button>
+          )}
+          <button
+            onClick={handleClearDrawing}
+            style={{
+              padding: '4px 8px',
+              background: 'transparent',
+              color: '#ef4444',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            Anuluj
+          </button>
+        </div>
+      )}
+
+      {!isDrawing && points.length >= 3 && (
+        <button
+          onClick={handleClearDrawing}
+          style={{
+            padding: '6px 12px',
+            background: ui.surface,
+            border: `1.5px solid #ef4444`,
+            borderRadius: '20px',
+            boxShadow: ui.shadow,
+            fontSize: '12px',
+            fontWeight: 600,
+            color: '#ef4444',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+        >
+          🗑️ Usuń obszar
+        </button>
+      )}
+    </div>
+  );
+}

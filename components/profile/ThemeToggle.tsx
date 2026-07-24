@@ -8,6 +8,7 @@
  * Validates: Requirement 13.5
  */
 
+import { useState } from 'react';
 import { useTheme, type ThemeMode } from '@/components/theme';
 
 const THEME_OPTIONS: { value: ThemeMode; label: string; icon: string }[] = [
@@ -18,15 +19,35 @@ const THEME_OPTIONS: { value: ThemeMode; label: string; icon: string }[] = [
 
 export function ThemeToggle() {
   const { mode, resolvedTheme, setMode } = useTheme();
+  const [fontScale, setFontScale] = useState<'normal' | 'large' | 'huge'>(() => {
+    if (typeof window === 'undefined') return 'normal';
+    try {
+      return (localStorage.getItem('naetacie_font_scale') as 'normal' | 'large' | 'huge') || 'normal';
+    } catch {
+      return 'normal';
+    }
+  });
+
+  const handleFontChange = (scale: 'normal' | 'large' | 'huge') => {
+    setFontScale(scale);
+    try {
+      localStorage.setItem('naetacie_font_scale', scale);
+      if (scale === 'normal') document.documentElement.style.fontSize = '100%';
+      if (scale === 'large') document.documentElement.style.fontSize = '112.5%';
+      if (scale === 'huge') document.documentElement.style.fontSize = '125%';
+    } catch {
+      /* ignore */
+    }
+  };
 
   return (
     <div style={containerStyle}>
       <div style={labelRowStyle}>
-        <span style={labelStyle}>Appearance</span>
+        <span style={labelStyle}>Motyw wyglądu</span>
         <span style={currentModeStyle}>
           {mode === 'system'
-            ? `System (${resolvedTheme})`
-            : mode.charAt(0).toUpperCase() + mode.slice(1)}
+            ? `Systemowy (${resolvedTheme})`
+            : mode === 'dark' ? 'Ciemny' : 'Jasny'}
         </span>
       </div>
       <div style={toggleGroupStyle} role="radiogroup" aria-label="Theme mode">
@@ -47,6 +68,33 @@ export function ThemeToggle() {
             <span style={toggleLabelStyle}>{option.label}</span>
           </button>
         ))}
+      </div>
+
+      {/* Font Scaling Accessibility Section */}
+      <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-border)' }}>
+        <div style={labelRowStyle}>
+          <span style={labelStyle}>Rozmiar tekstu (Dostępność)</span>
+          <span style={currentModeStyle}>{fontScale === 'normal' ? 'Standardowy' : fontScale === 'large' ? 'Powiększony (A+)' : 'B. Duży (A++)'}</span>
+        </div>
+        <div style={toggleGroupStyle}>
+          {[
+            { id: 'normal', label: 'Standard (A)', size: '13px' },
+            { id: 'large', label: 'Duży (A+)', size: '15px' },
+            { id: 'huge', label: 'B. Duży (A++)', size: '17px' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleFontChange(item.id as 'normal' | 'large' | 'huge')}
+              style={{
+                ...toggleButtonStyle,
+                ...(fontScale === item.id ? toggleButtonActiveStyle : {}),
+              }}
+            >
+              <span style={{ fontSize: item.size, fontWeight: 700 }}>{item.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

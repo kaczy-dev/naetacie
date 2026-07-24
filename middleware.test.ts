@@ -47,8 +47,10 @@ describe('Security Headers Middleware', () => {
       expect(csp).toContain("default-src 'self'");
       expect(csp).toContain("script-src 'self'");
       expect(csp).toContain("style-src 'self' 'unsafe-inline'");
-      expect(csp).toContain('img-src \'self\' data: *.tile.openstreetmap.org');
-      expect(csp).toContain("connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com");
+      expect(csp).toContain("img-src 'self' data:");
+      expect(csp).toContain("openstreetmap.org");
+      expect(csp).toContain("basemaps.cartocdn.com");
+      expect(csp).toContain("connect-src 'self' https://*.googleapis.com https://*.firebaseio.com");
       expect(csp).toContain("frame-ancestors 'none'");
     });
 

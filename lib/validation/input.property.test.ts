@@ -132,7 +132,7 @@ describe('Property 8: Input sanitization removes dangerous patterns', () => {
   it('preserves safe textual content that has no dangerous patterns', () => {
     // Generate strings from a safe alphabet that won't trigger any sanitization rules
     const safeCharArb = fc.constantFrom(
-      ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,!?:()[]{}@$%^&*+-_=~'.split('')
+      ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,!?:()[]{}@$%^&*+_=~'.split('')
     );
     const safeTextArb = fc.array(safeCharArb, { minLength: 1, maxLength: 80 }).map((chars) => chars.join(''));
 

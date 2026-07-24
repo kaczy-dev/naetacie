@@ -8,8 +8,8 @@
   --color-card-foreground: hsl(222.2 84% 4.9%);
   --color-popover: hsl(0 0% 100%);
   --color-popover-foreground: hsl(222.2 84% 4.9%);
-  --color-primary: hsl(221.2 83.2% 53.3%);
-  --color-primary-foreground: hsl(210 40% 98%);
+  --color-primary: hsl(160 84% 39%);
+  --color-primary-foreground: hsl(0 0% 100%);
   --color-secondary: hsl(210 40% 96.1%);
   --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
   --color-muted: hsl(210 40% 96.1%);
@@ -54,8 +54,8 @@
   --color-card-foreground: hsl(210 40% 98%);
   --color-popover: hsl(222.2 84% 4.9%);
   --color-popover-foreground: hsl(210 40% 98%);
-  --color-primary: hsl(217.2 91.2% 59.8%);
-  --color-primary-foreground: hsl(222.2 47.4% 11.2%);
+  --color-primary: hsl(160 84% 45%);
+  --color-primary-foreground: hsl(0 0% 100%);
   --color-secondary: hsl(217.2 32.6% 17.5%);
   --color-secondary-foreground: hsl(210 40% 98%);
   --color-muted: hsl(217.2 32.6% 17.5%);
@@ -104,3 +104,99 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Custom Map & Leaflet Popup Styling */
+.leaflet-container {
+  font-family: inherit;
+  background-color: var(--color-background) !important;
+}
+
+.map-price-pin {
+  background: transparent;
+  border: none;
+}
+
+.map-price-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 2px solid white;
+  cursor: pointer;
+}
+
+.dark .map-price-badge {
+  border-color: #1e293b;
+}
+
+.map-price-badge:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  z-index: 1000 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--color-card) !important;
+  color: var(--color-card-foreground) !important;
+  border-radius: 12px !important;
+  padding: 0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid var(--color-border);
+}
+
+.leaflet-popup-tip {
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border);
+}
+
+.map-popup {
+  padding: 14px;
+  min-width: 180px;
+}
+
+.map-popup__title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+  color: var(--color-foreground);
+}
+
+.map-popup__location {
+  font-size: 0.8rem;
+  color: var(--color-muted-foreground);
+  margin-bottom: 6px;
+}
+
+.map-popup__price {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-primary);
+  margin-bottom: 8px;
+}
+
+.map-popup__link {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary-foreground);
+  background-color: var(--color-primary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  text-align: center;
+  width: 100%;
+  transition: opacity 0.2s ease;
+}
+
+.map-popup__link:hover {
+  opacity: 0.9;
+}
+

@@ -1,55 +1,48 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useMap, useMapEvents } from 'react-leaflet';
+import { useCallback } from 'react';
+
+export interface SearchAreaButtonProps {
+  visible?: boolean;
+  onClick: () => void;
+  ui?: { surface: string; border: string; text: string; shadow: string };
+}
 
 /**
- * "Szukaj w tym obszarze" button that appears after the user pans/zooms.
- * Reports the current map bounds to the parent for filtering.
+ * "Szukaj w tym obszarze" button that appears after the user pans or zooms the map.
+ * Triggers area filtering callback when clicked.
  */
 export function SearchAreaButton({
-  ui,
-  onSearchArea,
-}: {
-  ui: { surface: string; border: string; text: string; shadow: string };
-  onSearchArea: (bounds: { south: number; west: number; north: number; east: number }) => void;
-}) {
-  const map = useMap();
-  const [moved, setMoved] = useState(false);
-
-  useMapEvents({
-    moveend: () => setMoved(true),
-    zoomend: () => setMoved(true),
-  });
-
+  visible = true,
+  onClick,
+  ui = {
+    surface: '#ffffff',
+    border: '#e5e7eb',
+    text: '#1f2937',
+    shadow: '0 4px 12px rgba(0,0,0,0.15)',
+  },
+}: SearchAreaButtonProps) {
   const handleClick = useCallback(() => {
-    const b = map.getBounds();
-    onSearchArea({
-      south: b.getSouth(),
-      west: b.getWest(),
-      north: b.getNorth(),
-      east: b.getEast(),
-    });
-    setMoved(false);
-  }, [map, onSearchArea]);
+    onClick();
+  }, [onClick]);
 
-  if (!moved) return null;
+  if (!visible) return null;
 
   return (
     <button
       onClick={handleClick}
       style={{
         position: 'absolute',
-        top: '52px',
+        top: '16px',
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 1000,
-        padding: '8px 16px',
+        zIndex: 10,
+        padding: '8px 18px',
         background: ui.surface,
         border: `1.5px solid ${ui.border}`,
         borderRadius: '20px',
         boxShadow: ui.shadow,
-        fontSize: '12px',
+        fontSize: '13px',
         fontWeight: 600,
         color: ui.text,
         cursor: 'pointer',
@@ -57,12 +50,17 @@ export function SearchAreaButton({
         alignItems: 'center',
         gap: '6px',
         whiteSpace: 'nowrap',
-        transition: 'transform 0.15s',
+        transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
       }}
-      onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateX(-50%) scale(0.95)'; }}
-      onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateX(-50%)'; }}
+      onMouseDown={(e) => {
+        (e.currentTarget as HTMLElement).style.transform = 'translateX(-50%) scale(0.95)';
+      }}
+      onMouseUp={(e) => {
+        (e.currentTarget as HTMLElement).style.transform = 'translateX(-50%)';
+      }}
     >
       🔍 Szukaj w tym obszarze
     </button>
   );
 }
+

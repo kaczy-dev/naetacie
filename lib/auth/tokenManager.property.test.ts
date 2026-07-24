@@ -250,7 +250,7 @@ describe('Property 15: Sign-out clears all auth state', () => {
         // Generate random non-auth keys (that don't start with firebase: and aren't auth keys)
         fc.array(
           fc.string({ minLength: 1, maxLength: 30 }).filter(
-            (s) => !isAuthRelatedKey(s)
+            (s) => !isAuthRelatedKey(s) && s !== '__proto__'
           ),
           { minLength: 0, maxLength: 5 }
         ),

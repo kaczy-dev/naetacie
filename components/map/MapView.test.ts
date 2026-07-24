@@ -140,4 +140,17 @@ describe('MapView data fetching logic', () => {
     const bboxParam = `${bounds.south_lat},${bounds.west_lng},${bounds.north_lat},${bounds.east_lng}`;
     expect(bboxParam).toBe('53.12345,14.6789,53.98765,14.12345');
   });
+
+  it('validates polygon spatial filter calculation', async () => {
+    const { isPointInPolygon } = await import('./utils');
+    const squarePolygon: Array<[number, number]> = [
+      [14.5, 53.4],
+      [14.6, 53.4],
+      [14.6, 53.5],
+      [14.5, 53.5],
+    ];
+
+    expect(isPointInPolygon([53.45, 14.55], squarePolygon)).toBe(true);
+    expect(isPointInPolygon([52.0, 12.0], squarePolygon)).toBe(false);
+  });
 });

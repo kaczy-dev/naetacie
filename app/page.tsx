@@ -9,12 +9,12 @@
  */
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
   MapPin, Clock, Sparkles, X, ArrowRight, RefreshCw, Loader2,
   Search, Heart, ExternalLink, SlidersHorizontal, Map as MapIcon,
-  Target, Briefcase, Share2, Check,
+  Target, Briefcase, Share2, Check, Mic, WifiOff, Download,
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -40,15 +40,25 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, triggerHaptic, exportApplicationsToCSV } from '@/lib/utils';
 import { ALL_CATEGORY_KEYS, normalizeCategory, type CategoryKey } from '@/lib/data/categories';
-import { searchAnnouncements, tokenize } from '@/lib/search/engine';
+import { searchAnnouncements, tokenize, isSzczecinAnnouncement } from '@/lib/search/engine';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import type { MatchResult } from '@/lib/matching/types';
 
 import MapViewDynamic from '@/components/map/MapViewDynamic';
 import { ProfileSettings } from '@/components/profile';
 import { Hero } from '@/components/landing/Hero';
+import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt';
+import PullToRefresh from '@/components/feedback/PullToRefresh';
+import { RecentSearchChips } from '@/components/list/RecentSearchChips';
+import { SalaryNetModal } from '@/components/salary/SalaryNetModal';
+import { JobComparisonModal } from '@/components/compare/JobComparisonModal';
+import { KinematicQuickView } from '@/components/list/KinematicQuickView';
+import { MarketPulseBar } from '@/components/list/MarketPulseBar';
+import { CommandPaletteModal } from '@/components/navigation/CommandPaletteModal';
+import { NotificationsView } from '@/components/notifications/NotificationsView';
+import { playUiChime } from '@/lib/audio/chime';
 
 type SortOption = 'match' | 'newest' | 'oldest' | 'price-asc' | 'price-desc';
 
@@ -80,22 +90,48 @@ function GuestBanner({ onDismiss }: { onDismiss: () => void }) {
 
 // --- Announcement Card ---
 
-function MatchBadge({ score }: { score: number }) {
-  const color = score >= 80 ? '#16a34a' : score >= 55 ? '#d97706' : '#6b7280';
-  const label = score >= 80 ? 'Świetne' : score >= 55 ? 'Dobre' : 'Słabe';
+// --- Search Query Highlight Helper ---
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <span>{text}</span>;
+  const regex = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  return (
+    <span>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark key={i} className="bg-yellow-200 dark:bg-yellow-900/60 text-foreground px-0.5 rounded font-semibold">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+}
+
+function MatchBadge({ score, label }: { score: number; label: string }) {
+  // Color calculation based on score
+  const colorClass = 
+    score >= 80 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/50' :
+    score >= 50 ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border-blue-200/50' :
+    'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border-amber-200/50';
+
   return (
     <span
-      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-      style={{ background: `${color}18`, color }}
+      className={cn(
+        "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all duration-300 shadow-sm",
+        colorClass
+      )}
       title={`Dopasowanie: ${score}%`}
     >
-      <Target className="w-3 h-3" /> {score}% · {label}
+      <Target className="w-3.5 h-3.5 animate-pulse" /> {score}% · {label}
     </span>
   );
 }
 
 function AnnouncementCard({
-  ad, index, isFavorite, isSelected, match, status, onToggleFavorite, onShowOnMap, onSetStatus,
+  ad, index, isFavorite, isSelected, match, status, onToggleFavorite, onShowOnMap, onSetStatus, onQuickView,
 }: {
   ad: DisplayAnnouncement;
   index: number;
@@ -106,141 +142,254 @@ function AnnouncementCard({
   onToggleFavorite: () => void;
   onShowOnMap: () => void;
   onSetStatus: (s: ApplicationStatus) => void;
+  onQuickView?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { share, copied } = useShare();
+  
+  // Clean up search query from active window context to highlight text
+  const [searchWord, setSearchWord] = useState('');
+  useEffect(() => {
+    // Locate the search input value dynamically if not passed directly
+    const input = document.querySelector('input[placeholder*="Szukaj ogłoszeń"]') as HTMLInputElement;
+    if (input) {
+      setSearchWord(input.value);
+      const handleInput = () => setSearchWord(input.value);
+      input.addEventListener('input', handleInput);
+      return () => input.removeEventListener('input', handleInput);
+    }
+  }, []);
+
   const priceDisplay = ad.price
-    ? typeof ad.price === 'number' ? `${ad.price} zł/mies.` : ad.price
+    ? typeof ad.price === 'number' 
+      ? `${ad.price.toLocaleString('pl-PL')} zł/mies.` 
+      : ad.price
     : null;
+    
   const hasLocation = ad.latitude !== null && ad.longitude !== null;
+  
   const portalColors: Record<string, string> = {
-    'pracuj.pl': '#00a656',
-    'olx': '#002f34',
-    'indeed': '#2557a7',
-    'oferteo': '#ff6600',
+    'pracuj.pl': '#10b981', // Emerald
+    'olx': '#2563eb', // Indigo Blue
+    'indeed': '#6366f1', // Indigo
+    'oferteo': '#f97316', // Orange
+    'fixly': '#a855f7', // Purple
   };
-  const portalColor = portalColors[ad.source_portal] || '#6b7280';
+  
+  const portalColor = portalColors[ad.source_portal.toLowerCase()] || '#6b7280';
   const statusMeta = status ? STATUS_META[status] : null;
+
+  const handleSwipeEnd = (_: unknown, info: PanInfo) => {
+    triggerHaptic(12);
+    if (info.offset.x > 80) {
+      onToggleFavorite();
+    } else if (info.offset.x < -80) {
+      onSetStatus(status === 'applied' ? 'interview' : 'applied');
+    }
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.3), duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-      layout
+      transition={{ delay: Math.min(index * 0.03, 0.25), duration: 0.3, ease: 'easeOut' }}
+      className="relative rounded-2xl overflow-hidden my-1"
     >
-      <Card
-        className={cn(
-          'group cursor-pointer transition-all duration-300 overflow-hidden',
-          isSelected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5'
-        )}
-        onClick={() => setExpanded(!expanded)}
+      {/* Background Swipe Actions Indicator */}
+      <div className="absolute inset-0 flex items-center justify-between px-6 font-bold text-xs pointer-events-none rounded-2xl overflow-hidden bg-muted/40 border border-border/30">
+        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-black">
+          <Heart className="w-5 h-5 fill-current" />
+          <span>Polubiono</span>
+        </div>
+        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-black">
+          <span>Zaaplikowano</span>
+          <Briefcase className="w-5 h-5" />
+        </div>
+      </div>
+
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.15}
+        onDragEnd={handleSwipeEnd}
+        layout
       >
-        <CardContent className="p-0">
-          {/* Header row */}
-          <div className="p-4 pb-3">
-            <div className="flex items-start gap-3">
-              {/* Portal indicator dot */}
-              <div
-                className="mt-1 shrink-0 w-2 h-2 rounded-full"
-                style={{ backgroundColor: portalColor }}
-                title={ad.source_portal}
-              />
+        <Card
+          className={cn(
+            'group cursor-pointer transition-all duration-300 overflow-hidden border border-border/60 backdrop-blur-md',
+            isSelected 
+              ? 'bg-gradient-to-r from-primary/5 via-card to-card border-primary ring-2 ring-primary/10 shadow-md' 
+              : 'hover:border-primary/40 hover:shadow-md hover:bg-accent/10 dark:hover:bg-accent/5'
+          )}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <CardContent className="p-0">
+            <div className="p-4.5">
+              <div className="flex items-start gap-3.5">
+                {/* Portal status pillar */}
+                <div 
+                  className="w-1.5 self-stretch rounded-full shrink-0 transition-all duration-300 shadow-xs"
+                  style={{ backgroundColor: portalColor }}
+                  title={ad.source_portal}
+                />
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
-                    {ad.title}
-                  </h3>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-                    className={cn('shrink-0 p-1.5 rounded-full transition-all', isFavorite ? 'text-red-500 bg-red-50 dark:bg-red-950' : 'text-muted-foreground/30 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950')}
-                    aria-label={isFavorite ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
-                  >
-                    <Heart className={cn('w-4 h-4', isFavorite && 'fill-current')} />
-                  </button>
-                </div>
+                <div className="flex-1 min-w-0 space-y-2">
+                  {/* Top Row: Category / Portal badge & quick actions */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span 
+                        className="text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md border shadow-2xs"
+                        style={{ 
+                          backgroundColor: `${portalColor}12`, 
+                          borderColor: `${portalColor}25`, 
+                          color: portalColor 
+                        }}
+                      >
+                        {ad.source_portal}
+                      </span>
+                      {ad.employment_type && (
+                        <span className="text-[9px] font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded-md border border-border/40">
+                          {ad.employment_type}
+                        </span>
+                      )}
+                    </div>
 
-                {/* Match score + status badges */}
-                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                  {match && match.score < 100 && <MatchBadge score={match.score} />}
-                  {statusMeta && (
-                    <span
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                      style={{ background: `${statusMeta.color}18`, color: statusMeta.color }}
-                    >
-                      {statusMeta.icon} {statusMeta.label}
-                    </span>
-                  )}
-                </div>
+                    <div className="flex items-center gap-1">
+                      {onQuickView && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerHaptic(10);
+                            onQuickView();
+                          }}
+                          className="shrink-0 p-1.5 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-200"
+                          title="Szybki podgląd"
+                          aria-label="Szybki podgląd ogłoszenia"
+                        >
+                          <Sparkles className="w-4 h-4 text-emerald-500" />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playUiChime('like');
+                          triggerHaptic(12);
+                          onToggleFavorite();
+                        }}
+                        className={cn(
+                          'shrink-0 p-1.5 rounded-full transition-all duration-300 active:scale-90', 
+                          isFavorite 
+                            ? 'text-red-500 bg-red-50 dark:bg-red-950/60 shadow-sm' 
+                            : 'text-muted-foreground/35 hover:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20'
+                        )}
+                        aria-label={isFavorite ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
+                      >
+                        <Heart className={cn('w-4 h-4 transition-transform duration-300', isFavorite && 'fill-current scale-110')} />
+                      </button>
+                    </div>
+                  </div>
 
-                {/* Company & employment type */}
-                {(ad.company || ad.employment_type) && (
-                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    {ad.company && (
-                      <span className="text-xs font-medium text-foreground/80">{ad.company}</span>
-                    )}
-                    {ad.employment_type && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{ad.employment_type}</Badge>
+                {/* Title */}
+                <h3 className="font-bold text-sm md:text-base text-foreground leading-snug tracking-tight group-hover:text-primary transition-colors duration-200">
+                  <HighlightText text={ad.title} query={searchWord} />
+                </h3>
+
+                {/* Match score & Application status */}
+                {(match || statusMeta) && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {match && match.score < 100 && <MatchBadge score={match.score} label={match.reasons[0]?.label || 'Dopasowanie'} />}
+                    {statusMeta && (
+                      <span
+                        className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-sm transition-all duration-300"
+                        style={{ 
+                          background: `${statusMeta.color}12`, 
+                          borderColor: `${statusMeta.color}30`,
+                          color: statusMeta.color 
+                        }}
+                      >
+                        {statusMeta.icon} {statusMeta.label}
+                      </span>
                     )}
                   </div>
                 )}
 
-                {/* Meta row */}
-                <div className="flex items-center gap-3 mt-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <MapPin className="w-3 h-3" /> {ad.location_text}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    {ad.posted_days_ago !== null && ad.posted_days_ago !== undefined
-                      ? (ad.posted_days_ago === 0 ? 'Dzisiaj' : ad.posted_days_ago === 1 ? 'Wczoraj' : `${ad.posted_days_ago} dni temu`)
-                      : formatTimeAgo(ad.scraped_at)
-                    }
-                  </span>
+                {/* Middle line: Company details */}
+                {ad.company && (
+                  <p className="text-xs font-semibold text-foreground/70 flex items-center gap-1.5">
+                    🏢 {ad.company}
+                  </p>
+                )}
+
+                {/* Bottom line: Location, time, price */}
+                <div className="flex items-center justify-between gap-4 pt-1 flex-wrap border-t border-border/30">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                      <MapPin className="w-3.5 h-3.5 text-primary/70" /> {ad.location_text}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {ad.posted_days_ago !== null && ad.posted_days_ago !== undefined
+                        ? (ad.posted_days_ago === 0 ? 'Dzisiaj' : ad.posted_days_ago === 1 ? 'Wczoraj' : `${ad.posted_days_ago} dni temu`)
+                        : formatTimeAgo(ad.scraped_at)
+                      }
+                    </span>
+                  </div>
+                  
                   {priceDisplay && (
-                    <span className="text-xs font-bold text-primary">{priceDisplay}</span>
+                    <span className="text-xs md:text-sm font-black text-primary bg-primary/5 px-2.5 py-1 rounded-lg border border-primary/10 shadow-sm">
+                      {priceDisplay}
+                    </span>
                   )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Expandable detail section */}
+          {/* Details dropdown */}
           <AnimatePresence>
             {expanded && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="overflow-hidden"
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                className="overflow-hidden bg-muted/30 dark:bg-muted/10 border-t border-border/40"
               >
-                <div className="px-4 pb-4 pt-1 border-t border-border/50 space-y-3">
-                  {/* Description */}
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {ad.description}
-                  </p>
+                <div className="p-4.5 space-y-4">
+                  {/* Detailed Description */}
+                  <div className="space-y-1.5">
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Opis ogłoszenia</h4>
+                    <p className="text-xs md:text-sm text-muted-foreground leading-relaxed whitespace-pre-line bg-background/50 p-3 rounded-lg border border-border/30">
+                      <HighlightText text={ad.description} query={searchWord} />
+                    </p>
+                  </div>
 
-                  {/* Match reasons */}
+                  {/* Reasons list (positive & negative matching criteria) */}
                   {match && match.reasons.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {match.reasons.map((r, ri) => (
-                        <span
-                          key={ri}
-                          className={cn('text-[10px] px-2 py-0.5 rounded-full',
-                            r.positive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-                                       : 'bg-muted text-muted-foreground')}
-                        >
-                          {r.positive ? '✓' : '·'} {r.label}
-                        </span>
-                      ))}
+                    <div className="space-y-1.5">
+                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Analiza dopasowania preferencji</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {match.reasons.map((r, ri) => (
+                          <span
+                            key={ri}
+                            className={cn(
+                              'inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg border shadow-sm transition-all',
+                              r.positive 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/40'
+                                : 'bg-muted text-muted-foreground border-border/60'
+                            )}
+                          >
+                            <span>{r.positive ? '🟢' : '⚪'}</span>
+                            <span>{r.label}</span>
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
 
-                  {/* Application status tracker */}
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Status aplikacji</span>
+                  {/* Change status actions */}
+                  <div className="space-y-2">
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Aktualny status oferty</h4>
                     <div className="flex flex-wrap gap-1.5">
                       {(Object.keys(STATUS_META) as ApplicationStatus[]).map((s) => {
                         const meta = STATUS_META[s];
@@ -249,29 +398,24 @@ function AnnouncementCard({
                           <button
                             key={s}
                             onClick={(e) => { e.stopPropagation(); onSetStatus(s); }}
-                            className={cn('text-[11px] px-2 py-1 rounded-full border transition-colors',
-                              active ? 'text-white border-transparent' : 'text-muted-foreground border-border hover:bg-accent')}
-                            style={active ? { background: meta.color } : undefined}
+                            className={cn(
+                              'inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all duration-200 active:scale-95 cursor-pointer shadow-sm',
+                              active 
+                                ? 'text-white border-transparent scale-105 shadow-md' 
+                                : 'text-muted-foreground border-border/80 bg-background hover:bg-accent/80 hover:text-foreground'
+                            )}
+                            style={active ? { backgroundColor: meta.color } : undefined}
                           >
-                            {meta.icon} {meta.label}
+                            <span className="text-xs">{meta.icon}</span>
+                            <span>{meta.label}</span>
                           </button>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Source portal badge */}
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded"
-                      style={{ backgroundColor: `${portalColor}15`, color: portalColor }}
-                    >
-                      {ad.source_portal}
-                    </span>
-                  </div>
-
                   {/* Action buttons */}
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-2 border-t border-border/30">
                     {ad.source_url && (
                       <a
                         href={ad.source_url}
@@ -280,32 +424,57 @@ function AnnouncementCard({
                         onClick={(e) => e.stopPropagation()}
                         className="flex-1"
                       >
-                        <Button variant="default" size="sm" className="w-full gap-1.5 text-xs">
-                          <ExternalLink className="w-3.5 h-3.5" /> Zobacz ogłoszenie
+                        <Button variant="default" size="sm" className="w-full gap-2 text-xs font-bold shadow-md cursor-pointer hover:scale-[1.01] transition-transform">
+                          <ExternalLink className="w-4 h-4" /> Zobacz ogłoszenie źródłowe
                         </Button>
                       </a>
                     )}
                     {hasLocation && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); onShowOnMap(); }}
-                        className="gap-1.5 text-xs"
-                      >
-                        <MapIcon className="w-3.5 h-3.5" /> Na mapie
-                      </Button>
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); onShowOnMap(); }}
+                          className="gap-1.5 text-xs font-semibold shadow-sm cursor-pointer"
+                        >
+                          <MapIcon className="w-4 h-4 text-primary" /> Na mapie
+                        </Button>
+                        {onQuickView && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); onQuickView(); }}
+                            className="gap-1 text-xs font-semibold shadow-sm cursor-pointer"
+                          >
+                            👁️ Podgląd
+                          </Button>
+                        )}
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${ad.latitude},${ad.longitude}&travelmode=transit`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+                        >
+                          🚌 Dojazd ZDiTM
+                        </a>
+                      </>
                     )}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        share({ title: ad.title, text: `${ad.title} — ${ad.location_text}`, url: ad.source_url || window.location.href });
+                        share({ 
+                          title: ad.title, 
+                          text: `${ad.title} w ${ad.location_text}`, 
+                          url: ad.source_url || window.location.href 
+                        });
                       }}
-                      className="gap-1.5 text-xs"
-                      title="Udostępnij"
+                      className="gap-1.5 text-xs cursor-pointer hover:bg-accent"
+                      title="Udostępnij ofertę"
                     >
-                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Share2 className="w-3.5 h-3.5" />}
+                      {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
@@ -314,6 +483,7 @@ function AnnouncementCard({
           </AnimatePresence>
         </CardContent>
       </Card>
+      </motion.div>
     </motion.div>
   );
 }
@@ -334,37 +504,7 @@ function ListSkeleton() {
   );
 }
 
-// --- Notifications View ---
-
-function NotificationsView() {
-  const { permission, isSupported, requestPermission } = usePushNotifications();
-  return (
-    <div className="p-6 max-w-lg mx-auto">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <Card>
-          <CardHeader><CardTitle className="text-lg">Powiadomienia Push</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {!isSupported ? (
-              <p className="text-sm text-muted-foreground">Twoja przeglądarka nie obsługuje powiadomień push.</p>
-            ) : permission === 'granted' ? (
-              <div className="flex items-center gap-2">
-                <Badge variant="success">Aktywne</Badge>
-                <span className="text-sm text-muted-foreground">Otrzymasz powiadomienia o nowych ogłoszeniach.</span>
-              </div>
-            ) : permission === 'denied' ? (
-              <p className="text-sm text-destructive">Powiadomienia zablokowane. Odblokuj w ustawieniach przeglądarki.</p>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Włącz powiadomienia o nowych ogłoszeniach budowlanych.</p>
-                <Button onClick={requestPermission} className="w-full">Włącz powiadomienia</Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
-  );
-}
+// --- Legacy Notifications removed in favor of NotificationsView component ---
 
 // --- Main Page ---
 
@@ -373,10 +513,14 @@ export default function HomePage() {
   const { isGuest } = useAuth();
 
   // Show landing hero on first visit (before user has interacted with the app)
-  const [showHero, setShowHero] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !localStorage.getItem('naetacie-hero-dismissed');
-  });
+  const [showHero, setShowHero] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem('naetacie-hero-dismissed')) {
+      setShowHero(true);
+    }
+  }, []);
+
   const { announcements, isLive } = useRealtimeAnnouncements(50);
   const { isOnline, saveToCache } = useOfflineSync();
   const { ads: scrapedAds, loading: scrapeLoading, lastScrapedAt, scrapeNow } = useScraper();
@@ -395,6 +539,37 @@ export default function HomePage() {
 
   // --- Filters shared by map AND list ---
   const [searchQuery, setSearchQuery] = useState('');
+  const [isListening, setIsListening] = useState(false);
+
+  const handleVoiceSearch = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition || (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      showToast('error', 'Wyszukiwanie głosowe nie jest wspierane w tej przeglądarce.');
+      return;
+    }
+
+    triggerHaptic(15);
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pl-PL';
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      if (transcript) {
+        setSearchQuery(transcript);
+        triggerHaptic([10, 20, 10]);
+        showToast('success', `Rozpoznano głosowo: "${transcript}"`);
+      }
+    };
+
+    recognition.start();
+  }, [showToast]);
+
   const [sortBy, setSortBy] = useState<SortOption>('match');
   const [filterPortal, setFilterPortal] = useState<string>('all');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -402,6 +577,17 @@ export default function HomePage() {
   const [activeCategories, setActiveCategories] = useState<Set<CategoryKey>>(
     () => new Set(ALL_CATEGORY_KEYS)
   );
+
+  // --- Salary & Comparison Modals ---
+  const [salaryModalOpen, setSalaryModalOpen] = useState(false);
+  const [salaryCalcGross, setSalaryCalcGross] = useState<number | null>(null);
+
+  const [compareModalOpen, setCompareModalOpen] = useState(false);
+  const [comparedAdIds, setComparedAdIds] = useState<Set<string>>(new Set());
+
+  // --- Quick View Drawer & Command Palette State ---
+  const [quickViewAd, setQuickViewAd] = useState<DisplayAnnouncement | null>(null);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // --- Map <-> List selection sync ---
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -579,11 +765,11 @@ export default function HomePage() {
 
   function renderContent() {
     switch (activeTab) {
-      case 'map':
+      case 'map': {
         return (
-          <div className="h-[calc(100dvh-120px)] md:h-[100dvh] w-full">
+          <div className="w-full h-[calc(100dvh-120px)] md:h-[100dvh] relative overflow-hidden">
             <MapViewDynamic
-              ads={filteredAds}
+              ads={filteredAds.filter(isSzczecinAnnouncement)}
               totalCount={allAnnouncements.length}
               activeCategories={activeCategories}
               onCategoryChange={setActiveCategories}
@@ -593,8 +779,7 @@ export default function HomePage() {
               flyToken={flyToken}
               onMarkerClick={handleMarkerClick}
               onShowInList={handleShowInList}
-              onSearchArea={(_bounds) => {
-                // Filter to only ads within the visible map bounds
+              onSearchArea={(_bounds: { south: number; west: number; north: number; east: number }) => {
                 setSearchQuery('');
               }}
               homeLat={preferences.homeLat}
@@ -603,6 +788,7 @@ export default function HomePage() {
             />
           </div>
         );
+      }
 
       case 'list': {
         // The list additionally respects the map's category filter chips,
@@ -613,23 +799,38 @@ export default function HomePage() {
           <div className="max-w-3xl mx-auto">
             {/* Search + Filters Header */}
             <div className="sticky top-12 md:top-0 z-10 glass border-b border-border/50 px-4 py-3 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                <div className="relative min-w-[220px] flex-1 shrink-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     ref={searchInputRef}
                     type="text"
-                    placeholder="Szukaj ogłoszeń... (naciśnij /)"
+                    placeholder={isListening ? 'Słucham...' : 'Szukaj ogłoszeń... (naciśnij /)'}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 h-9"
+                    className={cn('pl-9 pr-16 h-9 transition-all', isListening && 'border-primary ring-2 ring-primary/20 animate-pulse')}
                   />
-                  {searchQuery && (
-                    <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                      <X className="w-3.5 h-3.5" />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <button
+                      onClick={handleVoiceSearch}
+                      className={cn(
+                        'p-1.5 rounded-md transition-all active:scale-90',
+                        isListening ? 'text-red-500 bg-red-50 dark:bg-red-950/60 animate-bounce' : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      title="Wyszukaj głosem"
+                      aria-label="Wyszukaj głosem"
+                    >
+                      <Mic className="w-3.5 h-3.5" />
                     </button>
-                  )}
+                    {searchQuery && (
+                      <button onClick={() => setSearchQuery('')} className="p-1 text-muted-foreground hover:text-foreground">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                <RecentSearchChips currentQuery={searchQuery} onSelectQuery={setSearchQuery} />
                 <Button
                   variant={prefsActive ? 'default' : 'outline'}
                   size="sm"
@@ -638,6 +839,59 @@ export default function HomePage() {
                   title="Dopasowanie ofert"
                 >
                   <Target className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSalaryCalcGross(6000);
+                    setSalaryModalOpen(true);
+                  }}
+                  className="gap-1 text-xs"
+                  title="Kalkulator wynagrodzeń Netto/Brutto"
+                >
+                  💰 Netto
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCompareModalOpen(true)}
+                  className="gap-1 text-xs relative"
+                  title="Porównywarka ofert"
+                >
+                  ⚖️ Porównaj
+                  {comparedAdIds.size > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold inline-flex items-center justify-center -mr-1">
+                      {comparedAdIds.size}
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    triggerHaptic(15);
+                    const tracked = allAnnouncements.filter((a) => getStatus(a.id) || isFavorite(a.id));
+                    const target = tracked.length > 0 ? tracked : listAds;
+                    exportApplicationsToCSV(target, (id) => {
+                      const s = getStatus(id);
+                      return s ? STATUS_META[s].label : isFavorite(id) ? 'Ulubione' : 'Obserwowane';
+                    });
+                    showToast('success', `Wygenerowano plik CSV (${target.length} ofert)`);
+                  }}
+                  className="gap-1 text-xs"
+                  title="Pobierz swoje aplikacje i zapisane oferty do pliku CSV"
+                >
+                  <Download className="w-3.5 h-3.5" /> CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCommandPaletteOpen(true)}
+                  className="gap-1 text-xs"
+                  title="Paleta Komend (Ctrl+K)"
+                >
+                  ⌨️ Ctrl+K
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className={cn('gap-1', showFilters && 'bg-accent')}>
                   <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -649,6 +903,9 @@ export default function HomePage() {
 
               {/* One-tap popular trade searches */}
               <QuickSearchChips value={searchQuery} onChange={setSearchQuery} />
+              
+              {/* Market Pulse Bar */}
+              <MarketPulseBar ads={listAds} totalCount={allAnnouncements.length} />
 
               <AnimatePresence>
                 {showFilters && (
@@ -737,36 +994,39 @@ export default function HomePage() {
                 </motion.div>
               </div>
             ) : (
-              <div className="p-4 space-y-3">
-                {listAds.map((ad, i) => (
-                  <div
-                    key={ad.id}
-                    ref={(el) => {
-                      if (el) cardRefs.current.set(ad.id, el);
-                      else cardRefs.current.delete(ad.id);
-                    }}
-                  >
-                    <AnnouncementCard
-                      ad={ad}
-                      index={i}
-                      isFavorite={isFavorite(ad.id)}
-                      isSelected={ad.id === selectedId}
-                      match={prefsActive ? matchMap.get(ad.id) ?? null : null}
-                      status={getStatus(ad.id)}
-                      onToggleFavorite={() => {
-                        const wasFav = isFavorite(ad.id);
-                        toggleFavorite(ad.id);
-                        showToast('success', wasFav ? 'Usunięto z ulubionych' : 'Dodano do ulubionych ❤️');
+              <PullToRefresh onRefresh={async () => { triggerHaptic(15); await scrapeNow(undefined, 40); }}>
+                <div className="p-4 space-y-3">
+                  {listAds.map((ad, i) => (
+                    <div
+                      key={ad.id}
+                      ref={(el) => {
+                        if (el) cardRefs.current.set(ad.id, el);
+                        else cardRefs.current.delete(ad.id);
                       }}
-                      onShowOnMap={() => handleShowOnMap(ad.id)}
-                      onSetStatus={(s) => {
-                        setStatus(ad.id, s);
-                        showToast('info', `Status: ${STATUS_META[s].label}`);
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
+                    >
+                      <AnnouncementCard
+                        ad={ad}
+                        index={i}
+                        isFavorite={isFavorite(ad.id)}
+                        isSelected={ad.id === selectedId}
+                        match={prefsActive ? matchMap.get(ad.id) ?? null : null}
+                        status={getStatus(ad.id)}
+                        onToggleFavorite={() => {
+                          const wasFav = isFavorite(ad.id);
+                          toggleFavorite(ad.id);
+                          showToast('success', wasFav ? 'Usunięto z ulubionych' : 'Dodano do ulubionych ❤️');
+                        }}
+                        onShowOnMap={() => handleShowOnMap(ad.id)}
+                        onSetStatus={(s) => {
+                          setStatus(ad.id, s);
+                          showToast('info', `Status: ${STATUS_META[s].label}`);
+                        }}
+                        onQuickView={() => setQuickViewAd(ad)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </PullToRefresh>
             )}
           </div>
         );
@@ -794,6 +1054,7 @@ export default function HomePage() {
   return (
     <>
       <ServiceWorkerRegistration />
+      <PwaInstallPrompt />
       <JobPreferencesPanel
         open={prefsPanelOpen}
         preferences={preferences}
@@ -802,11 +1063,79 @@ export default function HomePage() {
         onReset={resetPreferences}
       />
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} isLive={isLive}>
+        {!isOnline && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400 px-4 py-2 text-xs font-bold flex items-center justify-center gap-2">
+            <WifiOff className="w-4 h-4" />
+            <span>Brak połączenia z siecią. Przeglądasz zapisane oferty offline.</span>
+          </div>
+        )}
         <AnimatePresence>
           {isGuest && !bannerDismissed && <GuestBanner onDismiss={() => setBannerDismissed(true)} />}
         </AnimatePresence>
         {renderContent()}
       </AppShell>
+
+      {/* Gross to Net Salary Calculator Modal */}
+      <SalaryNetModal
+        isOpen={salaryModalOpen}
+        initialGross={salaryCalcGross}
+        onClose={() => setSalaryModalOpen(false)}
+      />
+
+      {/* Side-by-Side Job Comparison Matrix Modal */}
+      <JobComparisonModal
+        isOpen={compareModalOpen}
+        ads={allAnnouncements.filter((a) => comparedAdIds.has(a.id))}
+        onClose={() => setCompareModalOpen(false)}
+        onRemove={(id) => {
+          setComparedAdIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        }}
+      />
+
+      {/* Kinematic Quick-View Announcement Drawer */}
+      <KinematicQuickView
+        ad={quickViewAd}
+        isOpen={quickViewAd !== null}
+        onClose={() => setQuickViewAd(null)}
+        isFavorite={quickViewAd ? isFavorite(quickViewAd.id) : false}
+        onToggleFavorite={() => quickViewAd && toggleFavorite(quickViewAd.id)}
+        onShowOnMap={() => {
+          if (quickViewAd) {
+            handleShowOnMap(quickViewAd.id);
+            setQuickViewAd(null);
+          }
+        }}
+      />
+
+      {/* Command Palette Modal (Ctrl+K) */}
+      <CommandPaletteModal
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        ads={allAnnouncements}
+        onSelectAd={(id) => {
+          handleShowOnMap(id);
+          const found = allAnnouncements.find((a) => a.id === id);
+          if (found) setQuickViewAd(found);
+        }}
+        onSelectTab={(tab) => handleTabChange(tab)}
+        onOpenCalculator={() => {
+          setSalaryCalcGross(6000);
+          setSalaryModalOpen(true);
+        }}
+        onOpenCompare={() => setCompareModalOpen(true)}
+        onFilterSalaryOnly={() => {
+          setActiveTab('list');
+          setSearchQuery('zł');
+        }}
+        onFilterRemoteOnly={() => {
+          setActiveTab('list');
+          setSearchQuery('zdalna');
+        }}
+      />
 
       {/* Guest prompt modal */}
       <AnimatePresence>

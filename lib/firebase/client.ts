@@ -9,7 +9,7 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
@@ -47,7 +47,11 @@ export function getClientAuth(): Auth {
 
 export function getClientFirestore(): Firestore {
   if (!_firestore) {
-    _firestore = getFirestore(getClientApp());
+    _firestore = initializeFirestore(getClientApp(), {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
   }
   return _firestore;
 }

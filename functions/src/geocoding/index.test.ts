@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { resolveLocation } from './index';
+import { resolveLocation, resolveLocationsBatch } from './index';
 
 // Mock the nominatim module
 vi.mock('./nominatim', () => {
@@ -318,6 +318,100 @@ describe('resolveLocation', () => {
 
       expect(result.fromCache).toBe(true);
       expect(docMock).toHaveBeenCalledWith('ul. mickiewicza 5');
+    });
+  });
+
+  describe('resolveLocationsBatch', () => {
+    it('uses firestore.getAll to retrieve cache entries in batch', async () => {
+      const tenDaysAgo = new Date('2024-06-05T12:00:00Z');
+      const cacheData = {
+        'place a': { latitude: 10, longitude: 20, resolved_at: { toDate: () => tenDaysAgo } },
+        'place b': { latitude: 30, longitude: 40, resolved_at: { toDate: () => tenDaysAgo } },
+      };
+
+      const docMock = vi.fn().mockImplementation((id: string) => ({ id }));
+      const getAllMock = vi.fn().mockImplementation((...refs: any[]) => {
+        return refs.map(ref => {
+          const data = cacheData[ref.id as keyof typeof cacheData];
+          return {
+            exists: !!data,
+            data: () => data,
+          };
+        });
+      });
+
+      const firestore = {
+        collection: vi.fn().mockReturnValue({ doc: docMock }),
+        getAll: getAllMock,
+      } as any;
+
+      const result = await resolveLocationsBatch(['Place A', 'Place B'], firestore);
+
+      expect(firestore.getAll).toHaveBeenCalled();
+      expect(result.get('Place A')).toEqual({ latitude: 10, longitude: 20 });
+      expect(result.get('Place B')).toEqual({ latitude: 30, longitude: 40 });
+    });
+
+    it('handles empty, null, or whitespace location texts in batch', async () => {
+      const firestore = {
+        collection: vi.fn(),
+        getAll: vi.fn().mockResolvedValue([]),
+      } as any;
+
+      const result = await resolveLocationsBatch(['', '   ', null as any], firestore);
+      expect(result.get('')).toEqual({ latitude: null, longitude: null });
+      expect(result.get('   ')).toEqual({ latitude: null, longitude: null });
+      expect(result.get(null as any)).toEqual({ latitude: null, longitude: null });
+    });
+
+    it('falls back to Nominatim and caches results on cache misses in batch', async () => {
+      const docMock = vi.fn().mockImplementation((id: string) => {
+        const setMock = vi.fn().mockResolvedValue(undefined);
+        return {
+          id,
+          get: vi.fn().mockResolvedValue({ exists: false, data: () => undefined }),
+          set: setMock,
+        };
+      });
+
+      const firestore = {
+        collection: vi.fn().mockReturnValue({ doc: docMock }),
+        getAll: vi.fn().mockResolvedValue([{ exists: false }]),
+      } as any;
+
+      mockQuery.mockResolvedValueOnce({ lat: 50.0, lng: 15.0 });
+
+      const result = await resolveLocationsBatch(['New Place'], firestore);
+
+      expect(mockQuery).toHaveBeenCalledWith('new place');
+      expect(result.get('New Place')).toEqual({ latitude: 50.0, longitude: 15.0 });
+    });
+
+    it('does not re-query firestore or Nominatim for duplicate locations in the same batch', async () => {
+      const docMock = vi.fn().mockImplementation((id: string) => {
+        const setMock = vi.fn().mockResolvedValue(undefined);
+        return {
+          id,
+          get: vi.fn().mockResolvedValue({ exists: false, data: () => undefined }),
+          set: setMock,
+        };
+      });
+
+      const firestore = {
+        collection: vi.fn().mockReturnValue({ doc: docMock }),
+        getAll: vi.fn().mockResolvedValue([{ exists: false }]),
+      } as any;
+
+      mockQuery.mockResolvedValueOnce({ lat: 55.0, lng: 25.0 });
+
+      // Pass duplicate location entries in the batch
+      const result = await resolveLocationsBatch(['Dup Place', 'dup place', '  DUP PLACE  '], firestore);
+
+      // Nominatim should only be called once for 'dup place'
+      expect(mockQuery).toHaveBeenCalledTimes(1);
+      expect(result.get('Dup Place')).toEqual({ latitude: 55.0, longitude: 25.0 });
+      expect(result.get('dup place')).toEqual({ latitude: 55.0, longitude: 25.0 });
+      expect(result.get('  DUP PLACE  ')).toEqual({ latitude: 55.0, longitude: 25.0 });
     });
   });
 });

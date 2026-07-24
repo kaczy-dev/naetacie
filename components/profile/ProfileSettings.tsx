@@ -50,6 +50,58 @@ export function ProfileSettings() {
         <ThemeToggle />
       </div>
 
+      {/* Export applications section */}
+      <div style={sectionStyle}>
+        <h3 style={sectionTitleStyle}>Aplikacje i Raporty</h3>
+        <div style={infoCardStyle}>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+            Pobierz podsumowanie wszystkich wysłanych aplikacji (dla Urzędu Pracy lub rejestru własnego).
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                const stored = localStorage.getItem('naetacie_applications');
+                const apps = stored ? JSON.parse(stored) : {};
+                const keys = Object.keys(apps);
+                
+                if (keys.length === 0) {
+                  alert('Brak zarejestrowanych aplikacji do wyeksportowania.');
+                  return;
+                }
+
+                let csv = 'ID Ogłoszenia;Status;Data zmiany\n';
+                keys.forEach((k) => {
+                  csv += `"${k}";"${apps[k].status || 'Aplikowano'}";"${apps[k].updatedAt || new Date().toISOString()}"\n`;
+                });
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `naetacie_raport_aplikacji_${new Date().toISOString().slice(0,10)}.csv`;
+                a.click();
+              } catch (e) {
+                alert('Błąd podczas generowania raportu.');
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '10px 16px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--color-primary)',
+              background: 'var(--color-primary)',
+              color: 'white',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            📄 Pobierz raport moich aplikacji (CSV)
+          </button>
+        </div>
+      </div>
+
       {/* Sign out button */}
       {user && (
         <div style={sectionStyle}>

@@ -25,7 +25,7 @@ import { olxScraper } from './portals/olx';
 import { oferteoScraper } from './portals/oferteo';
 import { fixlyScraper } from './portals/fixly';
 import { generateDeduplicationKey, batchCheckExists } from '../deduplication';
-import { resolveLocation } from '../geocoding';
+import { resolveLocation, resolveLocationsBatch } from '../geocoding';
 import { splitIntoBatches } from '../batch';
 import { processNotifications } from '../notifications';
 import type { PortalScraper, ScrapingResult, Browser } from './types';
@@ -123,14 +123,17 @@ async function processPortal(
     return result;
   }
 
-  // Step 4: Geocode new ads
+  // Step 4: Geocode new ads in batch
+  const locationTexts = newAdPairs.map((pair) => pair.ad.locationText);
+  const geocodedMap = await resolveLocationsBatch(locationTexts, firestore);
+
   const announcementsToWrite: Array<{
     key: string;
     data: Record<string, unknown>;
   }> = [];
 
   for (const { ad, key } of newAdPairs) {
-    const geo = await resolveLocation(ad.locationText, firestore);
+    const geo = geocodedMap.get(ad.locationText) || { latitude: null, longitude: null };
 
     announcementsToWrite.push({
       key,

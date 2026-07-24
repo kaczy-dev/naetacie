@@ -17,7 +17,7 @@ import { normalizeLocationText } from './normalize';
 import { NominatimRateLimiter } from './nominatim';
 
 /** 30 days in milliseconds */
-const GEO_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const GEO_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Shared rate limiter instance (1 request per second) */
 const rateLimiter = new NominatimRateLimiter(1000);
@@ -79,6 +79,80 @@ export async function resolveLocation(
   });
 
   return { latitude, longitude, fromCache: false };
+}
+
+/**
+ * Resolves a batch of location text strings using a batch-first cache lookup.
+ *
+ * @param locationTexts - Array of raw location texts
+ * @param firestore - Firestore instance
+ * @returns Map of raw location text to resolved coordinates
+ */
+export async function resolveLocationsBatch(
+  locationTexts: string[],
+  firestore: Firestore
+): Promise<Map<string, { latitude: number | null; longitude: number | null }>> {
+  const results = new Map<string, { latitude: number | null; longitude: number | null }>();
+  if (locationTexts.length === 0) return results;
+
+  const normalizedToRaw = new Map<string, string[]>();
+
+  for (const raw of locationTexts) {
+    if (!raw || raw.trim().length === 0) {
+      results.set(raw, { latitude: null, longitude: null });
+      continue;
+    }
+    const normalized = normalizeLocationText(raw);
+    const existing = normalizedToRaw.get(normalized) || [];
+    existing.push(raw);
+    normalizedToRaw.set(normalized, existing);
+  }
+
+  const uniqueNormalized = Array.from(normalizedToRaw.keys());
+
+  // Batch fetch cache entries
+  const cacheMap = new Map<string, { latitude: number | null; longitude: number | null }>();
+  if (uniqueNormalized.length > 0) {
+    const refs = uniqueNormalized.map(norm => firestore.collection('geo_cache').doc(norm));
+    const snapshots = await firestore.getAll(...refs);
+
+    for (let i = 0; i < uniqueNormalized.length; i++) {
+      const snap = snapshots[i];
+      const norm = uniqueNormalized[i];
+      if (snap.exists) {
+        const data = snap.data()!;
+        const resolvedAt = data.resolved_at?.toDate?.()
+          ? data.resolved_at.toDate()
+          : new Date(data.resolved_at);
+        const age = Date.now() - resolvedAt.getTime();
+
+        if (age < GEO_CACHE_TTL_MS) {
+          cacheMap.set(norm, {
+            latitude: data.latitude ?? null,
+            longitude: data.longitude ?? null,
+          });
+        }
+      }
+    }
+  }
+
+  // Assign results
+  for (const raw of locationTexts) {
+    if (!raw || raw.trim().length === 0) continue;
+    const normalized = normalizeLocationText(raw);
+    if (cacheMap.has(normalized)) {
+      results.set(raw, cacheMap.get(normalized)!);
+    } else {
+      // Cache miss or stale entry: resolve individually
+      const res = await resolveLocation(raw, firestore);
+      const coords = { latitude: res.latitude, longitude: res.longitude };
+      results.set(raw, coords);
+      // Store in local cache map for any duplicate locations in the same batch
+      cacheMap.set(normalized, coords);
+    }
+  }
+
+  return results;
 }
 
 export { normalizeLocationText } from './normalize';

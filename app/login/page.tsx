@@ -35,7 +35,6 @@ export default function LoginPage() {
   const {
     emailError,
     passwordStrength,
-    fieldErrors,
     validateEmailField,
     validatePasswordField,
     validateRequiredField,

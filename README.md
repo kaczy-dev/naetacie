@@ -1,165 +1,128 @@
-# 🏗️ NaEtacie — oferty pracy budowlanej w Szczecinie
+# 🌿 Na Etacie Szczecin — Inteligentna Platforma Ofert Pracy z Mapą Przestrzenną
 
-Agregator realnych ofert pracy budowlanej z rejonu Szczecina. Zbiera ogłoszenia z OLX (API v1), Pracuj.pl, Indeed — z interaktywną mapą, silnikiem dopasowania, śledzeniem aplikacji i automatycznym odświeżaniem co 6h.
+![Zieleń Szmaragdowa](https://img.shields.io/badge/Theme-Emerald%20Green-10b981?style=for-the-badge)
+![Next.js 14](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178c6?style=for-the-badge&logo=typescript)
+![MapLibre GL JS](https://img.shields.io/badge/MapLibre_GL-WebGL-blue?style=for-the-badge)
+![PWA Ready](https://img.shields.io/badge/PWA-Installable-purple?style=for-the-badge)
 
-## 🚀 Szybki start
+**Na Etacie Szczecin** to nowoczesna, wysoce responsywna platforma internetowa i aplikacja PWA dedykowana dla poszukujących pracy w **Szczecinie oraz Aglomeracji Szczecińskiej**. Łączy zalety błyskawicznego wyszukiwania tekstowego, zaawansowanego silnika dopasowania ofert oraz interaktywnej wizualizacji przestrzennej na mapie WebGL w domyślnym, lśniącym motywie **Zielenik Szmaragdowej (Emerald Nature)**.
 
+---
+
+## 🌿 Domyślny Motyw: Zieleń Szmaragdowa (Emerald Nature)
+
+Platforma domyślnie wykorzystuje motyw **Zielenik Szmaragdowej** (`#10b981` / `hsl(160, 84%, 39%)`), inspierowany zielenią parków, Puszczy Bukowej i rzeki Odry w Szczecinie:
+* **Mapa WebGL:** Podkładem mapy jest soczysty, przestrzenny motyw **CartoDB Voyager Emerald**, eksponujący tereny zielone, rekreacyjne oraz siatkę dróg Szczecina.
+* **Akcenty UI:** Przycisk akcji, pigułki stawek płacowych, podświetlenia klastrów oraz przełączniki zostały zintegrowane w harmonijnej palecie szmaragdowej.
+* **Możliwość Zmiany:** Użytkownik w każdej chwili może przełączyć podkład mapy w menu stylów (`🗺️`) na motyw **Ciemny (Dark Matter)** lub **Jasny (Positron)**.
+
+---
+
+## 🚀 Kluczowe Moduły & Funkcje Enterprise
+
+### 1. 🗺️ Interaktywna Mapa Przestrzenna Szczecina (`MapView.tsx`)
+* **Klastrowanie i Rozwijanie (WebGL Clustering & Spiderfy):** Punktowe i klastrowe prezentowanie ofert pracy. Przy nakładających się ogłoszeniach pod jednym adresem stosuje automatyczny algorytm spiralny (Spiderfy).
+* **Rygorystyczny Filtr Szczecina (`isSzczecinAnnouncement`):** Mapa ogranicza prezentowane ogłoszenia wyłącznie do granic Szczecina i okolicznych gmin aglomeracji.
+* **Rysowanie Obszaru (Lasso / Custom Polygon Search):** Możliwość swobodnego narysowania myszką lub palcem dowolnego kształtu na mapie i odfiltrowania ogłoszeń wyłącznie z tego obszaru.
+* **Strefy Czasu Dojazdu (Isochrone Commute Zones):** Generowanie nieregularnych poligonów dojazdu samochodowego, rowerowego lub pieszego w czasie 10, 20 lub 30 minut.
+* **Analityka Stawek w Dzielnicach (District Analytics):** Nakładki ze średnimi stawkami brutto oraz liczbą wakatów na dzielnice Szczecina (*Centrum, Pogodno, Prawobrzeże, Gumieńce...*).
+* **Geofencing & Geo-Alerty:** Tworzenie i zapisywanie stref powiadomień o promieniu 1–25 km wokół wybranego adresu domowego.
+* **Widok Ulicy (Street View):** Szybki odnośnik do 360-stopniowych zdjęć sferycznych Google Street View w miejscu pracy.
+
+### 2. 📜 Nowoczesna Lista Ogłoszeń z Kinematycznym Podglądem
+* **Kinematyczny Podgląd Drawer (`KinematicQuickView.tsx`):** Kliknięcie w dowolne ogłoszenie wysuwa kinowy panel boczny z rozbiciem stawek netto, pełnym opisem i opcją szybkiego połączenia telefonicznego.
+* **3D Mouse Tilt & Glass Pills:** Karty reagują na ruch myszki subtelnym trójwymiarowym nachyleniem, a stawki prezentowane są w postaci lśniących pigułek szklanych.
+* **Puls Rynku (`MarketPulseBar.tsx`):** Pasek powiadomień w czasie rzeczywistym informujący o średniej i najwyższej stawce w Szczecinie.
+* **Gest Przesunięcia (Swipe Card):** Na urządzeniach mobilnych przesunięcie karty w prawo dodaje ją do ulubionych, a w lewo zmienia status aplikacji ze wsparciem dla haptiki (`vibrate`).
+
+### 3. 💰 Kalkulator Wynagrodzeń Netto/Brutto (`SalaryNetModal.tsx`)
+* Automatyczne przeliczanie oferowanej kwoty brutto na kwoty "na rękę" dla:
+  * **Umowy o Pracę (UoP)**,
+  * **Umowy Zlecenie (UZ)**,
+  * **UZ dla Uczniów/Studentów (&lt;26 lat)** (100% brutto),
+  * **Samozatrudnienia B2B** (szacunek na czysto po opłaceniu ZUS i ryczałtu).
+
+### 4. ⚖️ Porównywarka Ofert Pracy (`JobComparisonModal.tsx`)
+* Dodawanie do 3 interesujących ofert do czytelnej tabeli porównawczej (wynagrodzenia netto/brutto, forma umowy, lokalizacja, portal źródłowy).
+
+### 5. ⌨️ Klawiaturowa Paleta Komend (`CommandPaletteModal.tsx`)
+* Skrót `Ctrl + K` / `Cmd + K` otwiera szybką paletę przeszukiwania i nawigacji bez odrywania rąk od klawiatury.
+
+### 6. 📱 Aplikacja PWA & Integracja z ZDiTM
+* Proaktywny banner instalacji PWA na telefonie (`PwaInstallPrompt.tsx`).
+* Przycisk **`🚌 Dojazd ZDiTM`** prowadzący prosto do nawigacji autobusowo-tramwajowej Szczecina.
+
+### 7. 🔤 Dostępność WCAG AAA & Raporty CSV
+* Dedykowane skalowanie rozmiaru tekstu (**A / A+ / A++**) w ustawieniach profilu.
+* Generowanie i pobieranie pełnego raportu zaaplikowanych ofert do pliku `.csv` dla potrzeb Urzędu Pracy lub rejestru własnego.
+
+---
+
+## 🛠️ Architektura Techniczna i Tech Stack
+
+| Warstwa | Technologia / Biblioteka |
+| :--- | :--- |
+| **Framework** | Next.js 14 (App Router, React 18, Server Actions) |
+| **Język** | TypeScript 5.0 (Strict mode) |
+| **Stylizowanie** | Tailwind CSS v4, CSS Custom Properties, Glassmorphism |
+| **Mapy & WebGL** | MapLibre GL JS, CartoDB Vector Tiles CDN |
+| **Animacje** | Framer Motion (Gestures, Spring Physics, AnimatePresence) |
+| **Baza i Auth** | Firebase Authentication, Cloud Firestore |
+| **Testy** | Vitest (Property-based tests, Unit tests, Integration tests) |
+| **Ikony** | Lucide React |
+
+---
+
+## 🧪 Uruchamianie i Weryfikacja Projekty
+
+### Instalacja Zależności
 ```bash
-# Instalacja zależności
-npm install --legacy-peer-deps
+npm install
+```
 
-# Uruchomienie (development)
+### Uruchomienie Serwera Deweloperskiego
+```bash
 npm run dev
+```
+Aplikacja dostępna pod adresem: `http://localhost:3000`
 
-# Załadowanie danych do Firestore
-# Wejdź na: http://localhost:3000/api/seed
-
-# Build produkcyjny
-npm run build && npm start
+### Weryfikacja Typów TypeScript
+```bash
+npm run typecheck
 ```
 
-## 📋 Funkcjonalności
-
-### Mapa interaktywna
-- Markery kolorowane wg kategorii (budowa, remont, instalacje, wykończenia)
-- Klastrowanie markerów dla wydajności
-- Geolokalizacja użytkownika
-- Popup z detalami ogłoszenia, ceną i kontaktem
-- Legenda kategorii
-
-### Lista ogłoszeń
-- Wyszukiwarka (tytuł, opis, lokalizacja)
-- Filtrowanie po portalu (OLX / Oferteo / Fixly)
-- Sortowanie (najnowsze, najstarsze, cena ↑↓)
-- Ulubione (❤️) z persistencją w localStorage
-- Karty z linkiem do źródła i ceną
-
-### Autentykacja
-- Logowanie email/hasło z walidacją siły hasła
-- Google Sign-In (popup)
-- Tryb gościa (bez logowania, dane opóźnione 48h)
-- Weryfikacja email z resend
-
-### Real-time sync
-- Firestore onSnapshot dla zalogowanych (sync między urządzeniami)
-- Fallback na REST API + seed data dla gości
-
-### Offline & PWA
-- Service Worker z cache-first dla statyki
-- Network-first z fallback dla API
-- Offline indicator w UI
-- Web App Manifest
-
-### Powiadomienia push
-- Notification API + Service Worker
-- Opt-in w zakładce Powiadomienia
-
-### Dark mode
-- Automatyczna synchronizacja z systemem (prefers-color-scheme)
-- Manual toggle: Jasny / Ciemny / Systemowy
-- Tailwind CSS dark class
-
-### Bezpieczeństwo
-- CSP headers (Content-Security-Policy)
-- Rate limiting (auth: 5/min, general: 30/min)
-- Body size limit (10KB POST/PUT/PATCH)
-- X-Content-Type-Options, X-Frame-Options, Referrer-Policy
-
-## 🗂️ Architektura
-
-```
-app/
-├── api/
-│   ├── announcements/   # REST API z walidacją, paginacją, maskingiem
-│   ├── scrape/          # On-demand scraper (OLX + Oferteo)
-│   └── seed/            # Seed Firestore z danymi
-├── login/               # Strona logowania/rejestracji
-├── announcements/[id]/  # Szczegóły ogłoszenia
-├── globals.css          # Tailwind v4 + shadcn tokens
-├── layout.tsx           # Root layout + providers
-├── page.tsx             # Strona główna (mapa + lista + profil)
-└── providers.tsx        # Auth + Theme + Toast providers
-
-components/
-├── map/                 # MapView, MapViewDynamic (SSR-safe)
-├── navigation/          # AppShell, BottomNav, ResponsiveLayout
-├── ui/                  # Button, Card, Input, Badge, Skeleton (shadcn)
-├── theme/               # ThemeProvider (system sync)
-├── feedback/            # ToastProvider, EmptyState, Skeletons
-└── profile/             # ProfileSettings, ThemeToggle
-
-lib/
-├── auth/                # AuthContext, googleAuth, server verify
-├── firebase/            # Admin SDK + Client SDK init
-├── hooks/               # useRealtimeAnnouncements, useScraper, useFavorites, useOfflineSync, usePushNotifications
-├── data/                # Static seed data (30 ogłoszeń)
-├── types/               # TypeScript interfaces
-├── validation/          # Input sanitization, form validation
-└── middleware/          # Rate limiter
-
-functions/src/           # Firebase Cloud Functions (Playwright scraper)
-├── scraper/             # OLX, Oferteo, Fixly portal scrapers
-├── deduplication/       # Dedup by content hash
-├── geocoding/           # Nominatim + cache
-├── notifications/       # Email digests
-└── batch/               # Firestore batch writes
+### Uruchomienie Pakietu Testów (Vitest)
+```bash
+npm test
 ```
 
-## 🛠️ Tech Stack
+---
 
-| Warstwa | Technologia |
-|---------|-------------|
-| Framework | Next.js 14 (App Router) |
-| UI | Tailwind CSS v4, shadcn/ui, Radix UI |
-| Animacje | Framer Motion |
-| Mapa | Leaflet + react-leaflet + react-leaflet-cluster |
-| Auth | Firebase Auth (email + Google) |
-| Database | Cloud Firestore |
-| Scraping | Playwright (Cloud Functions), fetch (API route) |
-| Icons | Lucide React |
-| Walidacja | Zod-style custom validators |
-| Testy | Vitest + fast-check (property-based) |
-| Typy | TypeScript 5.5 strict |
+## 📁 Struktura Katalogów
 
-## 📦 Skrypty
-
-| Komenda | Opis |
-|---------|------|
-| `npm run dev` | Serwer deweloperski |
-| `npm run build` | Build produkcyjny |
-| `npm run seed` | Seed danych do Firestore (tsx) |
-| `npm run emulators` | Firebase emulators (wymaga Java 21) |
-| `npm run test` | Testy (Vitest) |
-| `npm run typecheck` | Sprawdzenie typów |
-| `npm run lint` | ESLint |
-
-## 🔑 Zmienne środowiskowe (.env.local)
-
-```env
-# Firebase Client
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
-NEXT_PUBLIC_FIREBASE_APP_ID=...
-
-# Firebase Admin (service account JSON w jednej linii)
-FIREBASE_SERVICE_ACCOUNT_KEY={...}
-
-# SMTP (opcjonalne - email notifications)
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
+```
+├── app/
+│   ├── api/             # Endpoints REST / scrapowanie ogłoszeń
+│   ├── globals.css      # Design system, zmienne kolorów Szmaragdu
+│   ├── layout.tsx       # Główny szablon HTML & PWA Meta
+│   └── page.tsx         # Główny widok Split-Screen (Lista + Mapa)
+├── components/
+│   ├── compare/         # Porównywarka ofert (JobComparisonModal)
+│   ├── list/            # Komponenty listy (AnnouncementCard, KinematicQuickView, MarketPulseBar)
+│   ├── map/             # Komponenty mapy (MapView, MapLassoDraw, MapIsochrone, MapGeoAlert)
+│   ├── navigation/      # Paleta Komend (CommandPaletteModal), Nawigacja
+│   ├── profile/         # Ustawienia, motywy i eksport CSV (ProfileSettings, ThemeToggle)
+│   ├── pwa/             # Banner PWA (PwaInstallPrompt)
+│   └── salary/          # Kalkulator Wynagrodzeń (SalaryNetModal)
+├── lib/
+│   ├── audio/           # Syntetyczne dźwięki Web Audio API (chime.ts)
+│   ├── matching/        # Silnik wyliczania dopasowania ogłoszeń
+│   ├── salary/          # Przelicznik brutto-netto (calculator.ts)
+│   └── search/          # Silnik wyszukiwania i filtr Szczecina (engine.ts)
+└── tests/               # Testy integracyjne i reguły bezpieczeństwa
 ```
 
-## 🗺️ Region
+---
 
-Aplikacja pokrywa region **Szczecina i okolic (50km)**:
-- Szczecin (dzielnice: Centrum, Pogodno, Niebuszewo, Gumieńce, Prawobrzeże, Dąbie, Bezrzecze, Załom)
-- Police, Stargard, Goleniów, Gryfino, Nowogard, Pyrzyce, Świnoujście
-
-## 📄 Licencja
-
-Projekt prywatny — wszystkie prawa zastrzeżone.
+*Wytworzono dla Szczecina z wykorzystaniem najnowocześniejszych standardów webowych.*

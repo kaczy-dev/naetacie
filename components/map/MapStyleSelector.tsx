@@ -1,0 +1,146 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+
+export type MapStyleType = 'emerald' | 'light' | 'dark' | 'satellite';
+
+export interface MapStyleOption {
+  id: MapStyleType;
+  label: string;
+  icon: string;
+  styleUrl: string;
+}
+
+export const MAP_STYLE_OPTIONS: MapStyleOption[] = [
+  {
+    id: 'emerald',
+    label: 'Zieleń Szmaragdowa',
+    icon: '🌿',
+    styleUrl: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  },
+  {
+    id: 'light',
+    label: 'Jasny',
+    icon: '☀️',
+    styleUrl: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  },
+  {
+    id: 'dark',
+    label: 'Ciemny',
+    icon: '🌙',
+    styleUrl: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  },
+];
+
+export interface MapStyleSelectorProps {
+  currentStyle: MapStyleType;
+  onSelectStyle: (style: MapStyleType) => void;
+  ui: {
+    surface: string;
+    border: string;
+    text: string;
+    shadow: string;
+  };
+  top: number;
+}
+
+export function MapStyleSelector({
+  currentStyle,
+  onSelectStyle,
+  ui,
+  top,
+}: MapStyleSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const activeOption = MAP_STYLE_OPTIONS.find((o) => o.id === currentStyle) || MAP_STYLE_OPTIONS[0];
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: 'absolute',
+        top: `${top}px`,
+        right: '10px',
+        zIndex: 10,
+      }}
+    >
+      <button
+        onClick={() => setOpen(!open)}
+        title="Zmień motyw mapy (Zieleń / Ciemny / Jasny)"
+        aria-label="Zmień motyw mapy"
+        className="w-8 h-8 text-xs md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
+        style={{
+          background: ui.surface,
+          border: `1px solid ${ui.border}`,
+          boxShadow: ui.shadow,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: ui.text,
+        }}
+      >
+        🌿
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: '46px',
+            background: ui.surface,
+            border: `1px solid ${ui.border}`,
+            borderRadius: '12px',
+            boxShadow: ui.shadow,
+            padding: '4px',
+            display: 'flex',
+            gap: '4px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {MAP_STYLE_OPTIONS.map((opt) => {
+            const isSelected = opt.id === activeOption.id;
+            return (
+              <button
+                key={opt.id}
+                onClick={() => {
+                  onSelectStyle(opt.id);
+                  setOpen(false);
+                }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: isSelected ? '#10b981' : 'transparent',
+                  color: isSelected ? '#ffffff' : ui.text,
+                  fontSize: '11px',
+                  fontWeight: isSelected ? 700 : 500,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>{opt.icon}</span>
+                <span>{opt.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

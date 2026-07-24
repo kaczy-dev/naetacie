@@ -1,16 +1,43 @@
 /**
- * Lightweight full-text search over announcements.
- *
- * Design goals:
- * - Diacritic-insensitive (Polish "ł/ą/ę" match "l/a/e")
- * - Multi-term AND semantics (all query words must appear somewhere)
- * - Field-weighted relevance (title > company > location > description)
- * - Freshness boost (newer ads rank slightly higher at equal relevance)
- * - Fuzzy tolerance for short typos (1 char off for words ≥ 5 chars)
- * - Zero dependencies, deterministic, testable.
+ * Enhanced full-text search engine with Szczecin district mapping,
+ * diacritic tolerance, field weights & intelligent relevance scoring.
  */
 
 import type { DisplayAnnouncement } from '@/lib/types/display';
+
+/** Bounding box bounds for Szczecin and immediate metropolitan area */
+export const SZCZECIN_BOUNDS = {
+  minLat: 53.25,
+  maxLat: 53.68,
+  minLng: 14.25,
+  maxLng: 14.85,
+};
+
+/** List of recognized Szczecin districts */
+export const SZCZECIN_DISTRICTS = [
+  'szczecin', 'centrum', 'pogodno', 'prawobrzeze', 'niebuszewo', 'dabie',
+  'gumience', 'warszewo', 'bukowe', 'kijewo', 'zelechowa', 'stolczyn',
+  'skolwin', 'golocin', 'pomorzany', 'turzyn', 'sloneczne', 'majowe',
+  'podjuchy', 'zydowce', 'miedzyodrze', 'osowow', 'golecino', 'laskowo'
+];
+
+/** Check if an announcement belongs strictly to Szczecin metropolitan region */
+export function isSzczecinAnnouncement(ad: DisplayAnnouncement): boolean {
+  // Check lat/lng coordinates if present
+  if (ad.latitude && ad.longitude) {
+    const inBounds =
+      ad.latitude >= SZCZECIN_BOUNDS.minLat &&
+      ad.latitude <= SZCZECIN_BOUNDS.maxLat &&
+      ad.longitude >= SZCZECIN_BOUNDS.minLng &&
+      ad.longitude <= SZCZECIN_BOUNDS.maxLng;
+
+    if (inBounds) return true;
+  }
+
+  // Check text location fallback
+  const loc = normalizeText(ad.location_text || '');
+  return SZCZECIN_DISTRICTS.some((district) => loc.includes(district));
+}
 
 /** Normalize text: lowercase + strip Polish diacritics for lenient matching. */
 export function normalizeText(input: string): string {
@@ -56,7 +83,7 @@ function levenshtein(a: string, b: string): number {
 /** Check if a term fuzzy-matches any word in the haystack (1 edit allowed for 5+ char words). */
 function fuzzyMatch(term: string, haystack: string): boolean {
   if (haystack.includes(term)) return true;
-  if (term.length < 5) return false; // only fuzzy for longer terms
+  if (term.length < 4) return false;
 
   const words = haystack.split(' ');
   for (const w of words) {
@@ -84,38 +111,36 @@ function fieldsOf(ad: DisplayAnnouncement): SearchableFields {
   };
 }
 
-const WEIGHTS = { title: 12, company: 5, location: 3, employment: 3, description: 1 };
+const WEIGHTS = { title: 15, company: 6, location: 4, employment: 4, description: 1 };
 
 /**
  * Returns a relevance score for one ad against the query terms.
  * 0 means "does not match" (at least one term missing entirely).
  */
 export function searchScore(ad: DisplayAnnouncement, terms: string[]): number {
-  if (terms.length === 0) return 1; // empty query matches everything neutrally
+  if (terms.length === 0) return 1;
 
   const f = fieldsOf(ad);
   const haystack = `${f.title} ${f.company} ${f.location} ${f.employment} ${f.description}`;
 
   let score = 0;
   for (const term of terms) {
-    // AND semantics: every term must appear somewhere (exact or fuzzy)
     if (!haystack.includes(term) && !fuzzyMatch(term, haystack)) return 0;
 
-    // Exact field matches
     if (f.title.includes(term)) score += WEIGHTS.title;
     if (f.company.includes(term)) score += WEIGHTS.company;
     if (f.location.includes(term)) score += WEIGHTS.location;
     if (f.employment.includes(term)) score += WEIGHTS.employment;
     if (f.description.includes(term)) score += WEIGHTS.description;
 
-    // Bonus: whole-word match in title
-    if (new RegExp(`\\b${term}\\b`).test(f.title)) score += 6;
-
-    // Bonus: phrase appears at the START of title (e.g. "Murarz" matches "Murarz-tynkarz")
-    if (f.title.startsWith(term)) score += 4;
+    if (new RegExp(`\\b${term}\\b`).test(f.title)) score += 8;
+    if (f.title.startsWith(term)) score += 5;
   }
 
-  // Freshness boost: up to +5 for posts from last 3 days
+  // Salary bonus for clear job offers
+  if (typeof ad.price === 'number' && ad.price > 0) score += 2;
+
+  // Freshness boost
   const ageMs = Date.now() - ad.scraped_at.getTime();
   const ageDays = ageMs / (24 * 60 * 60 * 1000);
   if (ageDays < 1) score += 5;
@@ -127,7 +152,6 @@ export function searchScore(ad: DisplayAnnouncement, terms: string[]): number {
 
 /**
  * Filters + ranks ads by a free-text query.
- * When query is empty, returns the input unchanged (caller handles sorting).
  */
 export function searchAnnouncements(
   ads: DisplayAnnouncement[],

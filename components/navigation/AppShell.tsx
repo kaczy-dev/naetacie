@@ -15,6 +15,7 @@ import { useTheme } from '@/components/theme/ThemeProvider';
 import { useOfflineSync } from '@/lib/hooks/useOfflineSync';
 import { Logo, Wordmark } from '@/components/brand/Logo';
 import { MotivationalTagline } from '@/components/brand/MotivationalTagline';
+import { SystemHealthBadge } from '@/components/feedback/SystemHealthBadge';
 
 export type TabId = 'map' | 'list' | 'notifications' | 'profile';
 
@@ -137,6 +138,10 @@ export function AppShell({ activeTab, onTabChange, children, isLive }: AppShellP
                 <span>Offline</span>
               </>
             )}
+          </div>
+
+          <div className="mb-2">
+            <SystemHealthBadge />
           </div>
 
           {/* Theme switcher */}

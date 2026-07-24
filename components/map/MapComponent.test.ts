@@ -132,8 +132,8 @@ describe('filterGeocodedAnnouncements', () => {
 
 
 describe('formatPrice', () => {
-  it('returns "Price not listed" for null price', () => {
-    expect(formatPrice(null)).toBe('Price not listed');
+  it('returns "Cena niepodana" for null price', () => {
+    expect(formatPrice(null)).toBe('Cena niepodana');
   });
 
   it('formats a numeric price with PLN suffix', () => {
