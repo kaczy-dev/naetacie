@@ -35,9 +35,8 @@ import { JobPreferencesPanel } from '@/components/list/JobPreferencesPanel';
 import { QuickSearchChips } from '@/components/list/QuickSearchChips';
 import { MarketStats } from '@/components/list/MarketStats';
 import { computeMarketOverview } from '@/lib/stats/market';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { cn, triggerHaptic, exportApplicationsToCSV, ensureAbsoluteUrl } from '@/lib/utils';
@@ -535,6 +534,7 @@ export default function HomePage() {
   const { isFavorite, toggleFavorite, favoriteCount } = useFavorites();
   const { preferences, update: updatePreferences, reset: resetPreferences } = useJobPreferences();
   const { setStatus, getStatus, count: trackedCount } = useApplicationTracking();
+  const pushNotifications = usePushNotifications();
 
   const [prefsPanelOpen, setPrefsPanelOpen] = useState(false);
   const [showTrackedOnly, setShowTrackedOnly] = useState(false);
@@ -839,6 +839,23 @@ export default function HomePage() {
                 </div>
 
                 <RecentSearchChips currentQuery={searchQuery} onSelectQuery={setSearchQuery} />
+                <Button
+                  variant={pushNotifications.permission === 'granted' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={async () => {
+                    const granted = await pushNotifications.requestPermission();
+                    if (granted) {
+                      showToast('success', 'Powiadomienia PWA zostały włączone!');
+                      pushNotifications.sendNotification('NaEtacie', { body: 'Powiadomienia o ogłoszeniach są aktywne!' });
+                    } else {
+                      showToast('error', 'Włącz powiadomienia w ustawieniach przeglądarki.');
+                    }
+                  }}
+                  className="gap-1 text-xs"
+                  title="Powiadomienia Push PWA"
+                >
+                  🔔 {pushNotifications.permission === 'granted' ? 'Aktywne' : 'Powiadomienia'}
+                </Button>
                 <Button
                   variant={prefsActive ? 'default' : 'outline'}
                   size="sm"
