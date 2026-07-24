@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scale, X, MapPin, DollarSign, ExternalLink, Briefcase } from 'lucide-react';
+import { ensureAbsoluteUrl } from '@/lib/utils';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { calculateNetSalary } from '@/lib/salary/calculator';
 
@@ -55,6 +56,7 @@ export function JobComparisonModal({ ads, isOpen, onClose, onRemove }: JobCompar
               <div className="md:hidden flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory py-2">
                 {ads.map((ad) => {
                   const net = typeof ad.price === 'number' ? calculateNetSalary(ad.price).uopNet : null;
+                  const safeUrl = ensureAbsoluteUrl(ad.source_url) || `/announcements/${ad.id}`;
                   return (
                     <div
                       key={ad.id}
@@ -109,16 +111,14 @@ export function JobComparisonModal({ ads, isOpen, onClose, onRemove }: JobCompar
                         )}
                       </div>
 
-                      {ad.source_url && (
-                        <a
-                          href={ad.source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 w-full py-2 bg-primary text-primary-foreground font-bold text-xs rounded-lg active:scale-95 transition-all mt-2"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" /> Zobacz ogłoszenie
-                        </a>
-                      )}
+                      <a
+                        href={safeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1.5 w-full py-2 bg-primary text-primary-foreground font-bold text-xs rounded-lg active:scale-95 transition-all mt-2"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Zobacz ogłoszenie
+                      </a>
                     </div>
                   );
                 })}

@@ -63,3 +63,14 @@ export function exportApplicationsToCSV(ads: any[], getStatusText: (id: string) 
   document.body.removeChild(link);
 }
 
+/**
+ * Ensures an announcement source URL is an absolute URL starting with http:// or https://.
+ * If missing or invalid, returns null.
+ */
+export function ensureAbsoluteUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}

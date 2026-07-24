@@ -5,6 +5,7 @@ import {
   X, MapPin, ExternalLink, Heart, Navigation, Calendar,
   Building2, Phone, Sparkles, CheckCircle2, DollarSign, Share2
 } from 'lucide-react';
+import { ensureAbsoluteUrl } from '@/lib/utils';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { normalizeCategory, CATEGORIES } from '@/lib/data/categories';
 import { calculateNetSalary } from '@/lib/salary/calculator';
@@ -31,6 +32,7 @@ export function KinematicQuickView({
 
   const cat = CATEGORIES[normalizeCategory(ad.category)];
   const netBreakdown = typeof ad.price === 'number' ? calculateNetSalary(ad.price) : null;
+  const safeUrl = ensureAbsoluteUrl(ad.source_url) || `/announcements/${ad.id}`;
 
   return (
     <AnimatePresence>
@@ -146,18 +148,16 @@ export function KinematicQuickView({
             >
               <Navigation className="w-4 h-4 text-primary" /> Pokaż na mapie
             </Button>
-            {ad.source_url && (
-              <a
-                href={ad.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1"
-              >
-                <Button className="w-full text-xs font-extrabold gap-2 h-10 bg-primary text-primary-foreground shadow-md">
-                  <ExternalLink className="w-4 h-4" /> Aplikuj na {ad.source_portal}
-                </Button>
-              </a>
-            )}
+            <a
+              href={safeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1"
+            >
+              <Button className="w-full text-xs font-extrabold gap-2 h-10 bg-primary text-primary-foreground shadow-md">
+                <ExternalLink className="w-4 h-4" /> Aplikuj na {ad.source_portal}
+              </Button>
+            </a>
           </div>
         </motion.div>
       </div>

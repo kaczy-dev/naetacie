@@ -4,116 +4,99 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { AnnouncementDetail } from '@/components/list';
+import { SEED_DATA } from '@/lib/data/announcements';
+import { ensureAbsoluteUrl } from '@/lib/utils';
 import type { MaskedAnnouncement } from '@/lib/types/announcement';
 
 /**
  * Announcement detail page.
  * Fetches a single announcement by its deduplication_key (from the [id] route param)
  * and renders it using the AnnouncementDetail component.
- *
- * Determines user tier from the API response (presence/absence of source_url).
+ * Fallbacks to SEED_DATA for static/demo items.
  */
 export default function AnnouncementDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, loading: authLoading, isGuest } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [announcement, setAnnouncement] = useState<MaskedAnnouncement | null>(null);
   const [tier, setTier] = useState<'free' | 'premium'>('free');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && (isGuest || !user)) {
-      router.replace('/login');
-    }
-  }, [authLoading, isGuest, user, router]);
-
-  useEffect(() => {
     async function fetchAnnouncement() {
       if (authLoading) return;
+      setLoading(true);
+      setError(null);
 
-      if (!user) {
-        setError('Authentication required');
+      const id = params.id;
+      if (!id) {
+        setError('Brak identyfikatora ogłoszenia');
         setLoading(false);
         return;
       }
 
-      setLoading(true);
-      setError(null);
+      // First check SEED_DATA for instantaneous offline/demo resolution
+      const seedItem = SEED_DATA.find((s) => s.id === id || s.id.toLowerCase() === id.toLowerCase());
+      if (seedItem) {
+        setAnnouncement({
+          deduplication_key: seedItem.id,
+          title: seedItem.title,
+          description: seedItem.description,
+          source_portal: seedItem.source_portal as any,
+          category: seedItem.category,
+          location_text: seedItem.location_text,
+          latitude: seedItem.latitude,
+          longitude: seedItem.longitude,
+          price: seedItem.price,
+          scraped_at: new Date(),
+          published_at: new Date(),
+          source_url: ensureAbsoluteUrl(seedItem.source_url) || seedItem.source_url,
+          contact_info: seedItem.phone,
+        });
+        setTier('premium');
+        setLoading(false);
+        return;
+      }
 
       try {
-        const token = await user.getIdToken();
-        const id = params.id;
-
-        // Fetch announcement by ID using the API endpoint
-        const response = await fetch(`/api/announcements?page=1&limit=1`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          setError(body.error || `Request failed with status ${response.status}`);
-          setLoading(false);
-          return;
+        const headers: Record<string, string> = {};
+        if (user) {
+          const token = await user.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const result = await response.json();
+        // Fetch announcements from API
+        const response = await fetch(`/api/announcements?page=1&limit=100`, { headers });
+        if (response.ok) {
+          const result = await response.json();
+          const found = result.data?.find((a: MaskedAnnouncement) => a.deduplication_key === id || a.title.toLowerCase().includes(id.toLowerCase()));
 
-        // Find the specific announcement from the data
-        // In a production app, we'd have a dedicated endpoint like /api/announcements/:id
-        // For now, we try to find it from a broader query
-        const found = result.data?.find(
-          (a: MaskedAnnouncement) => a.deduplication_key === id
-        );
-
-        if (found) {
-          setAnnouncement(found);
-          // Determine tier: if source_url is present, user is premium
-          setTier(found.source_url !== undefined ? 'premium' : 'free');
-        } else {
-          // Fetch with larger limit to try to find the announcement
-          const broadResponse = await fetch(
-            `/api/announcements?page=1&limit=100`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (broadResponse.ok) {
-            const broadResult = await broadResponse.json();
-            const broadFound = broadResult.data?.find(
-              (a: MaskedAnnouncement) => a.deduplication_key === id
-            );
-
-            if (broadFound) {
-              setAnnouncement(broadFound);
-              setTier(broadFound.source_url !== undefined ? 'premium' : 'free');
-            } else {
-              setError('Announcement not found');
-            }
-          } else {
-            setError('Failed to load announcement');
+          if (found) {
+            setAnnouncement({
+              ...found,
+              source_url: found.source_url ? (ensureAbsoluteUrl(found.source_url) || found.source_url) : undefined,
+            });
+            setTier(found.source_url !== undefined ? 'premium' : 'free');
+            setLoading(false);
+            return;
           }
         }
+        setError('Ogłoszenie nie zostało znalezione');
       } catch (err) {
-        setError('Failed to load announcement');
+        setError('Nie udało się pobrać szczegółów ogłoszenia');
       } finally {
         setLoading(false);
       }
     }
 
-    if (params.id) {
-      fetchAnnouncement();
-    }
+    fetchAnnouncement();
   }, [params.id, authLoading, user]);
 
   function handleBack() {
     router.back();
   }
+
 
   function handleUpgradeClick() {
     // Navigate to a future premium upgrade page

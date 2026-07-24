@@ -40,7 +40,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { cn, triggerHaptic, exportApplicationsToCSV } from '@/lib/utils';
+import { cn, triggerHaptic, exportApplicationsToCSV, ensureAbsoluteUrl } from '@/lib/utils';
 import { ALL_CATEGORY_KEYS, normalizeCategory, type CategoryKey } from '@/lib/data/categories';
 import { searchAnnouncements, tokenize, isSzczecinAnnouncement } from '@/lib/search/engine';
 import type { DisplayAnnouncement } from '@/lib/types/display';
@@ -290,8 +290,18 @@ function AnnouncementCard({
                   </div>
 
                 {/* Title */}
-                <h3 className="font-bold text-sm md:text-base text-foreground leading-snug tracking-tight group-hover:text-primary transition-colors duration-200">
-                  <HighlightText text={ad.title} query={searchWord} />
+                <h3 className="font-bold text-sm md:text-base text-foreground leading-snug tracking-tight hover:text-primary transition-colors duration-200">
+                  <a
+                    href={ensureAbsoluteUrl(ad.source_url) || `/announcements/${ad.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="hover:underline inline-flex items-center gap-1.5"
+                    title="Otwórz ogłoszenie w nowej karcie"
+                  >
+                    <HighlightText text={ad.title} query={searchWord} />
+                    <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0 inline" />
+                  </a>
                 </h3>
 
                 {/* Match score & Application status */}
@@ -416,19 +426,17 @@ function AnnouncementCard({
 
                   {/* Action buttons */}
                   <div className="flex items-center gap-2 pt-2 border-t border-border/30">
-                    {ad.source_url && (
-                      <a
-                        href={ad.source_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1"
-                      >
-                        <Button variant="default" size="sm" className="w-full gap-2 text-xs font-bold shadow-md cursor-pointer hover:scale-[1.01] transition-transform">
-                          <ExternalLink className="w-4 h-4" /> Zobacz ogłoszenie źródłowe
-                        </Button>
-                      </a>
-                    )}
+                    <a
+                      href={ensureAbsoluteUrl(ad.source_url) || `/announcements/${ad.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1"
+                    >
+                      <Button variant="default" size="sm" className="w-full gap-2 text-xs font-bold shadow-md cursor-pointer hover:scale-[1.01] transition-transform">
+                        <ExternalLink className="w-4 h-4" /> {ad.source_url ? `Zobacz w ${ad.source_portal || 'źródle'}` : 'Otwórz ogłoszenie'}
+                      </Button>
+                    </a>
                     {hasLocation && (
                       <>
                         <Button

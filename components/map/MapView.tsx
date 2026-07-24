@@ -23,7 +23,7 @@ import { MapDistrictAnalytics } from './MapDistrictAnalytics';
 import { MapGeoAlert } from './MapGeoAlert';
 import { MobileBottomSheet } from './MobileBottomSheet';
 import { SearchAreaButton } from './SearchAreaButton';
-import { triggerHaptic, formatShortPrice } from '@/lib/utils';
+import { triggerHaptic, formatShortPrice, ensureAbsoluteUrl } from '@/lib/utils';
 import { isPointInPolygon } from './utils';
 
 
@@ -516,22 +516,20 @@ function MarkerPopup({
           >
             📋 Na liście
           </button>
-          {ad.source_url && (
-            <a
-              href={ad.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                flex: 1, textAlign: 'center', padding: '8px 10px',
-                background: `linear-gradient(135deg, ${cat.color}, ${cat.color}cc)`,
-                color: 'white', borderRadius: '8px', fontSize: '12px',
-                fontWeight: 700, textDecoration: 'none',
-                boxShadow: `0 2px 8px ${cat.color}55`,
-              }}
-            >
-              Otwórz →
-            </a>
-          )}
+          <a
+            href={ensureAbsoluteUrl(ad.source_url) || `/announcements/${ad.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              flex: 1, textAlign: 'center', padding: '8px 10px',
+              background: `linear-gradient(135deg, ${cat.color}, ${cat.color}cc)`,
+              color: 'white', borderRadius: '8px', fontSize: '12px',
+              fontWeight: 700, textDecoration: 'none',
+              boxShadow: `0 2px 8px ${cat.color}55`,
+            }}
+          >
+            Otwórz →
+          </a>
         </div>
 
         {/* ── Navigate & Street View ── */}
