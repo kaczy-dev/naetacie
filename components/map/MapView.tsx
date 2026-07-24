@@ -67,7 +67,7 @@ const FALLBACK_STYLE: maplibregl.StyleSpecification = {
 };
 
 /** Style load timeout in milliseconds */
-const STYLE_LOAD_TIMEOUT_MS = 12_000;
+const STYLE_LOAD_TIMEOUT_MS = 3_500;
 
 const UI = {
   light: {
@@ -918,18 +918,36 @@ export default function MapView({
     initTimer = setTimeout(() => {
       if (!mapContainerRef.current) return;
 
-      globalActiveMaps++;
-
-      map = new maplibregl.Map({
-        container: mapContainerRef.current,
-        style: isDarkRef.current ? MAP_STYLES.dark : MAP_STYLES.light,
-        center: initialCenter,
-        zoom: initialZoom,
-        minZoom: MIN_ZOOM,
-        maxZoom: MAX_ZOOM,
-        attributionControl: false,
-        cooperativeGestures: false,
-      });
+      try {
+        map = new maplibregl.Map({
+          container: mapContainerRef.current,
+          style: isDarkRef.current ? MAP_STYLES.dark : MAP_STYLES.light,
+          center: initialCenter,
+          zoom: initialZoom,
+          minZoom: MIN_ZOOM,
+          maxZoom: MAX_ZOOM,
+          attributionControl: false,
+          cooperativeGestures: false,
+        });
+      } catch (err) {
+        console.warn('[MapView] Primary WebGL map creation failed, trying raster fallback:', err);
+        try {
+          map = new maplibregl.Map({
+            container: mapContainerRef.current,
+            style: FALLBACK_STYLE,
+            center: initialCenter,
+            zoom: initialZoom,
+            minZoom: MIN_ZOOM,
+            maxZoom: MAX_ZOOM,
+            attributionControl: false,
+          });
+        } catch (fallbackErr) {
+          console.error('[MapView] All map initializations failed:', fallbackErr);
+          setMapError('Brak wsparcia dla WebGL w przeglądarce. Przełącz na zakładkę "Lista".');
+          setTilesLoading(false);
+          return;
+        }
+      }
 
       mapRef.current = map;
 
