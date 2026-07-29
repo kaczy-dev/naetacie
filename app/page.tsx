@@ -57,6 +57,7 @@ import { KinematicQuickView } from '@/components/list/KinematicQuickView';
 import { MarketPulseBar } from '@/components/list/MarketPulseBar';
 import { CommandPaletteModal } from '@/components/navigation/CommandPaletteModal';
 import { NotificationsView } from '@/components/notifications/NotificationsView';
+import { TerminalTyper } from '@/components/brand/TerminalTyper';
 import { playUiChime } from '@/lib/audio/chime';
 import { AiInterviewModal } from '@/components/ai/AiInterviewModal';
 import { SalaryBenchmarkingModal } from '@/components/stats/SalaryBenchmarkingModal';
@@ -876,6 +877,9 @@ export default function HomePage() {
 
         return (
           <div className="max-w-3xl mx-auto space-y-2">
+            {/* Real Offers & Salaries Terminal Typer */}
+            <TerminalTyper className="mt-1 shadow-md" />
+
             {/* QOL Quick Filter Bar */}
             <QuickFilterBar
               onSearchChange={(q) => setSearchQuery(q)}

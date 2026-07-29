@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, MapPin, Briefcase, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo, Wordmark } from '@/components/brand/Logo';
+import { TerminalTyper } from '@/components/brand/TerminalTyper';
 
 /**
  * Landing hero — first thing new visitors see.
@@ -48,7 +49,7 @@ export function Hero({ onContinue }: { onContinue: () => void }) {
         </motion.h1>
 
         <motion.p
-          className="text-muted-foreground text-sm md:text-base mb-8 leading-relaxed"
+          className="text-muted-foreground text-sm md:text-base mb-6 leading-relaxed"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
@@ -56,6 +57,16 @@ export function Hero({ onContinue }: { onContinue: () => void }) {
           Realne ogłoszenia z OLX, Pracuj.pl i Indeed — Szczecin i okolice.
           Mapa, dopasowanie do Twoich umiejętności, śledzenie aplikacji.
         </motion.p>
+
+        {/* Live Terminal Stream */}
+        <motion.div
+          className="mb-6"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.45 }}
+        >
+          <TerminalTyper />
+        </motion.div>
 
         {/* Features */}
         <motion.div
