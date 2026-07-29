@@ -9,13 +9,14 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion, type PanInfo } from 'framer-motion';
-import { Map, List, Bell, User, Wifi, WifiOff, Moon, Sun, Monitor, Settings } from 'lucide-react';
+import { Map, List, Bell, User, Wifi, WifiOff, Moon, Sun, Monitor, Settings, Command, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { useOfflineSync } from '@/lib/hooks/useOfflineSync';
 import { Logo, Wordmark } from '@/components/brand/Logo';
 import { MotivationalTagline } from '@/components/brand/MotivationalTagline';
 import { SystemHealthBadge } from '@/components/feedback/SystemHealthBadge';
+import { TerminalTyper } from '@/components/brand/TerminalTyper';
 
 export type TabId = 'map' | 'list' | 'notifications' | 'profile';
 
@@ -25,6 +26,7 @@ interface AppShellProps {
   children: React.ReactNode;
   isLive?: boolean;
   onOpenSettings?: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
@@ -38,7 +40,7 @@ const TAB_ORDER: TabId[] = ['map', 'list', 'notifications', 'profile'];
 const SWIPE_VELOCITY = 300;
 const SWIPE_DISTANCE = 80;
 
-export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSettings }: AppShellProps) {
+export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSettings, onOpenCommandPalette }: AppShellProps) {
   const prefersReducedMotion = useReducedMotion();
   const { isOnline } = useOfflineSync();
   const { mode, setMode } = useTheme();
@@ -91,36 +93,54 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
           <MotivationalTagline className="mt-3" />
         </div>
 
-        {/* Nav items */}
-        <div className="flex-1 py-4 px-3 space-y-1.5">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            const Icon = tab.icon;
-            return (
-              <motion.button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 touch-manipulation',
-                  isActive
-                    ? 'bg-gradient-to-r from-primary/20 via-primary/15 to-primary/5 text-primary shadow-sm border border-primary/20'
-                    : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-                )}
-                whileHover={prefersReducedMotion ? undefined : { x: 5, scale: 1.01 }}
-                whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
-              >
-                <Icon className={cn('w-5 h-5 transition-transform duration-200', isActive ? 'text-primary scale-110' : 'text-muted-foreground')} />
-                {tab.label}
-                {isActive && (
-                  <motion.div
-                    layoutId="sidebar-indicator"
-                    className="ml-auto w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(37,99,235,0.8)]"
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  />
-                )}
-              </motion.button>
-            );
-          })}
+        {/* Nav items + Command Palette */}
+        <div className="flex-1 py-4 px-3 space-y-3">
+          {onOpenCommandPalette && (
+            <button
+              onClick={onOpenCommandPalette}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 transition-all font-bold text-xs shadow-sm group cursor-pointer"
+              title="Otwórz paletę komend (⌘K)"
+            >
+              <span className="flex items-center gap-2">
+                <Command className="w-4 h-4 text-primary group-hover:rotate-12 transition-transform" />
+                <span>Paleta Komend</span>
+              </span>
+              <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-extrabold bg-background/90 text-primary rounded border border-primary/30 shadow-xs">
+                ⌘K
+              </kbd>
+            </button>
+          )}
+
+          <div className="space-y-1.5">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <motion.button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 touch-manipulation',
+                    isActive
+                      ? 'bg-gradient-to-r from-primary/20 via-primary/15 to-primary/5 text-primary shadow-sm border border-primary/20'
+                      : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                  )}
+                  whileHover={prefersReducedMotion ? undefined : { x: 5, scale: 1.01 }}
+                  whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
+                >
+                  <Icon className={cn('w-5 h-5 transition-transform duration-200', isActive ? 'text-primary scale-110' : 'text-muted-foreground')} />
+                  {tab.label}
+                  {isActive && (
+                    <motion.div
+                      layoutId="sidebar-indicator"
+                      className="ml-auto w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(37,99,235,0.8)]"
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Status & Theme */}
@@ -198,6 +218,16 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
           <Wordmark className="text-base" />
         </div>
         <div className="flex items-center gap-2">
+          {onOpenCommandPalette && (
+            <button
+              onClick={onOpenCommandPalette}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+              title="Otwórz paletę komend (⌘K)"
+            >
+              <Command className="w-3.5 h-3.5" />
+              <span>⌘K</span>
+            </button>
+          )}
           {isLive && (
             <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE
@@ -216,7 +246,12 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
       </div>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 pt-12 md:pt-0 pb-[72px] md:pb-0 relative overflow-hidden">
+      <main className="flex-1 min-w-0 pt-12 md:pt-0 pb-[72px] md:pb-0 relative overflow-hidden flex flex-col">
+        {/* Prominent macOS Terminal Live Stream Banner */}
+        <div className="px-3 pt-3 pb-1 max-w-5xl mx-auto w-full shrink-0">
+          <TerminalTyper className="shadow-lg border-emerald-500/40" />
+        </div>
+
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={activeTab}
