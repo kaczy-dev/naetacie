@@ -51,7 +51,7 @@ export default function AnnouncementDetailPage() {
           price: seedItem.price,
           scraped_at: new Date(),
           published_at: new Date(),
-          source_url: ensureAbsoluteUrl(seedItem.source_url) || seedItem.source_url,
+          source_url: ensureAbsoluteUrl(seedItem.source_url, seedItem.source_portal) || seedItem.source_url,
           contact_info: seedItem.phone,
         });
         setTier('premium');
@@ -75,7 +75,7 @@ export default function AnnouncementDetailPage() {
           if (found) {
             setAnnouncement({
               ...found,
-              source_url: found.source_url ? (ensureAbsoluteUrl(found.source_url) || found.source_url) : undefined,
+              source_url: found.source_url ? (ensureAbsoluteUrl(found.source_url, found.source_portal) || found.source_url) : undefined,
             });
             setTier(found.source_url !== undefined ? 'premium' : 'free');
             setLoading(false);

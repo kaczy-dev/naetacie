@@ -101,7 +101,7 @@ export function ProfileSettings() {
   };
 
   // Helper save handlers
-  const updatePref = (key: string, val: unknown, setter: (v: any) => void) => {
+  const updatePref = <T,>(key: string, val: T, setter: (v: T) => void) => {
     setter(val);
     try {
       localStorage.setItem(key, String(val));
@@ -371,7 +371,7 @@ export function ProfileSettings() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => updatePref('naetacie_pref_commute', item.id, setCommuteMode)}
+                  onClick={() => updatePref('naetacie_pref_commute', item.id as 'walk' | 'bike' | 'car' | 'transit', setCommuteMode)}
                   className={`py-2 px-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
                     active
                       ? 'bg-primary text-primary-foreground border-primary shadow-md'

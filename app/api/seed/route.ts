@@ -45,7 +45,9 @@ export async function GET(): Promise<NextResponse> {
         deduplication_key: id,
         title: ad.title,
         description: ad.description,
-        source_url: `https://www.${ad.source_portal === 'olx' ? 'olx.pl/d/oferta' : 'oferteo.pl'}/${ad.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 50)}`,
+        source_url: ad.source_portal === 'olx'
+          ? `https://www.olx.pl/praca/szczecin/q-${encodeURIComponent(ad.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 40))}/`
+          : `https://www.oferteo.pl/remont-i-wykonczenie-mieszkan/szczecin`,
         source_portal: ad.source_portal,
         category: ad.category,
         location_text: ad.location_text,

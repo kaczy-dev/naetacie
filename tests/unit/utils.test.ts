@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { ensureAbsoluteUrl, formatShortPrice, triggerHaptic } from '@/lib/utils';
 
 describe('Utility Helper Functions (Unit Tests)', () => {
@@ -20,8 +20,11 @@ describe('Utility Helper Functions (Unit Tests)', () => {
       expect(ensureAbsoluteUrl('www.oferteo.pl/szczecin')).toBe('https://www.oferteo.pl/szczecin');
     });
 
-    it('handles relative path links correctly', () => {
-      expect(ensureAbsoluteUrl('/announcements/seed-1')).toBe('https:///announcements/seed-1');
+    it('handles relative path links and portal hints correctly', () => {
+      expect(ensureAbsoluteUrl('/d/oferta/praca-murarz-ID123.html')).toBe('https://www.olx.pl/d/oferta/praca-murarz-ID123.html');
+      expect(ensureAbsoluteUrl('/praca/szczecin', 'pracuj')).toBe('https://www.pracuj.pl/praca/szczecin');
+      expect(ensureAbsoluteUrl('//www.olx.pl/d/oferta/123')).toBe('https://www.olx.pl/d/oferta/123');
+      expect(ensureAbsoluteUrl('/announcements/seed-1')).toBe('https://www.olx.pl/announcements/seed-1');
     });
   });
 

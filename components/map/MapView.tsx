@@ -23,7 +23,7 @@ import { MapDistrictAnalytics } from './MapDistrictAnalytics';
 import { MapGeoAlert } from './MapGeoAlert';
 import { MobileBottomSheet } from './MobileBottomSheet';
 import { SearchAreaButton } from './SearchAreaButton';
-import { triggerHaptic, formatShortPrice, ensureAbsoluteUrl } from '@/lib/utils';
+import { triggerHaptic, formatShortPrice, ensureAbsoluteUrl, getAnnouncementExternalUrl } from '@/lib/utils';
 import { isPointInPolygon } from './utils';
 
 
@@ -149,29 +149,39 @@ function getMarkerHtml(
   price?: string | number | null
 ): string {
   const cat = CATEGORIES[normalizeCategory(category)];
-  const w = 34;
-  const h = 42;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const scaleFactor = isMobile ? 0.67 : 1.0; // Scaled down by 1/3 (67% size) on mobile
+  const w = Math.round(34 * scaleFactor);
+  const h = Math.round(42 * scaleFactor);
   const opacity = dimmed ? '0.35' : '1';
   const scale = isSelected ? 'scale(1.22)' : 'scale(1)';
   const glow = isSelected
-    ? `filter: drop-shadow(0 4px 12px ${cat.color}cc) drop-shadow(0 1px 3px rgba(0,0,0,0.4));`
-    : 'filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35));';
+    ? `filter: drop-shadow(0 3px 10px ${cat.color}cc) drop-shadow(0 1px 2px rgba(0,0,0,0.4));`
+    : 'filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));';
 
   const shortPrice = price ? formatShortPrice(price) : null;
+  const priceFontSize = isMobile ? '8px' : '10px';
+  const pricePadding = isMobile ? '1px 4px' : '1.5px 6px';
+  const priceBottom = isMobile ? '-14px' : '-18px';
+
   const priceBadgeHtml = shortPrice
-    ? `<div style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);background:${isSelected ? '#059669' : '#0f172a'};color:#ffffff;font-size:10px;font-weight:800;padding:1.5px 6px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);border:1px solid ${isSelected ? '#34d399' : 'rgba(255,255,255,0.2)'};">${shortPrice}</div>`
+    ? `<div style="position:absolute;bottom:${priceBottom};left:50%;transform:translateX(-50%);background:${isSelected ? '#059669' : '#0f172a'};color:#ffffff;font-size:${priceFontSize};font-weight:800;padding:${pricePadding};border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);border:1px solid ${isSelected ? '#34d399' : 'rgba(255,255,255,0.2)'};">${shortPrice}</div>`
     : '';
 
-  // Pulse ring shown only for selected
+  const pulseSize = isMobile ? '30px' : '44px';
   const pulseRing = isSelected
-    ? `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-65%);width:44px;height:44px;border-radius:50%;border:2.5px solid ${cat.color};animation:marker-pulse 1.5s cubic-bezier(0.4,0,0.6,1) infinite;pointer-events:none;"></div>`
+    ? `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-65%);width:${pulseSize};height:${pulseSize};border-radius:50%;border:2px solid ${cat.color};animation:marker-pulse 1.5s cubic-bezier(0.4,0,0.6,1) infinite;pointer-events:none;"></div>`
     : '';
 
+  const heartSize = isMobile ? '11px' : '15px';
+  const heartFontSize = isMobile ? '6px' : '8px';
   const heartBadge = isFavorite
-    ? `<div style="position:absolute;top:-5px;right:-5px;width:15px;height:15px;background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:8px;line-height:1;color:white;box-shadow:0 1px 4px rgba(239,68,68,0.6);">♥</div>`
+    ? `<div style="position:absolute;top:-4px;right:-4px;width:${heartSize};height:${heartSize};background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:50%;border:1.5px solid white;display:flex;align-items:center;justify-content:center;font-size:${heartFontSize};line-height:1;color:white;box-shadow:0 1px 4px rgba(239,68,68,0.6);">♥</div>`
     : '';
 
   const gradId = `mg-${cat.color.replace('#','')}`;
+  const iconFontSize = isMobile ? '9' : '12';
+
   return `
     <div style="position:relative;width:${w}px;height:${h}px;cursor:pointer;transform:${scale};transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1);opacity:${opacity};">
       ${pulseRing}
@@ -187,7 +197,7 @@ function getMarkerHtml(
             fill="url(#${gradId})" stroke="white" stroke-width="2"
           />
           <circle cx="17" cy="16" r="10" fill="rgba(255,255,255,0.95)"/>
-          <text x="17" y="20.5" text-anchor="middle" font-size="12" dominant-baseline="middle">${cat.icon}</text>
+          <text x="17" y="20.5" text-anchor="middle" font-size="${iconFontSize}" dominant-baseline="middle">${cat.icon}</text>
         </svg>
       </div>
       ${priceBadgeHtml}
@@ -215,7 +225,7 @@ function ControlButton({
       onClick={onClick}
       title={title}
       aria-label={ariaLabel}
-      className="w-8 h-8 text-xs md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
+      className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
       style={{
         position: 'absolute', top: `${top}px`, right: '10px', zIndex: 10,
         background: ui.surface, border: `1px solid ${ui.border}`,
@@ -517,7 +527,7 @@ function MarkerPopup({
             📋 Na liście
           </button>
           <a
-            href={ensureAbsoluteUrl(ad.source_url) || `/announcements/${ad.id}`}
+            href={getAnnouncementExternalUrl(ad)}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -1065,6 +1075,8 @@ export default function MapView({
           });
         }
 
+        const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+
         // Cluster Circle Outer (halo/glow ring)
         if (!map.getLayer('cluster-halo')) {
           map.addLayer({
@@ -1080,10 +1092,9 @@ export default function MapView({
                 '#f59e0b', 30,
                 '#ef4444'
               ],
-              'circle-radius': [
-                'step', ['get', 'point_count'],
-                26, 5, 32, 15, 38, 30, 46
-              ],
+              'circle-radius': isMobileScreen
+                ? ['step', ['get', 'point_count'], 17, 5, 21, 15, 25, 30, 30]
+                : ['step', ['get', 'point_count'], 26, 5, 32, 15, 38, 30, 46],
               'circle-opacity': 0.18,
               'circle-stroke-width': 0,
             }
@@ -1106,15 +1117,10 @@ export default function MapView({
                 '#f59e0b', 30,  // < 30 jobs: Warm amber
                 '#ef4444'       // >= 30 jobs: Coral red
               ],
-              'circle-radius': [
-                'step',
-                ['get', 'point_count'],
-                18, 5,
-                22, 15,
-                26, 30,
-                32
-              ],
-              'circle-stroke-width': 3,
+              'circle-radius': isMobileScreen
+                ? ['step', ['get', 'point_count'], 12, 5, 15, 15, 18, 30, 22]
+                : ['step', ['get', 'point_count'], 18, 5, 22, 15, 26, 30, 32],
+              'circle-stroke-width': isMobileScreen ? 2 : 3,
               'circle-stroke-color': dark ? 'rgba(255, 255, 255, 0.9)' : '#ffffff',
               'circle-opacity': 0.95,
             }
@@ -1131,7 +1137,7 @@ export default function MapView({
             layout: {
               'text-field': '{point_count_abbreviated}',
               'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-              'text-size': 12
+              'text-size': isMobileScreen ? 9 : 12
             },
             paint: {
               'text-color': '#ffffff'
@@ -1919,7 +1925,7 @@ export default function MapView({
               key={chip.id}
               onClick={() => {
                 triggerHaptic(10);
-                setQuickFilter(chip.id as any);
+                setQuickFilter(chip.id as 'all' | 'high_pay' | 'remote' | 'recent' | 'budowa' | 'instalacje');
               }}
               style={{
                 background: isActive ? '#2563eb' : ui.surfaceAlpha,

@@ -1,6 +1,7 @@
 'use client';
 
 import type { MaskedAnnouncement } from '@/lib/types/announcement';
+import { getAnnouncementExternalUrl } from '@/lib/utils';
 
 export interface AnnouncementDetailProps {
   announcement: MaskedAnnouncement | null;
@@ -145,12 +146,12 @@ export default function AnnouncementDetail({
                 </span>
               ) : (
                 <a
-                  href={announcement.source_url}
+                  href={getAnnouncementExternalUrl(announcement)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="announcement-detail__link"
                 >
-                  {announcement.source_url}
+                  {announcement.source_url || getAnnouncementExternalUrl(announcement)}
                 </a>
               )}
             </dd>

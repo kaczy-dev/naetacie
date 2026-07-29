@@ -6,7 +6,7 @@ import {
   X, MapPin, ExternalLink, Heart, Navigation,
   Phone, Sparkles, FileText
 } from 'lucide-react';
-import { ensureAbsoluteUrl } from '@/lib/utils';
+import { ensureAbsoluteUrl, getAnnouncementExternalUrl } from '@/lib/utils';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { normalizeCategory, CATEGORIES } from '@/lib/data/categories';
 import { calculateNetSalary } from '@/lib/salary/calculator';
@@ -40,7 +40,7 @@ export function KinematicQuickView({
   const netBreakdown = typeof ad.price === 'number' ? calculateNetSalary(ad.price) : null;
   const aiEstimate = typeof ad.price !== 'number' ? estimateSalary(ad.category, ad.title, ad.description) : null;
   const reqs = extractRequirements(ad.title, ad.description);
-  const safeUrl = ensureAbsoluteUrl(ad.source_url) || `/announcements/${ad.id}`;
+  const safeUrl = getAnnouncementExternalUrl(ad);
 
   return (
     <>
@@ -206,16 +206,21 @@ export function KinematicQuickView({
               >
                 <Navigation className="w-4 h-4 text-primary" /> Pokaż na mapie
               </Button>
-              <a
-                href={safeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1"
+              <Button
+                asChild
+                className="flex-1 text-xs font-extrabold gap-2 h-10 bg-primary text-primary-foreground shadow-md cursor-pointer"
+                onPointerDown={(e) => e.stopPropagation()}
               >
-                <Button className="w-full text-xs font-extrabold gap-2 h-10 bg-primary text-primary-foreground shadow-md">
-                  <ExternalLink className="w-4 h-4" /> Aplikuj na {ad.source_portal}
-                </Button>
-              </a>
+                <a
+                  href={safeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="w-4 h-4" /> Aplikuj na {ad.source_portal || 'OLX'}
+                </a>
+              </Button>
             </div>
           </motion.div>
         </div>

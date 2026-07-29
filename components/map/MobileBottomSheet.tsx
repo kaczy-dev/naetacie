@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { normalizeCategory, CATEGORIES } from '@/lib/data/categories';
+import { getAnnouncementExternalUrl } from '@/lib/utils';
 import { triggerHaptic } from '@/lib/utils';
 
 export interface MobileBottomSheetProps {
@@ -41,8 +42,8 @@ export interface MobileBottomSheetProps {
 export type SheetSnapState = 'collapsed' | 'medium' | 'expanded';
 
 const SNAP_HEIGHTS: Record<SheetSnapState, string> = {
-  collapsed: '76px',
-  medium: '44vh',
+  collapsed: '62px',
+  medium: '42vh',
   expanded: '88vh',
 };
 
@@ -246,17 +247,17 @@ export function MobileBottomSheet({
                 >
                   <Navigation className="w-3.5 h-3.5" /> Pokaż na mapie
                 </button>
-                {currentDisplayAd.source_url && (
-                  <a
-                    href={currentDisplayAd.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1 py-2.5 px-3 border border-border/80 text-foreground text-xs font-semibold rounded-xl hover:bg-accent active:scale-95 transition-all"
-                  >
-                    <span>Zobacz</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
+                <a
+                  href={getAnnouncementExternalUrl(currentDisplayAd)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center justify-center gap-1 py-2.5 px-3 border border-border/80 text-foreground text-xs font-semibold rounded-xl hover:bg-accent active:scale-95 transition-all cursor-pointer"
+                >
+                  <span>Zobacz w {currentDisplayAd.source_portal || 'OLX'}</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
               </div>
             </div>
           )}

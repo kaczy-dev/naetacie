@@ -39,7 +39,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { cn, triggerHaptic, exportApplicationsToCSV, ensureAbsoluteUrl } from '@/lib/utils';
+import { cn, triggerHaptic, exportApplicationsToCSV, ensureAbsoluteUrl, getAnnouncementExternalUrl } from '@/lib/utils';
 import { ALL_CATEGORY_KEYS, normalizeCategory, type CategoryKey } from '@/lib/data/categories';
 import { searchAnnouncements, tokenize, isSzczecinAnnouncement } from '@/lib/search/engine';
 import type { DisplayAnnouncement } from '@/lib/types/display';
@@ -58,6 +58,12 @@ import { MarketPulseBar } from '@/components/list/MarketPulseBar';
 import { CommandPaletteModal } from '@/components/navigation/CommandPaletteModal';
 import { NotificationsView } from '@/components/notifications/NotificationsView';
 import { playUiChime } from '@/lib/audio/chime';
+import { AiInterviewModal } from '@/components/ai/AiInterviewModal';
+import { SalaryBenchmarkingModal } from '@/components/stats/SalaryBenchmarkingModal';
+import { CvGeneratorModal } from '@/components/cv/CvGeneratorModal';
+import { EmployerPortalModal } from '@/components/employer/EmployerPortalModal';
+import { EmployerReviewModal } from '@/components/reviews/EmployerReviewModal';
+import { generateApplicationMessageDraft } from '@/lib/contact/draftGenerator';
 
 type SortOption = 'match' | 'newest' | 'oldest' | 'price-asc' | 'price-desc';
 
@@ -130,7 +136,7 @@ function MatchBadge({ score, label }: { score: number; label: string }) {
 }
 
 function AnnouncementCard({
-  ad, index, isFavorite, isSelected, match, status, onToggleFavorite, onShowOnMap, onSetStatus, onQuickView,
+  ad, index, isFavorite, isSelected, match, status, onToggleFavorite, onShowOnMap, onSetStatus, onQuickView, onOpenAiInterview, onOpenSalaryBenchmark,
 }: {
   ad: DisplayAnnouncement;
   index: number;
@@ -142,6 +148,8 @@ function AnnouncementCard({
   onShowOnMap: () => void;
   onSetStatus: (s: ApplicationStatus) => void;
   onQuickView?: () => void;
+  onOpenAiInterview?: () => void;
+  onOpenSalaryBenchmark?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { share, copied } = useShare();
@@ -291,11 +299,12 @@ function AnnouncementCard({
                 {/* Title */}
                 <h3 className="font-bold text-sm md:text-base text-foreground leading-snug tracking-tight hover:text-primary transition-colors duration-200">
                   <a
-                    href={ensureAbsoluteUrl(ad.source_url) || `/announcements/${ad.id}`}
+                    href={getAnnouncementExternalUrl(ad)}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
-                    className="hover:underline inline-flex items-center gap-1.5"
+                    className="hover:underline inline-flex items-center gap-1.5 cursor-pointer"
                     title="Otwórz ogłoszenie w nowej karcie"
                   >
                     <HighlightText text={ad.title} query={searchWord} />
@@ -425,27 +434,68 @@ function AnnouncementCard({
 
                   {/* Action buttons */}
                   <div className="flex items-center gap-2 pt-2 border-t border-border/30">
-                    <a
-                      href={ensureAbsoluteUrl(ad.source_url) || `/announcements/${ad.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex-1"
+                    <Button
+                      asChild
+                      variant="default"
+                      size="sm"
+                      className="flex-1 gap-2 text-xs font-bold shadow-md cursor-pointer hover:scale-[1.01] transition-transform"
+                      onPointerDown={(e) => e.stopPropagation()}
                     >
-                      <Button variant="default" size="sm" className="w-full gap-2 text-xs font-bold shadow-md cursor-pointer hover:scale-[1.01] transition-transform">
-                        <ExternalLink className="w-4 h-4" /> {ad.source_url ? `Zobacz w ${ad.source_portal || 'źródle'}` : 'Otwórz ogłoszenie'}
-                      </Button>
-                    </a>
+                      <a
+                        href={getAnnouncementExternalUrl(ad)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink className="w-4 h-4" /> Zobacz w {ad.source_portal || 'OLX'}
+                      </a>
+                    </Button>
                     {hasLocation && (
-                      <>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); onShowOnMap(); }}
+                        className="gap-1.5 text-xs font-semibold shadow-sm cursor-pointer"
+                      >
+                        <MapIcon className="w-4 h-4 text-primary" /> Na mapie
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); onOpenAiInterview?.(); }}
+                      className="gap-1 text-xs font-semibold text-primary border-primary/30 bg-primary/5 hover:bg-primary/10 cursor-pointer"
+                      title="Trenuj rozmowę kwalifikacyjną z AI"
+                    >
+                      🤖 Trening AI
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); onOpenSalaryBenchmark?.(); }}
+                      className="gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 cursor-pointer"
+                      title="Porównaj stawkę z rynkiem"
+                    >
+                      📊 Stawki
+                    </Button>
+                    {ad.phone && (() => {
+                      const msgDraft = generateApplicationMessageDraft(ad.phone, ad.title, ad.source_portal);
+                      return msgDraft ? (
                         <Button
-                          variant="secondary"
+                          variant="outline"
                           size="sm"
-                          onClick={(e) => { e.stopPropagation(); onShowOnMap(); }}
-                          className="gap-1.5 text-xs font-semibold shadow-sm cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(msgDraft.smsUrl, '_blank');
+                          }}
+                          className="gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 cursor-pointer"
+                          title="Wyślij SMS z aplikacji"
                         >
-                          <MapIcon className="w-4 h-4 text-primary" /> Na mapie
+                          💬 Wyślij SMS
                         </Button>
+                      ) : null;
+                    })()}
                         {onQuickView && (
                           <Button
                             variant="secondary"
@@ -465,8 +515,6 @@ function AnnouncementCard({
                         >
                           🚌 Dojazd ZDiTM
                         </a>
-                      </>
-                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -551,23 +599,25 @@ export default function HomePage() {
 
   const handleVoiceSearch = useCallback(() => {
     if (typeof window === 'undefined') return;
-    const SpeechRecognition = (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition || (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition;
+    const win = window as unknown as Record<string, unknown>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognitionClass = (win.SpeechRecognition || win.webkitSpeechRecognition) as any;
 
-    if (!SpeechRecognition) {
+    if (!SpeechRecognitionClass) {
       showToast('error', 'Wyszukiwanie głosowe nie jest wspierane w tej przeglądarce.');
       return;
     }
 
     triggerHaptic(15);
-    const recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognitionClass();
     recognition.lang = 'pl-PL';
     recognition.interimResults = false;
 
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
     recognition.onerror = () => setIsListening(false);
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
+    recognition.onresult = (event: { results: Array<Array<{ transcript: string }>> }) => {
+      const transcript = event.results[0]?.[0]?.transcript;
       if (transcript) {
         setSearchQuery(transcript);
         triggerHaptic([10, 20, 10]);
@@ -596,6 +646,13 @@ export default function HomePage() {
   // --- Quick View Drawer & Command Palette State ---
   const [quickViewAd, setQuickViewAd] = useState<DisplayAnnouncement | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // --- AI Interview, Benchmark, CV, Employer & Review Modals ---
+  const [interviewModalAd, setInterviewModalAd] = useState<DisplayAnnouncement | null>(null);
+  const [benchmarkModalAd, setBenchmarkModalAd] = useState<DisplayAnnouncement | null>(null);
+  const [cvGeneratorOpen, setCvGeneratorOpen] = useState(false);
+  const [employerPortalOpen, setEmployerPortalOpen] = useState(false);
+  const [reviewModalCompany, setReviewModalCompany] = useState<string | null>(null);
 
   // --- Map <-> List selection sync ---
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -894,6 +951,24 @@ export default function HomePage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => setCvGeneratorOpen(true)}
+                  className="gap-1 text-xs cursor-pointer font-semibold"
+                  title="Generator CV Budowlanego w PDF"
+                >
+                  📄 CV
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEmployerPortalOpen(true)}
+                  className="gap-1 text-xs text-primary border-primary/30 bg-primary/5 hover:bg-primary/10 cursor-pointer font-bold"
+                  title="Panel Pracodawcy i Ogłoszenia B2B"
+                >
+                  🏢 Panel B2B
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     triggerHaptic(15);
                     const tracked = allAnnouncements.filter((a) => getStatus(a.id) || isFavorite(a.id));
@@ -1047,6 +1122,8 @@ export default function HomePage() {
                           showToast('info', `Status: ${STATUS_META[s].label}`);
                         }}
                         onQuickView={() => setQuickViewAd(ad)}
+                        onOpenAiInterview={() => setInterviewModalAd(ad)}
+                        onOpenSalaryBenchmark={() => setBenchmarkModalAd(ad)}
                       />
                     </div>
                   ))}
@@ -1160,6 +1237,40 @@ export default function HomePage() {
           setActiveTab('list');
           setSearchQuery('zdalna');
         }}
+      />
+
+      {/* AI Interview Simulator Modal */}
+      <AiInterviewModal
+        ad={interviewModalAd}
+        isOpen={interviewModalAd !== null}
+        onClose={() => setInterviewModalAd(null)}
+      />
+
+      {/* Salary Benchmarking Modal */}
+      <SalaryBenchmarkingModal
+        ad={benchmarkModalAd}
+        isOpen={benchmarkModalAd !== null}
+        onClose={() => setBenchmarkModalAd(null)}
+      />
+
+      {/* PDF CV Generator Modal */}
+      <CvGeneratorModal
+        isOpen={cvGeneratorOpen}
+        onClose={() => setCvGeneratorOpen(false)}
+      />
+
+      {/* Employer Portal Modal */}
+      <EmployerPortalModal
+        isOpen={employerPortalOpen}
+        onClose={() => setEmployerPortalOpen(false)}
+        onAdCreated={(t) => showToast('success', `Dodano ogłoszenie bezpośrednie: ${t}`)}
+      />
+
+      {/* Employer & Crew Review Modal */}
+      <EmployerReviewModal
+        companyName={reviewModalCompany}
+        isOpen={reviewModalCompany !== null}
+        onClose={() => setReviewModalCompany(null)}
       />
 
       {/* Guest prompt modal */}

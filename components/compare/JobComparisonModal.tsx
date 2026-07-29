@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scale, X, MapPin, ExternalLink } from 'lucide-react';
-import { ensureAbsoluteUrl } from '@/lib/utils';
+import { ensureAbsoluteUrl, getAnnouncementExternalUrl } from '@/lib/utils';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { calculateNetSalary } from '@/lib/salary/calculator';
 
@@ -56,7 +56,7 @@ export function JobComparisonModal({ ads, isOpen, onClose, onRemove }: JobCompar
               <div className="md:hidden flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory py-2">
                 {ads.map((ad) => {
                   const net = typeof ad.price === 'number' ? calculateNetSalary(ad.price).uopNet : null;
-                  const safeUrl = ensureAbsoluteUrl(ad.source_url) || `/announcements/${ad.id}`;
+                  const safeUrl = getAnnouncementExternalUrl(ad);
                   return (
                     <div
                       key={ad.id}

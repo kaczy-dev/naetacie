@@ -10,19 +10,40 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+declare global {
+  interface Window {
+    pwaDeferredPrompt?: BeforeInstallPromptEvent | null;
+    triggerPwaInstall?: () => Promise<void>;
+  }
+}
+
 export function PwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      window.pwaDeferredPrompt = promptEvent;
+      setDeferredPrompt(promptEvent);
 
-      // Don't show if user previously dismissed it in this session
       const dismissed = sessionStorage.getItem('naetacie_pwa_dismissed');
       if (!dismissed) {
+        // Prevent default browser infobar to show custom PWA prompt UI
+        e.preventDefault();
         setShowPrompt(true);
+      }
+    };
+
+    window.triggerPwaInstall = async () => {
+      const activePrompt = window.pwaDeferredPrompt || deferredPrompt;
+      if (activePrompt) {
+        try {
+          await activePrompt.prompt();
+          await activePrompt.userChoice;
+        } catch {
+          /* ignore error */
+        }
       }
     };
 
@@ -31,15 +52,21 @@ export function PwaInstallPrompt() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
     };
-  }, []);
+  }, [deferredPrompt]);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    setShowPrompt(false);
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
+    const activePrompt = deferredPrompt || window.pwaDeferredPrompt;
+    if (!activePrompt) return;
+    try {
+      setShowPrompt(false);
+      await activePrompt.prompt();
+      const { outcome } = await activePrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        window.pwaDeferredPrompt = null;
+      }
+    } catch (err) {
+      console.warn('PWA install prompt error:', err);
     }
   };
 
@@ -47,6 +74,8 @@ export function PwaInstallPrompt() {
     setShowPrompt(false);
     sessionStorage.setItem('naetacie_pwa_dismissed', 'true');
   };
+
+  if (!showPrompt) return null;
 
   return (
     <AnimatePresence>
@@ -72,7 +101,7 @@ export function PwaInstallPrompt() {
             </div>
             <button
               onClick={handleDismiss}
-              className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-accent"
+              className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-accent cursor-pointer"
               aria-label="Zamknij"
             >
               <X className="w-4 h-4" />
@@ -83,7 +112,7 @@ export function PwaInstallPrompt() {
             <Button
               onClick={handleInstallClick}
               size="sm"
-              className="flex-1 text-xs font-bold gap-1.5 h-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+              className="flex-1 text-xs font-bold gap-1.5 h-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" /> Zainstaluj teraz
             </Button>
@@ -91,7 +120,7 @@ export function PwaInstallPrompt() {
               onClick={handleDismiss}
               variant="outline"
               size="sm"
-              className="text-xs font-semibold h-8 text-muted-foreground"
+              className="text-xs font-semibold h-8 text-muted-foreground cursor-pointer"
             >
               Później
             </Button>
@@ -101,3 +130,4 @@ export function PwaInstallPrompt() {
     </AnimatePresence>
   );
 }
+
