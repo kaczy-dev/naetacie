@@ -124,7 +124,7 @@ function parseOlxOffer(offer: OlxOffer): ScrapedAd | null {
   const region = offer.location?.region?.normalized_name?.toLowerCase();
   if (region && region !== ALLOWED_REGION) return null;
 
-  let rawUrl = (offer.url || '').trim();
+  const rawUrl = (offer.url || '').trim();
   let sourceUrl = '';
   if (rawUrl) {
     const abs = ensureAbsoluteUrl(rawUrl, 'olx');

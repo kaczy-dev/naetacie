@@ -54,7 +54,7 @@ function parseIndeedRssItem(itemXml: string): ScrapedAd | null {
   if (!titleMatch || !linkMatch) return null;
 
   const title = cleanText(titleMatch[1]);
-  let rawUrl = cleanText(linkMatch[1]);
+  const rawUrl = cleanText(linkMatch[1]);
   const description = descMatch ? cleanText(descMatch[1]).slice(0, 350) : title;
   const company = sourceMatch ? cleanText(sourceMatch[1]) : null;
   const pubDate = pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString();
