@@ -60,9 +60,9 @@ export function TerminalTyper({ phrases = DEFAULT_PHRASES, className }: Terminal
           <span className="w-2.5 h-2.5 rounded-full bg-red-500/80 inline-block shadow-sm" />
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block shadow-sm" />
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block shadow-sm" />
-          <span className="ml-2 font-semibold text-emerald-400/80 flex items-center gap-1">
-            <Terminal className="w-3 h-3 text-emerald-400" />
-            root@naetacie:~$ ./live-feed.sh
+          <span className="ml-2 font-bold text-emerald-400 flex items-center gap-1 uppercase tracking-wider">
+            <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+            SZCZECIN NA ETACIE
           </span>
         </div>
 

@@ -15,6 +15,7 @@ import {
   MapPin, Clock, Sparkles, X, ArrowRight, RefreshCw, Loader2,
   Search, Heart, ExternalLink, SlidersHorizontal, Map as MapIcon,
   Target, Briefcase, Share2, Check, Mic, WifiOff, Download,
+  ChevronDown, ChevronUp, List,
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -603,7 +604,8 @@ export default function HomePage() {
   const { show: showToast } = useToast();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState<TabId>('map');
+  const [activeTab, setActiveTab] = useState<TabId>('list');
+  const [isListCollapsed, setIsListCollapsed] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [guestPrompt, setGuestPrompt] = useState<string | null>(null);
 
@@ -1111,60 +1113,102 @@ export default function HomePage() {
               <MarketStats overview={marketOverview} />
             )}
 
-            {/* List */}
-            {scrapeLoading && allAnnouncements.length === 0 ? (
-              <ListSkeleton />
-            ) : listAds.length === 0 ? (
-              <div className="p-8 text-center">
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-                  <MapPin className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-muted-foreground text-sm">
-                    {searchQuery ? 'Brak wyników dla tego wyszukiwania' : showFavoritesOnly ? 'Brak ulubionych ogłoszeń' : 'Brak ogłoszeń'}
-                  </p>
-                  {!searchQuery && !showFavoritesOnly && (
-                    <Button variant="outline" className="mt-4" onClick={() => scrapeNow(undefined, 40)} disabled={scrapeLoading}>
-                      {scrapeLoading ? 'Scrapuję...' : 'Pobierz ogłoszenia'}
-                    </Button>
+            {/* Prominent Collapsible List Accordion Toggle Bar */}
+            <div className="mx-4 my-2 px-4 py-2.5 flex items-center justify-between bg-card/90 border border-primary/20 rounded-2xl shadow-md glass">
+              <div className="flex items-center gap-2">
+                <List className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold text-foreground">
+                  Zwijana Lista Ofert ({listAds.length} {listAds.length === 1 ? 'oferta' : 'ofert'})
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  triggerHaptic(10);
+                  setIsListCollapsed(!isListCollapsed);
+                }}
+                className="gap-1.5 text-xs font-extrabold text-primary hover:bg-primary/10 rounded-xl h-8 cursor-pointer"
+              >
+                {isListCollapsed ? (
+                  <>
+                    <span>Rozwiń Listę</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </>
+                ) : (
+                  <>
+                    <span>Zwiń Listę</span>
+                    <ChevronUp className="w-4 h-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* List Content */}
+            <AnimatePresence>
+              {!isListCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  {scrapeLoading && allAnnouncements.length === 0 ? (
+                    <ListSkeleton />
+                  ) : listAds.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+                        <MapPin className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                        <p className="text-muted-foreground text-sm">
+                          {searchQuery ? 'Brak wyników dla tego wyszukiwania' : showFavoritesOnly ? 'Brak ulubionych ogłoszeń' : 'Brak ogłoszeń'}
+                        </p>
+                        {!searchQuery && !showFavoritesOnly && (
+                          <Button variant="outline" className="mt-4" onClick={() => scrapeNow(undefined, 40)} disabled={scrapeLoading}>
+                            {scrapeLoading ? 'Scrapuję...' : 'Pobierz ogłoszenia'}
+                          </Button>
+                        )}
+                      </motion.div>
+                    </div>
+                  ) : (
+                    <PullToRefresh onRefresh={async () => { triggerHaptic(15); await scrapeNow(undefined, 40); }}>
+                      <div className="p-4 space-y-3">
+                        {listAds.map((ad, i) => (
+                          <div
+                            key={ad.id}
+                            ref={(el) => {
+                              if (el) cardRefs.current.set(ad.id, el);
+                              else cardRefs.current.delete(ad.id);
+                            }}
+                          >
+                            <AnnouncementCard
+                              ad={ad}
+                              index={i}
+                              isFavorite={isFavorite(ad.id)}
+                              isSelected={ad.id === selectedId}
+                              match={prefsActive ? matchMap.get(ad.id) ?? null : null}
+                              status={getStatus(ad.id)}
+                              onToggleFavorite={() => {
+                                const wasFav = isFavorite(ad.id);
+                                toggleFavorite(ad.id);
+                                showToast('success', wasFav ? 'Usunięto z ulubionych' : 'Dodano do ulubionych ❤️');
+                              }}
+                              onShowOnMap={() => handleShowOnMap(ad.id)}
+                              onSetStatus={(s) => {
+                                setStatus(ad.id, s);
+                                showToast('info', `Status: ${STATUS_META[s].label}`);
+                              }}
+                              onQuickView={() => setQuickViewAd(ad)}
+                              onOpenAiInterview={() => setInterviewModalAd(ad)}
+                              onOpenSalaryBenchmark={() => setBenchmarkModalAd(ad)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </PullToRefresh>
                   )}
                 </motion.div>
-              </div>
-            ) : (
-              <PullToRefresh onRefresh={async () => { triggerHaptic(15); await scrapeNow(undefined, 40); }}>
-                <div className="p-4 space-y-3">
-                  {listAds.map((ad, i) => (
-                    <div
-                      key={ad.id}
-                      ref={(el) => {
-                        if (el) cardRefs.current.set(ad.id, el);
-                        else cardRefs.current.delete(ad.id);
-                      }}
-                    >
-                      <AnnouncementCard
-                        ad={ad}
-                        index={i}
-                        isFavorite={isFavorite(ad.id)}
-                        isSelected={ad.id === selectedId}
-                        match={prefsActive ? matchMap.get(ad.id) ?? null : null}
-                        status={getStatus(ad.id)}
-                        onToggleFavorite={() => {
-                          const wasFav = isFavorite(ad.id);
-                          toggleFavorite(ad.id);
-                          showToast('success', wasFav ? 'Usunięto z ulubionych' : 'Dodano do ulubionych ❤️');
-                        }}
-                        onShowOnMap={() => handleShowOnMap(ad.id)}
-                        onSetStatus={(s) => {
-                          setStatus(ad.id, s);
-                          showToast('info', `Status: ${STATUS_META[s].label}`);
-                        }}
-                        onQuickView={() => setQuickViewAd(ad)}
-                        onOpenAiInterview={() => setInterviewModalAd(ad)}
-                        onOpenSalaryBenchmark={() => setBenchmarkModalAd(ad)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </PullToRefresh>
-            )}
+              )}
+            </AnimatePresence>
           </div>
         );
       }

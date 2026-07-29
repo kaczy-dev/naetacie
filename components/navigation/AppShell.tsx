@@ -30,13 +30,13 @@ interface AppShellProps {
 }
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: 'map', label: 'Mapa', icon: Map },
-  { id: 'list', label: 'Lista', icon: List },
+  { id: 'list', label: 'Lista Ofert', icon: List },
+  { id: 'map', label: 'Mapa 3D', icon: Map },
   { id: 'notifications', label: 'Powiadomienia', icon: Bell },
   { id: 'profile', label: 'Profil', icon: User },
 ];
 
-const TAB_ORDER: TabId[] = ['map', 'list', 'notifications', 'profile'];
+const TAB_ORDER: TabId[] = ['list', 'map', 'notifications', 'profile'];
 const SWIPE_VELOCITY = 300;
 const SWIPE_DISTANCE = 80;
 
