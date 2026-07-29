@@ -93,8 +93,8 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
           <MotivationalTagline className="mt-3" />
         </div>
 
-        {/* Nav items + Command Palette */}
-        <div className="flex-1 py-4 px-3 space-y-3">
+        {/* Nav items + Command Palette + macOS Terminal Console */}
+        <div className="flex-1 py-4 px-3 space-y-3 overflow-y-auto">
           {onOpenCommandPalette && (
             <button
               onClick={onOpenCommandPalette}
@@ -111,7 +111,10 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
             </button>
           )}
 
-          <div className="space-y-1.5">
+          {/* macOS Terminal Console directly under Command Palette */}
+          <TerminalTyper className="shadow-md" />
+
+          <div className="space-y-1.5 pt-1">
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
@@ -247,9 +250,9 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
 
       {/* Main content */}
       <main className="flex-1 min-w-0 pt-12 md:pt-0 pb-[72px] md:pb-0 relative overflow-hidden flex flex-col">
-        {/* Prominent macOS Terminal Live Stream Banner */}
-        <div className="px-3 pt-3 pb-1 max-w-5xl mx-auto w-full shrink-0">
-          <TerminalTyper className="shadow-lg border-emerald-500/40" />
+        {/* Mobile Terminal Stream Banner directly under mobile top bar */}
+        <div className="md:hidden px-3 pt-2.5 pb-0.5">
+          <TerminalTyper className="shadow-md" />
         </div>
 
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
