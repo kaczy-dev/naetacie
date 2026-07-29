@@ -115,6 +115,15 @@ export function JobComparisonModal({ ads, isOpen, onClose, onRemove }: JobCompar
                         href={safeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (safeUrl) {
+                            const win = window.open(safeUrl, '_blank', 'noopener,noreferrer');
+                            if (!win) window.location.href = safeUrl;
+                          }
+                        }}
                         className="flex items-center justify-center gap-1.5 w-full py-2 bg-primary text-primary-foreground font-bold text-xs rounded-lg active:scale-95 transition-all mt-2"
                       >
                         <ExternalLink className="w-3.5 h-3.5" /> Zobacz ogłoszenie

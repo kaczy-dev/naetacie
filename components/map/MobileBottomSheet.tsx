@@ -253,7 +253,13 @@ export function MobileBottomSheet({
                   rel="noopener noreferrer"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
+                    const url = getAnnouncementExternalUrl(currentDisplayAd);
+                    if (url) {
+                      const win = window.open(url, '_blank', 'noopener,noreferrer');
+                      if (!win) window.location.href = url;
+                    }
                   }}
                   className="flex items-center justify-center gap-1 py-2.5 px-3 border border-border/80 text-foreground text-xs font-semibold rounded-xl hover:bg-accent active:scale-95 transition-all cursor-pointer"
                 >

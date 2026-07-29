@@ -306,7 +306,15 @@ function AnnouncementCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const url = getAnnouncementExternalUrl(ad);
+                      if (url) {
+                        const win = window.open(url, '_blank', 'noopener,noreferrer');
+                        if (!win) window.location.href = url;
+                      }
+                    }}
                     className="hover:underline inline-flex items-center gap-1.5 cursor-pointer"
                     title="Otwórz ogłoszenie w nowej karcie"
                   >
