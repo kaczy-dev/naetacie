@@ -9,7 +9,7 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion, type PanInfo } from 'framer-motion';
-import { Map, List, Bell, User, Wifi, WifiOff, Moon, Sun, Monitor } from 'lucide-react';
+import { Map, List, Bell, User, Wifi, WifiOff, Moon, Sun, Monitor, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { useOfflineSync } from '@/lib/hooks/useOfflineSync';
@@ -24,6 +24,7 @@ interface AppShellProps {
   onTabChange: (tab: TabId) => void;
   children: React.ReactNode;
   isLive?: boolean;
+  onOpenSettings?: () => void;
 }
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
@@ -37,7 +38,7 @@ const TAB_ORDER: TabId[] = ['map', 'list', 'notifications', 'profile'];
 const SWIPE_VELOCITY = 300;
 const SWIPE_DISTANCE = 80;
 
-export function AppShell({ activeTab, onTabChange, children, isLive }: AppShellProps) {
+export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSettings }: AppShellProps) {
   const prefersReducedMotion = useReducedMotion();
   const { isOnline } = useOfflineSync();
   const { mode, setMode } = useTheme();
@@ -80,18 +81,18 @@ export function AppShell({ activeTab, onTabChange, children, isLive }: AppShellP
   return (
     <div className="flex min-h-[100dvh] max-w-[100vw] overflow-x-hidden bg-background">
       {/* Desktop Sidebar */}
-      <nav className="hidden md:flex flex-col w-64 min-w-[256px] h-[100dvh] sticky top-0 border-r border-border/50 bg-card/80 glass z-50">
+      <nav className="hidden md:flex flex-col w-64 min-w-[256px] h-[100dvh] sticky top-0 border-r border-border/50 bg-card/85 backdrop-blur-xl shadow-lg z-50">
         {/* Logo + brand */}
-        <div className="p-6 border-b border-border/50">
-          <div className="flex items-center gap-2.5">
-            <Logo size={34} />
+        <div className="p-6 border-b border-border/50 bg-gradient-to-b from-primary/5 to-transparent">
+          <div className="flex items-center gap-3">
+            <Logo size={42} animated={true} interactive3D={true} />
             <Wordmark className="text-xl" />
           </div>
           <MotivationalTagline className="mt-3" />
         </div>
 
         {/* Nav items */}
-        <div className="flex-1 py-4 px-3 space-y-1">
+        <div className="flex-1 py-4 px-3 space-y-1.5">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
@@ -100,20 +101,20 @@ export function AppShell({ activeTab, onTabChange, children, isLive }: AppShellP
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 touch-manipulation',
+                  'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 touch-manipulation',
                   isActive
-                    ? 'bg-primary/10 text-primary shadow-sm'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                    ? 'bg-gradient-to-r from-primary/20 via-primary/15 to-primary/5 text-primary shadow-sm border border-primary/20'
+                    : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
                 )}
-                whileHover={prefersReducedMotion ? undefined : { x: 4 }}
+                whileHover={prefersReducedMotion ? undefined : { x: 5, scale: 1.01 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
               >
-                <Icon className={cn('w-5 h-5', isActive && 'text-primary')} />
+                <Icon className={cn('w-5 h-5 transition-transform duration-200', isActive ? 'text-primary scale-110' : 'text-muted-foreground')} />
                 {tab.label}
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-indicator"
-                    className="ml-auto w-1.5 h-1.5 rounded-full bg-primary"
+                    className="ml-auto w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(37,99,235,0.8)]"
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -123,19 +124,19 @@ export function AppShell({ activeTab, onTabChange, children, isLive }: AppShellP
         </div>
 
         {/* Status & Theme */}
-        <div className="p-4 border-t border-border/50 space-y-3">
+        <div className="p-4 border-t border-border/50 space-y-3 bg-card/40">
           {/* Online status */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
             {isOnline ? (
               <>
                 <Wifi className="w-3.5 h-3.5 text-emerald-500" />
-                <span>{isLive ? 'Na żywo' : 'Online'}</span>
-                {isLive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                <span>{isLive ? 'Na żywo (Sync 24/7)' : 'Online'}</span>
+                {isLive && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />}
               </>
             ) : (
               <>
                 <WifiOff className="w-3.5 h-3.5 text-orange-500" />
-                <span>Offline</span>
+                <span>Tryb Offline</span>
               </>
             )}
           </div>
@@ -148,42 +149,70 @@ export function AppShell({ activeTab, onTabChange, children, isLive }: AppShellP
           <div className="relative">
             <button
               onClick={() => setThemeMenuOpen(!themeMenuOpen)}
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full px-2 py-1.5 rounded-md hover:bg-accent"
+              className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full px-2.5 py-2 rounded-lg hover:bg-accent border border-transparent hover:border-border"
             >
-              {React.createElement(themeIcons[mode], { className: 'w-3.5 h-3.5' })}
-              <span>{mode === 'system' ? 'Systemowy' : mode === 'dark' ? 'Ciemny' : 'Jasny'}</span>
+              {React.createElement(themeIcons[mode], { className: 'w-3.5 h-3.5 text-primary' })}
+              <span>Motyw: {mode === 'system' ? 'Systemowy' : mode === 'dark' ? 'Ciemny 🌙' : 'Jasny ☀️'}</span>
             </button>
             {themeMenuOpen && (
               <motion.div
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="absolute bottom-full left-0 mb-1 w-full bg-popover border border-border rounded-lg shadow-lg p-1 z-50"
+                className="absolute bottom-full left-0 mb-1 w-full bg-popover/95 backdrop-blur-md border border-border rounded-xl shadow-xl p-1.5 z-50"
               >
                 {(['light', 'dark', 'system'] as const).map((m) => (
                   <button
                     key={m}
                     onClick={() => { setMode(m); setThemeMenuOpen(false); }}
                     className={cn(
-                      'w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors',
-                      mode === m ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/50'
+                      'w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-colors',
+                      mode === m ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent'
                     )}
                   >
                     {React.createElement(themeIcons[m], { className: 'w-3.5 h-3.5' })}
-                    {m === 'system' ? 'Systemowy' : m === 'dark' ? 'Ciemny' : 'Jasny'}
+                    {m === 'system' ? 'Systemowy' : m === 'dark' ? 'Ciemny (Dark Mode)' : 'Jasny (Light Mode)'}
                   </button>
                 ))}
               </motion.div>
             )}
           </div>
+
+          {/* Settings button */}
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors w-full px-2.5 py-2 rounded-lg hover:bg-accent border border-transparent hover:border-border"
+            >
+              <Settings className="w-3.5 h-3.5 text-primary" />
+              <span>Ustawienia Aplikacji</span>
+            </button>
+          )}
         </div>
       </nav>
 
       {/* Mobile top brand bar (sidebar is hidden on mobile) */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 glass border-b border-border/50 flex items-center gap-2 px-4 h-12">
-        <Logo size={26} animated={false} />
-        <Wordmark className="text-base" />
-        {isLive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card/85 backdrop-blur-lg border-b border-border/50 flex items-center justify-between px-4 h-13 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <Logo size={32} animated={true} interactive3D={false} />
+          <Wordmark className="text-base" />
+        </div>
+        <div className="flex items-center gap-2">
+          {isLive && (
+            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE
+            </span>
+          )}
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className="p-1.5 rounded-lg bg-accent/60 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Ustawienia"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main content */}

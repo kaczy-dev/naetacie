@@ -140,29 +140,34 @@ export async function GET(request: Request): Promise<NextResponse> {
     // Execute query to get all matching documents (for bounding_box filtering and total count)
     const snapshot = await query.get();
 
-    // Convert Firestore documents to Announcement objects
-    let announcements: Announcement[] = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        deduplication_key: doc.id,
-        title: data.title,
-        description: data.description,
-        source_url: data.source_url,
-        source_portal: data.source_portal,
-        category: data.category,
-        location_text: data.location_text,
-        latitude: data.latitude ?? null,
-        longitude: data.longitude ?? null,
-        price: data.price ?? null,
-        contact_info: data.contact_info ?? null,
-        scraped_at: data.scraped_at?.toDate ? data.scraped_at.toDate() : new Date(data.scraped_at),
-        published_at: data.published_at?.toDate
-          ? data.published_at.toDate()
-          : data.published_at
-            ? new Date(data.published_at)
-            : null,
-      };
-    });
+    // Convert Firestore documents to Announcement objects, excluding inactive/unavailable ones
+    let announcements: Announcement[] = snapshot.docs
+      .filter((doc) => {
+        const data = doc.data();
+        return data.is_active !== false && data.availability_status !== 'inactive';
+      })
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          deduplication_key: doc.id,
+          title: data.title,
+          description: data.description,
+          source_url: data.source_url,
+          source_portal: data.source_portal,
+          category: data.category,
+          location_text: data.location_text,
+          latitude: data.latitude ?? null,
+          longitude: data.longitude ?? null,
+          price: data.price ?? null,
+          contact_info: data.contact_info ?? null,
+          scraped_at: data.scraped_at?.toDate ? data.scraped_at.toDate() : new Date(data.scraped_at),
+          published_at: data.published_at?.toDate
+            ? data.published_at.toDate()
+            : data.published_at
+              ? new Date(data.published_at)
+              : null,
+        };
+      });
 
     // Apply bounding_box spatial filtering
     if (queryParams.bounding_box) {

@@ -216,7 +216,10 @@ export function KinematicQuickView({
                   target="_blank"
                   rel="noopener noreferrer"
                   onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (safeUrl) window.open(safeUrl, '_blank', 'noopener,noreferrer');
+                  }}
                 >
                   <ExternalLink className="w-4 h-4" /> Aplikuj na {ad.source_portal || 'OLX'}
                 </a>

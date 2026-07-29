@@ -28,6 +28,8 @@ import { calculateCommuteEstimate } from './MapCommuteRoute';
 import { getDistrictSalaryGeoJson } from './MapDistrictSalaryHeatmap';
 import { triggerHaptic, formatShortPrice, ensureAbsoluteUrl, getAnnouncementExternalUrl } from '@/lib/utils';
 import { isPointInPolygon } from './utils';
+import { MapConstructionSites } from './MapConstructionSites';
+import { MapTransitStops } from './MapTransitStops';
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -41,10 +43,11 @@ const MIN_ZOOM = 8;
 const MAX_ZOOM = 19;
 
 /** Vector style JSON configurations from CartoDB CDN */
-const MAP_STYLES = {
+const MAP_STYLES: Record<MapStyleType, string> = {
   emerald: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
   light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  satellite: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
 };
 
 /** Raster tile fallback when vector style fails to load */
@@ -74,12 +77,12 @@ const STYLE_LOAD_TIMEOUT_MS = 3_500;
 
 const UI = {
   light: {
-    surface: '#ffffff', surfaceAlpha: 'rgba(255,255,255,0.95)', border: '#e5e7eb',
-    text: '#374151', textMuted: '#6b7280', shadow: '0 2px 8px rgba(0,0,0,0.15)', mapBg: '#f0f4f0',
+    surface: '#ffffff', surfaceAlpha: 'rgba(255,255,255,0.95)', border: '#a7f3d0',
+    text: '#064e3b', textMuted: '#047857', shadow: '0 2px 10px rgba(16,185,129,0.15)', mapBg: '#ecfdf5',
   },
   dark: {
-    surface: '#1f2937', surfaceAlpha: 'rgba(31,41,55,0.92)', border: '#374151',
-    text: '#e5e7eb', textMuted: '#9ca3af', shadow: '0 2px 10px rgba(0,0,0,0.5)', mapBg: '#0f1620',
+    surface: '#022c22', surfaceAlpha: 'rgba(2,44,34,0.95)', border: '#059669',
+    text: '#ecfdf5', textMuted: '#6ee7b7', shadow: '0 4px 20px rgba(16,185,129,0.35)', mapBg: '#011e17',
   },
 };
 
@@ -533,12 +536,19 @@ function MarkerPopup({
             href={getAnnouncementExternalUrl(ad)}
             target="_blank"
             rel="noopener noreferrer"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              const url = getAnnouncementExternalUrl(ad);
+              if (url) window.open(url, '_blank', 'noopener,noreferrer');
+            }}
             style={{
               flex: 1, textAlign: 'center', padding: '8px 10px',
               background: `linear-gradient(135deg, ${cat.color}, ${cat.color}cc)`,
               color: 'white', borderRadius: '8px', fontSize: '12px',
               fontWeight: 700, textDecoration: 'none',
               boxShadow: `0 2px 8px ${cat.color}55`,
+              cursor: 'pointer',
             }}
           >
             Otwórz →
@@ -843,6 +853,8 @@ export default function MapView({
   const [isochronePolygon, setIsochronePolygon] = useState<Array<[number, number]> | null>(null);
   const [quickFilter, setQuickFilter] = useState<'all' | 'high_pay' | 'remote' | 'recent' | 'budowa' | 'instalacje'>('all');
   const [showSalaryHeatmap, setShowSalaryHeatmap] = useState(false);
+  const [showConstructionSites, setShowConstructionSites] = useState(false);
+  const [showTransitStops, setShowTransitStops] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
 
   const handleNearMeClick = useCallback(() => {
@@ -953,7 +965,7 @@ export default function MapView({
       try {
         map = new maplibregl.Map({
           container: mapContainerRef.current,
-          style: isDarkRef.current ? MAP_STYLES.dark : MAP_STYLES.light,
+          style: MAP_STYLES[mapStyle] || MAP_STYLES.emerald,
           center: initialCenter,
           zoom: initialZoom,
           minZoom: MIN_ZOOM,
@@ -1319,8 +1331,8 @@ export default function MapView({
     if (!map || isDark === lastTheme.current) return;
     lastTheme.current = isDark;
     setMapLoaded(false);
-    map.setStyle(isDark ? MAP_STYLES.dark : MAP_STYLES.light, { diff: false });
-  }, [isDark]);
+    map.setStyle(MAP_STYLES[mapStyle] || MAP_STYLES.emerald, { diff: false });
+  }, [isDark, mapStyle]);
 
   // Handle Heatmap Visibility
   useEffect(() => {
@@ -1931,6 +1943,63 @@ export default function MapView({
           {isZenMode ? '✕' : '🔍'}
         </button>
       </div>
+
+      {/* Construction Sites Toggle */}
+      <div style={{ position: 'absolute', top: '315px', right: '10px', zIndex: 10 }}>
+        <button
+          onClick={() => {
+            triggerHaptic(10);
+            setShowConstructionSites(!showConstructionSites);
+          }}
+          title={showConstructionSites ? 'Ukryj duże budowy' : 'Pokaż duże inwestycje budowlane w Szczecinie'}
+          aria-label="Pokaż inwestycje budowlane"
+          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
+          style={{
+            background: showConstructionSites ? '#10b981' : ui.surface,
+            color: showConstructionSites ? '#ffffff' : ui.text,
+            border: `1px solid ${showConstructionSites ? '#10b981' : ui.border}`,
+            boxShadow: ui.shadow, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          🏗️
+        </button>
+      </div>
+
+      {/* ZTM Transit Hubs Toggle */}
+      <div style={{ position: 'absolute', top: '354px', right: '10px', zIndex: 10 }}>
+        <button
+          onClick={() => {
+            triggerHaptic(10);
+            setShowTransitStops(!showTransitStops);
+          }}
+          title={showTransitStops ? 'Ukryj przystanki ZTM' : 'Pokaż węzły i przystanki ZTM Szczecin'}
+          aria-label="Pokaż przystanki ZTM"
+          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
+          style={{
+            background: showTransitStops ? '#10b981' : ui.surface,
+            color: showTransitStops ? '#ffffff' : ui.text,
+            border: `1px solid ${showTransitStops ? '#10b981' : ui.border}`,
+            boxShadow: ui.shadow, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          🚏
+        </button>
+      </div>
+
+      {/* Construction Sites & Transit Overlays */}
+      <MapConstructionSites
+        isVisible={showConstructionSites}
+        onToggleVisible={() => setShowConstructionSites(false)}
+        onSelectSite={(site) => {
+          mapRef.current?.flyTo({ center: [site.lng, site.lat], zoom: 14 });
+        }}
+      />
+      <MapTransitStops
+        isVisible={showTransitStops}
+        onClose={() => setShowTransitStops(false)}
+      />
 
       {/* Live Construction Weather Widget */}
       <MapWeatherWidget ui={ui} isDark={isDark} />

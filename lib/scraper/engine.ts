@@ -12,6 +12,7 @@ import { deduplicateCrossPortalAds, MergedScrapedAd } from '@/lib/deduplication/
 import { extractJobTraits, ExtractedJobTraits } from '@/lib/ai/freeJobExtractor';
 import { evaluateMarketSalary, MarketEvaluation } from '@/lib/stats/marketBenchmarks';
 import { adminFirestore } from '@/lib/firebase/admin';
+import { filterAndAddAvailableOffers } from '@/lib/verification/offerAvailability';
 
 export interface EnrichedScrapedAd extends MergedScrapedAd {
   traits: ExtractedJobTraits;
@@ -68,6 +69,7 @@ export interface MultiPortalScrapeResponse {
   metadata: {
     totalScraped: number;
     storedInFirestore: number;
+    rejectedUnavailableCount?: number;
     scrapedAt: string;
     breakdown: Record<string, number>;
     queries: string[];
@@ -153,14 +155,17 @@ export async function runMultiPortalScrape(
     };
   });
 
-  // 3. Sort newest first by published_at / scraped_at
-  enrichedAds.sort((a, b) => {
+  // 3. Filter out unavailable/expired offers and auto-add only active ones
+  const { availableOffers, summary } = await filterAndAddAvailableOffers(enrichedAds);
+
+  // 4. Sort newest first by published_at / scraped_at
+  availableOffers.sort((a, b) => {
     const ta = a.published_at ? Date.parse(a.published_at) : Date.parse(a.scraped_at);
     const tb = b.published_at ? Date.parse(b.published_at) : Date.parse(b.scraped_at);
     return tb - ta;
   });
 
-  const limitedAds = enrichedAds.slice(0, limit);
+  const limitedAds = availableOffers.slice(0, limit);
 
   // Best-effort Firestore write capped at 4s
   let storedCount = 0;
@@ -188,6 +193,9 @@ export async function runMultiPortalScrape(
             market_evaluation: ad.market_evaluation,
             available_portals: ad.available_portals,
             is_cross_posted: ad.is_cross_posted,
+            is_active: true,
+            availability_status: 'active',
+            verified_at: new Date(),
             scraped_at: new Date(),
             published_at: ad.published_at ? new Date(ad.published_at) : null,
           },
@@ -212,6 +220,7 @@ export async function runMultiPortalScrape(
     metadata: {
       totalScraped: limitedAds.length,
       storedInFirestore: storedCount,
+      rejectedUnavailableCount: summary.rejectedCount,
       scrapedAt: new Date().toISOString(),
       breakdown,
       queries: query ? [query] : ['murarz', 'elektryk', 'hydraulik', 'malarz', 'dekarz', 'brukarz', 'monter', 'budowlany'],

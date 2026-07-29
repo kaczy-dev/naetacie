@@ -31,7 +31,7 @@ export function Hero({ onContinue }: { onContinue: () => void }) {
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 200, damping: 15 }}
         >
-          <Logo size={48} />
+          <Logo size={56} animated={true} interactive3D={true} />
           <Wordmark className="text-3xl" />
         </motion.div>
 

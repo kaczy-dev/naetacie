@@ -63,6 +63,9 @@ import { SalaryBenchmarkingModal } from '@/components/stats/SalaryBenchmarkingMo
 import { CvGeneratorModal } from '@/components/cv/CvGeneratorModal';
 import { EmployerPortalModal } from '@/components/employer/EmployerPortalModal';
 import { EmployerReviewModal } from '@/components/reviews/EmployerReviewModal';
+import { QuickFilterBar } from '@/components/ui/QuickFilterBar';
+import { QuickActionHub } from '@/components/ui/QuickActionHub';
+import { AppSettingsModal } from '@/components/settings/AppSettingsModal';
 import { generateApplicationMessageDraft } from '@/lib/contact/draftGenerator';
 
 type SortOption = 'match' | 'newest' | 'oldest' | 'price-asc' | 'price-desc';
@@ -647,12 +650,13 @@ export default function HomePage() {
   const [quickViewAd, setQuickViewAd] = useState<DisplayAnnouncement | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
-  // --- AI Interview, Benchmark, CV, Employer & Review Modals ---
+  // --- AI Interview, Benchmark, CV, Employer, Review & Settings Modals ---
   const [interviewModalAd, setInterviewModalAd] = useState<DisplayAnnouncement | null>(null);
   const [benchmarkModalAd, setBenchmarkModalAd] = useState<DisplayAnnouncement | null>(null);
   const [cvGeneratorOpen, setCvGeneratorOpen] = useState(false);
   const [employerPortalOpen, setEmployerPortalOpen] = useState(false);
   const [reviewModalCompany, setReviewModalCompany] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // --- Map <-> List selection sync ---
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -861,7 +865,24 @@ export default function HomePage() {
         const listAds = filteredAds.filter((a) => activeCategories.has(normalizeCategory(a.category)));
 
         return (
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto space-y-2">
+            {/* QOL Quick Filter Bar */}
+            <QuickFilterBar
+              onSearchChange={(q) => setSearchQuery(q)}
+              totalOffersCount={filteredAds.length}
+              onRefresh={() => {
+                scrapeNow();
+                showToast('info', 'Odświeżanie najnowszych ofert ze Szczecina...');
+              }}
+              onFilterToggle={(filterId) => {
+                if (filterId === 'high_pay') setSortBy('price-desc');
+                else if (filterId === 'today') setSearchQuery('dzisiaj');
+                else if (filterId === 'finishing') setActiveCategories(new Set(['wykończenia']));
+                else if (filterId === 'installations') setActiveCategories(new Set(['instalacje']));
+                else if (filterId === 'near_me') setSearchQuery('Szczecin');
+              }}
+            />
+
             {/* Search + Filters Header */}
             <div className="sticky top-12 md:top-0 z-10 glass border-b border-border/50 px-4 py-3 space-y-3">
               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -1164,7 +1185,7 @@ export default function HomePage() {
         onChange={updatePreferences}
         onReset={resetPreferences}
       />
-      <AppShell activeTab={activeTab} onTabChange={handleTabChange} isLive={isLive}>
+      <AppShell activeTab={activeTab} onTabChange={handleTabChange} isLive={isLive} onOpenSettings={() => setSettingsOpen(true)}>
         {!isOnline && (
           <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400 px-4 py-2 text-xs font-bold flex items-center justify-center gap-2">
             <WifiOff className="w-4 h-4" />
@@ -1271,6 +1292,23 @@ export default function HomePage() {
         companyName={reviewModalCompany}
         isOpen={reviewModalCompany !== null}
         onClose={() => setReviewModalCompany(null)}
+      />
+
+      {/* Global App Settings Modal */}
+      <AppSettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
+
+      {/* Floating QOL Quick Action Hub */}
+      <QuickActionHub
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onRefresh={() => {
+          scrapeNow();
+          showToast('info', 'Odświeżanie najnowszych ofert ze Szczecina...');
+        }}
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
       />
 
       {/* Guest prompt modal */}
