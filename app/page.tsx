@@ -451,8 +451,6 @@ function AnnouncementCard({
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
-                          const url = getAnnouncementExternalUrl(ad);
-                          if (url) window.open(url, '_blank', 'noopener,noreferrer');
                         }}
                       >
                         <ExternalLink className="w-4 h-4" /> Zobacz w {ad.source_portal || 'OLX'}

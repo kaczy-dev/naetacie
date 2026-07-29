@@ -540,8 +540,6 @@ function MarkerPopup({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
-              const url = getAnnouncementExternalUrl(ad);
-              if (url) window.open(url, '_blank', 'noopener,noreferrer');
             }}
             style={{
               flex: 1, textAlign: 'center', padding: '8px 10px',

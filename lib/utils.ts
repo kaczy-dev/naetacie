@@ -136,19 +136,24 @@ export function getAnnouncementExternalUrl(ad?: {
 } | null): string {
   if (!ad) return 'https://www.olx.pl/praca/szczecin/';
 
-  // 1. Check if we have a valid direct absolute URL to an exact offer
+  // 1. Check if we have a valid direct absolute URL to an exact offer or search page
   if (ad.source_url) {
     let abs = ensureAbsoluteUrl(ad.source_url, ad.source_portal);
     if (abs) {
       if (abs.includes('olx.pl/oferta/')) {
         abs = abs.replace('olx.pl/oferta/', 'olx.pl/d/oferta/');
       }
-      if (abs.includes('search%5Bq%5D=')) {
-        const q = abs.split('search%5Bq%5D=')[1]?.split('&')[0] || '';
-        abs = `https://www.olx.pl/praca/szczecin/q-${q}/`;
-      } else if (abs.includes('search[q]=')) {
-        const q = abs.split('search[q]=')[1]?.split('&')[0] || '';
-        abs = `https://www.olx.pl/praca/szczecin/q-${q}/`;
+      if (abs.includes('olx.pl') && (abs.includes('/q-') || abs.includes('search[q]=') || abs.includes('search%5Bq%5D='))) {
+        let rawQuery = '';
+        if (abs.includes('/q-')) {
+          rawQuery = abs.split('/q-')[1]?.split('/')[0]?.replace(/\+/g, ' ') || '';
+        } else if (abs.includes('search%5Bq%5D=')) {
+          rawQuery = abs.split('search%5Bq%5D=')[1]?.split('&')[0] || '';
+        } else if (abs.includes('search[q]=')) {
+          rawQuery = abs.split('search[q]=')[1]?.split('&')[0] || '';
+        }
+        const cleanQuery = decodeURIComponent(rawQuery).trim() || ad.title || 'budowlana';
+        return `https://www.olx.pl/praca/szczecin/?q=${encodeURIComponent(cleanQuery)}`;
       }
       return abs;
     }
@@ -162,7 +167,7 @@ export function getAnnouncementExternalUrl(ad?: {
     }
   }
 
-  // 3. Build targeted portal search link using clean, unaccented ASCII keywords
+  // 3. Build targeted portal search link using clean keywords
   const portal = (ad.source_portal || 'olx').toLowerCase();
   
   const asciiTitle = removePolishDiacritics(ad.title || '');
@@ -190,8 +195,8 @@ export function getAnnouncementExternalUrl(ad?: {
     return `https://pl.indeed.com/jobs?q=${encodeURIComponent(queryText)}&l=Szczecin`;
   }
 
-  // OLX targeted search query fallback (modern OLX q-slug search URL)
-  return `https://www.olx.pl/praca/szczecin/q-${encodeURIComponent(queryText)}/`;
+  // OLX targeted search query fallback (?q= parameter is parsed universally on OLX)
+  return `https://www.olx.pl/praca/szczecin/?q=${encodeURIComponent(queryText)}`;
 }
 
 
