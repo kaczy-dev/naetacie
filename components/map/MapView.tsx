@@ -23,6 +23,9 @@ import { MapDistrictAnalytics } from './MapDistrictAnalytics';
 import { MapGeoAlert } from './MapGeoAlert';
 import { MobileBottomSheet } from './MobileBottomSheet';
 import { SearchAreaButton } from './SearchAreaButton';
+import { MapWeatherWidget } from './MapWeatherWidget';
+import { calculateCommuteEstimate } from './MapCommuteRoute';
+import { getDistrictSalaryGeoJson } from './MapDistrictSalaryHeatmap';
 import { triggerHaptic, formatShortPrice, ensureAbsoluteUrl, getAnnouncementExternalUrl } from '@/lib/utils';
 import { isPointInPolygon } from './utils';
 
@@ -839,6 +842,25 @@ export default function MapView({
   const [lassoPolygon, setLassoPolygon] = useState<Array<[number, number]> | null>(null);
   const [isochronePolygon, setIsochronePolygon] = useState<Array<[number, number]> | null>(null);
   const [quickFilter, setQuickFilter] = useState<'all' | 'high_pay' | 'remote' | 'recent' | 'budowa' | 'instalacje'>('all');
+  const [showSalaryHeatmap, setShowSalaryHeatmap] = useState(false);
+  const [isZenMode, setIsZenMode] = useState(false);
+
+  const handleNearMeClick = useCallback(() => {
+    triggerHaptic(12);
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const map = mapRef.current;
+        if (map) {
+          map.flyTo({ center: [lng, lat], zoom: 13, duration: 1000 });
+        }
+      },
+      () => {},
+      { timeout: 5000 }
+    );
+  }, []);
 
   const visibleAds = useMemo(
     () => ads.filter((ad) => activeCategories.has(normalizeCategory(ad.category))),
@@ -1319,6 +1341,33 @@ export default function MapView({
       if (el) el.style.display = showHeatmap ? 'none' : 'block';
     });
   }, [showHeatmap, mapLoaded]);
+
+  // Handle District Salary Heatmap Layer Sync
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    if (!map.getSource('district-salary-source')) {
+      map.addSource('district-salary-source', {
+        type: 'geojson',
+        data: getDistrictSalaryGeoJson(),
+      });
+    }
+
+    if (!map.getLayer('district-salary-layer')) {
+      map.addLayer({
+        id: 'district-salary-layer',
+        type: 'fill',
+        source: 'district-salary-source',
+        paint: {
+          'fill-color': ['get', 'color'],
+          'fill-opacity': showSalaryHeatmap ? 0.35 : 0,
+        },
+      });
+    } else {
+      map.setPaintProperty('district-salary-layer', 'fill-opacity', showSalaryHeatmap ? 0.35 : 0);
+    }
+  }, [showSalaryHeatmap, mapLoaded]);
 
   // Sync GeoJSON data to WebGL Cluster Source & Heatmap Source
   useEffect(() => {
@@ -1821,13 +1870,35 @@ export default function MapView({
         </button>
       </div>
 
-      {/* Heatmap & 3D Tools */}
-      <div style={{ position: 'absolute', top: '162px', right: '10px', zIndex: 10 }}>
+      {/* District Salary Heatmap Overlay Toggle */}
+      <div style={{ position: 'absolute', top: '200px', right: '10px', zIndex: 10 }}>
         <button
-          onClick={() => setShowHeatmap(!showHeatmap)}
-          title={showHeatmap ? 'Pokaż markery' : 'Pokaż heatmapę zagęszczenia'}
-          aria-label="Przełącz heatmapę"
-          className="w-8 h-8 text-xs md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
+          onClick={() => {
+            triggerHaptic(10);
+            setShowSalaryHeatmap(!showSalaryHeatmap);
+          }}
+          title={showSalaryHeatmap ? 'Ukryj zarobki dzielnic' : 'Pokaż zarobki dzielnic'}
+          aria-label="Przełącz zarobki dzielnicowe"
+          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
+          style={{
+            background: showSalaryHeatmap ? '#10b981' : ui.surface,
+            color: showSalaryHeatmap ? '#ffffff' : ui.text,
+            border: `1px solid ${showSalaryHeatmap ? '#10b981' : ui.border}`,
+            boxShadow: ui.shadow, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          💰
+        </button>
+      </div>
+
+      {/* Praca Blisko Mnie (5km Auto-Zoom) Button */}
+      <div style={{ position: 'absolute', top: '238px', right: '10px', zIndex: 10 }}>
+        <button
+          onClick={handleNearMeClick}
+          title="Praca blisko mnie (5km)"
+          aria-label="Pokaż oferty blisko mnie"
+          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
           style={{
             background: ui.surface, border: `1px solid ${ui.border}`,
             boxShadow: ui.shadow, cursor: 'pointer',
@@ -1835,9 +1906,34 @@ export default function MapView({
             color: ui.text,
           }}
         >
-          {showHeatmap ? '📍' : '🔥'}
+          🎯
         </button>
       </div>
+
+      {/* Zen Mode Fullscreen Map Toggle */}
+      <div style={{ position: 'absolute', top: '276px', right: '10px', zIndex: 10 }}>
+        <button
+          onClick={() => {
+            triggerHaptic(10);
+            setIsZenMode(!isZenMode);
+          }}
+          title={isZenMode ? 'Wyjdź z trybu Zen' : 'Pełny ekran mapy (Zen Mode)'}
+          aria-label="Przełącz tryb Zen"
+          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
+          style={{
+            background: isZenMode ? '#2563eb' : ui.surface,
+            color: isZenMode ? '#ffffff' : ui.text,
+            border: `1px solid ${isZenMode ? '#2563eb' : ui.border}`,
+            boxShadow: ui.shadow, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          {isZenMode ? '✕' : '🔍'}
+        </button>
+      </div>
+
+      {/* Live Construction Weather Widget */}
+      <MapWeatherWidget ui={ui} isDark={isDark} />
 
       {/* Map Style Selector */}
       <MapStyleSelector

@@ -12,7 +12,6 @@ import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Check, X, Loader2 } from 'lu
 
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useFormValidation, type PasswordStrength } from '@/lib/validation/formValidator';
-import { signInWithGoogle } from '@/lib/auth/googleAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,6 +27,7 @@ export default function LoginPage() {
     isEmailVerified,
     loading: authLoading,
     signInWithEmail,
+    signInWithGoogle,
     register,
     resendVerificationEmail,
   } = useAuth();
@@ -82,10 +82,13 @@ export default function LoginPage() {
     setGoogleLoading(true);
     setError(null);
     const result = await signInWithGoogle();
-    if (result.success) router.replace('/');
-    else if (result.error.message) setError(result.error.message);
+    if (result.success) {
+      router.replace('/');
+    } else if (result.error.message) {
+      setError(result.error.message);
+    }
     setGoogleLoading(false);
-  }, [router]);
+  }, [signInWithGoogle, router]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {

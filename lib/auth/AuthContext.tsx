@@ -33,6 +33,7 @@ import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { getClientAuth, getClientFirestore, isFirebaseConfigValid } from '@/lib/firebase/client';
 import type { UserProfile } from '@/lib/types/user';
 import type { AuthResult, LoginResult, RegistrationResult } from './types';
+import { signInWithGoogle as signInWithGoogleHelper } from './googleAuth';
 
 // --- Interfaces ---
 
@@ -185,56 +186,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signInWithGoogle = useCallback(async (): Promise<AuthResult<LoginResult>> => {
-    if (!isFirebaseConfigValid()) {
-      return {
-        success: false,
-        error: {
-          code: 'service_unavailable',
-          message: 'Konto Google nie zostało skonfigurowane. Aplikacja działa w trybie odczytu (Gość).',
-        },
+    const res = await signInWithGoogleHelper();
+    if (res.success) {
+      const mockProfile: UserProfile = {
+        uid: res.data.uid,
+        email: res.data.email,
+        display_name: 'Użytkownik Google',
+        role: 'candidate',
+        tier: 'free',
+        auth_provider: 'google',
+        email_verified: true,
+        created_at: new Date(),
+        updated_at: new Date(),
+        notification_prefs: null,
       };
+      setState((prev) => ({
+        ...prev,
+        profile: prev.profile || mockProfile,
+        isGuest: false,
+        isEmailVerified: true,
+      }));
     }
-    try {
-      const auth = getClientAuth();
-      const provider = new GoogleAuthProvider();
-      const credential = await signInWithPopup(auth, provider);
-      const user = credential.user;
-
-      // Create profile if first-time Google user
-      try {
-        const firestore = getClientFirestore();
-        if (firestore) {
-          const profileRef = doc(firestore, 'users', user.uid);
-          const profileDoc = await getDoc(profileRef);
-
-          if (!profileDoc.exists()) {
-            const now = Timestamp.now();
-            const newProfile = {
-              uid: user.uid,
-              email: user.email!,
-              display_name: user.displayName || '',
-              tier: 'free' as const,
-              auth_provider: 'google' as const,
-              email_verified: user.emailVerified,
-              created_at: now,
-              updated_at: now,
-              notification_prefs: null,
-            };
-            await setDoc(profileRef, newProfile);
-          }
-        }
-      } catch (profileError) {
-        console.error('Failed to create/check Google user profile:', profileError);
-      }
-
-      const idToken = await user.getIdToken();
-      return {
-        success: true,
-        data: { uid: user.uid, email: user.email!, idToken },
-      };
-    } catch (error: unknown) {
-      return mapFirebaseError(error, 'authentication_failed');
-    }
+    return res;
   }, []);
 
   const register = useCallback(

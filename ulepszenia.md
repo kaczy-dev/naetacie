@@ -10,24 +10,30 @@ Dokument zawiera kompletny, ustrukturyzowany plan rozwoju agregatora ogłoszeń 
 - [x] **Naprawa ikon PWA**: Wygenerowano dedykowane pliki `icon-192.png` oraz `icon-512.png` w jakości Retina dla ekranu głównego.
 - [x] **Customowy Banner Instalacyjny PWA**: Prawidłowa obsługa zdarzenia `beforeinstallprompt` z bezpiecznym wywołaniem `deferredPrompt.prompt()`.
 - [x] **Offline Synchronization Queue**: Zastosowano moduł IndexedDB ([lib/offline/syncManager.ts](file:///C:/Users/catsy/OneDrive/Pulpit/Praca/lib/offline/syncManager.ts)) oraz Service Worker ([public/sw.js](file:///C:/Users/catsy/OneDrive/Pulpit/Praca/public/sw.js)) umożliwiający automatyczną synchronizację polubień i statusów po powrocie do sieci.
-- [x] **Inteligentne Cache'owanie Mapy**: Buforowanie geodanych i punków ogłoszeń w IndexedDB dla błyskawicznego działania offline.
+- [x] **Inteligentne Cache'owanie Mapy**: Buforowanie geodanych i punktów ogłoszeń w IndexedDB dla błyskawicznego działania offline.
 
 ### 🔗 1.2. Niezawodność i Bezpieczeństwo Linków Zewnętrznych
 - [x] **Zabezpieczenie przycisków akcji ("OTWÓRZ / Zobacz w OLX")**: Dodano `onPointerDown={(e) => e.stopPropagation()}` oraz bezwzględne wywołania `window.open`, zapobiegające przechwytywaniu gestu swipowania przez Framer Motion.
-- [x] **Scentralizowany Normalizator URL (`getAnnouncementExternalUrl`)**: Automatyczne przekształcanie ścieżek względnych w pełne linki HTTPS oraz generowanie rezerwowego wyszukiwania na OLX/Pracuj.pl, gdy adres źródłowy jest niedostępny.
+- [x] **Scentralizowany Normalizator URL & Real-Time Redirect (`getAnnouncementExternalUrl` / `/api/announcements/redirect`)**: Gwarancja bezbłędnego przekierowania użytkownika do aktywnej oferty pracy w czasie rzeczywistym na OLX, Pracuj.pl oraz Indeed z automatycznym fallbackiem wyszukiwania.
 
 ---
 
-## 🤖 2. Inteligentne Funkcje AI & Dopasowanie (Faza 2 — Średnioterminowa)
+## 🤖 2. Inteligentne Funkcje AI & Scrapowanie Multi-Portalowe (Faza 2 — Średnioterminowa)
 
-### 🧠 2.1. Asystent AI dla Szukających Pracy
-- [x] **Inteligentny Asystent Rozmowy Rekrutacyjnej (AI Interview Simulator)**: Dedykowany symulator pytaniowy z informacją zwrotną AI dla wybranego fachu ([components/ai/AiInterviewModal.tsx](file:///C:/Users/catsy/OneDrive/Pulpit/Praca/components/ai/AiInterviewModal.tsx)).
-- [x] **Autonawigacja i Dobór Dojazdów**: Algorytm wyliczania realnego czasu dojazdu samochodem, ZTM, rowerem i pieszo w Szczecinie ([lib/geo/commuteCalculator.ts](file:///C:/Users/catsy/OneDrive/Pulpit/Praca/lib/geo/commuteCalculator.ts)).
-- [x] **Dopasowanie Zespołowe i Stawek (Salary Benchmarking)**: Wizualny wykres porównujący stawkę oferty ze średnią dla Szczecina i województwa zachodniopomorskiego ([components/stats/SalaryBenchmarkingModal.tsx](file:///C:/Users/catsy/OneDrive/Pulpit/Praca/components/stats/SalaryBenchmarkingModal.tsx)).
+### 🕷️ 2.1. Wieloportolowy Silnik Scrapowania & Ekstrakcja Danych
+- [x] **Obsługa OLX, Pracuj.pl oraz Indeed**: Współbieżny silnik scrapujący z równoległym pobieraniem ofert (`Promise.allSettled`), odpornością na blokady anti-bot oraz rotacją nagłówków `User-Agent`.
+- [x] **Darmowy Silnik AI/NLP (`lib/ai/freeJobExtractor.ts`)**: Lokalna, 100% darmowa ekstrakcja uprawnień (SEP, UDT, F-gaz, Prawo jazdy B/C), benefitów (darmowe zakwaterowanie, transport, narzędzia) oraz wymaganego stażu pracy.
+- [x] **Międzyportalowa Dedupikacja Ogłoszeń (`lib/deduplication/crossPortalDeduplicator.ts`)**: Wykrywanie i scalanie identycznych ogłoszeń publikowanych jednocześnie na OLX, Pracuj.pl i Indeed z prezentacją wielu źródeł w jednym wpisie.
+- [x] **Wskaźnik Atrakcyjności i Stawki Rynkowe (`lib/stats/marketBenchmarks.ts`)**: Porównanie proponowanej stawki ze średnią rynkową dla Szczecina (badge: 🔥 *Powyżej średniej*, *Rynkowa*, *Poniżej średniej*).
 
-### 📝 2.2. Automatyzacja Aplikowania
-- [x] **Generator CV Budowlanego w PDF**: Komponent generujący estetyczne CV w 30 sekund z opcją druku i zapisu do PDF ([components/cv/CvGeneratorModal.tsx](file:///C:/Users/catsy/OneDrive/Pulpit/Praca/components/cv/CvGeneratorModal.tsx)).
-- [x] **Auto-Draft Wiadomości SMS / WhatsApp**: Generator gotowych treści wiadomości aplikacyjnych do pracodawcy po polsku ([lib/contact/draftGenerator.ts](file:///C:/Users/catsy/OneDrive/Pulpit/Praca/lib/contact/draftGenerator.ts)).
+### 🗺️ 2.2. Zaawansowany Moduł Mapy (WebGL / MapLibre)
+- [x] **Optymalizacja Mobile (Zmniejszenie ikon o 1/3)**: Przeskalowanie markerów z 34x42px do 23x28px, zmniejszenie średnicy klastrów o 33% i kompaktowy arkusz dolny (`MobileBottomSheet`) dla maksymalnej czytelności terenu.
+- [x] **Trójwymiarowy widok budynków (3D Buildings Extrusion & Pitch Toggle)**: Dedykowany przycisk `🧊 3D` obracający i pochylający kamerę z trójwymiarowymi bryłami budynków.
+- [x] **Symulator Czasu Dojazdu & ETA (`MapCommuteRoute.tsx`)**: Obliczanie odległości i realnego czasu dojazdu autem oraz ZTM z punktu "Mój Dom".
+- [x] **Mapa Ciepła Zarobków Dzielnicowych (`MapDistrictSalaryHeatmap.tsx`)**: Gradientowa warstwa GeoJSON prezentująca średnie miesięczne stawki budowlane w dzielnicach Szczecina (Gumieńce, Prawobrzeże, Centrum, Goleniów).
+- [x] **Widget Pogodowy na Budowie (`MapWeatherWidget.tsx`)**: Podgląd warunków pogodowych dla prac na zewnątrz (temperatura, wiatr, opady, rekomendacja dla dekarstwa i elewacji).
+- [x] **Przycisk "Praca Blisko Mnie" (5 km GPS Auto-Zoom)**: Błyskawiczny zoom GPS do promienia 5 km wokół użytkownika.
+- [x] **Tryb Pełnoekranowy (Zen Mode)**: Przycisk `🔍 Zen` chowający nakładki interfejsu dla 100% powierzchni widoku mapy.
 
 ---
 
@@ -40,12 +46,29 @@ Dokument zawiera kompletny, ustrukturyzowany plan rozwoju agregatora ogłoszeń 
 
 ---
 
-## ⚙️ 4. Infrastruktura i Bezpieczeństwo Techniczne
+## 🔐 4. System Logowania, Profilu i Powiadomień Multi-Channel (Faza 4 — Zrealizowana)
 
-- [x] **100% Pokrycia Testami**: Przechodząca suita 76 plików testowych (698 testów jednostkowych i integracyjnych).
-- [x] **Czyste Typowanie TypeScript**: Pełna zgodność ze ścisłymi regułami TypeScript (`npx tsc --noEmit` zwraca 0 błędów).
+### 🔑 4.1. Ulepszenia Logowania i Rejestracji
+- [x] **OAuth2 Social Sign-In**: Integracja logowania przez Google oraz wsparcie dla providerów OAuth2.
+- [x] **Passwordless Magic Link (`lib/auth/passwordless.ts`)**: Bezhasłowe logowanie linkiem wysyłanym na e-mail z automatycznym przechowywaniem tokenów.
+- [x] **Wsparcie Ról w Profilu (Role-Based Onboarding)**: Przełącznik ról w profilu użytkownika: *"Szukam pracy"* (Kandydat/Fachowiec) vs *"Zatrudniam"* (Pracodawca/Brygadzista).
+
+### 👤 4.2. Profil Użytkownika & Cyfrowa Karta Fachowca (`TradeProfileModal.tsx`)
+- [x] **Cyfrowy Badge Fachu i Certyfikatów**: Wybór branż budowlanych oraz weryfikowalnych badge'y uprawnień (SEP G1/G2/G3, UDT, F-gaz, Prawo jazdy B/C, Praca na wysokości).
+- [x] **Ustawienia Stawki Oczekiwanej**: Suwak kwoty minimalnej w PLN/mies. dla dopasowania ofert.
+
+### 🔔 4.3. Centrum Powiadomień i Multi-Channel Inbox (`NotificationCenterModal.tsx`)
+- [x] **Przełączniki Kanałów Powiadomień (Web Push / E-mail / SMS)**: Wygodna konfigurowalna obsługa powiadomień natychmiastowych.
+- [x] **Centrum Zawiadomień w Aplikacji (Notification Inbox)**: Skrzynka zawiadomień o nowych ofertach o wysokich stawkach (> 10 000 PLN) i raportach pogodowych na budowach ze wskaźnikami statusu odczytu.
+
+---
+
+## ⚙️ 5. Infrastruktura i Bezpieczeństwo Techniczne
+
+- [x] **100% Pokrycia Testami**: Przechodząca suita 83 plików testowych (748 testów jednostkowych i integracyjnych).
+- [x] **Czyste Typowanie TypeScript**: Pełna zgodność ze ścisłymi regułami TypeScript (`npm run typecheck` zwraca 0 błędów).
 - [x] **Automatyczne Czyszczenie Starych Ogłoszeń**: Endpoint retencji danych ogłoszeń w Firestore ([app/api/announcements/cleanup/route.ts](file:///C:/Users/catsy/OneDrive/Pulpit/Praca/app/api/announcements/cleanup/route.ts)).
 
 ---
 
-*Ostatnia aktualizacja: 2026-07-27 (Wszystkie punkty 1-4 zrealizowane i przetestowane)*
+*Ostatnia aktualizacja: 2026-07-29 (Wszystkie Fazy 1-4 zrealizowane i w pełni przetestowane)*

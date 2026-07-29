@@ -78,6 +78,7 @@ export async function registerUser(
         uid: user.uid,
         email: user.email!,
         display_name: truncatedDisplayName,
+        role: 'candidate',
         tier: 'free',
         auth_provider: 'email',
         email_verified: false,
