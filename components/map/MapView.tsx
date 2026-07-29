@@ -30,6 +30,7 @@ import { triggerHaptic, formatShortPrice, ensureAbsoluteUrl, getAnnouncementExte
 import { isPointInPolygon } from './utils';
 import { MapConstructionSites } from './MapConstructionSites';
 import { MapTransitStops } from './MapTransitStops';
+import { MapPogonSzczecin, POGON_STADIUM_COORDS } from './MapPogonSzczecin';
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -855,6 +856,7 @@ export default function MapView({
   const [showSalaryHeatmap, setShowSalaryHeatmap] = useState(false);
   const [showConstructionSites, setShowConstructionSites] = useState(false);
   const [showTransitStops, setShowTransitStops] = useState(false);
+  const [showPogonHub, setShowPogonHub] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
 
   const handleNearMeClick = useCallback(() => {
@@ -1988,7 +1990,29 @@ export default function MapView({
         </button>
       </div>
 
-      {/* Construction Sites & Transit Overlays */}
+      {/* Pogoń Szczecin Hub Toggle */}
+      <div style={{ position: 'absolute', top: '393px', right: '10px', zIndex: 10 }}>
+        <button
+          onClick={() => {
+            triggerHaptic(10);
+            setShowPogonHub(!showPogonHub);
+          }}
+          title={showPogonHub ? 'Ukryj Pogoń Szczecin' : 'Pokaż Stadion i Strefy Kibica Pogoń Szczecin (Duma Pomorza)'}
+          aria-label="Pokaż Pogoń Szczecin"
+          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
+          style={{
+            background: showPogonHub ? '#1d4ed8' : ui.surface,
+            color: showPogonHub ? '#ffffff' : ui.text,
+            border: `1px solid ${showPogonHub ? '#1d4ed8' : ui.border}`,
+            boxShadow: ui.shadow, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          ⚓
+        </button>
+      </div>
+
+      {/* Construction Sites, Transit & Pogoń Overlays */}
       <MapConstructionSites
         isVisible={showConstructionSites}
         onToggleVisible={() => setShowConstructionSites(false)}
@@ -1999,6 +2023,13 @@ export default function MapView({
       <MapTransitStops
         isVisible={showTransitStops}
         onClose={() => setShowTransitStops(false)}
+      />
+      <MapPogonSzczecin
+        isVisible={showPogonHub}
+        onClose={() => setShowPogonHub(false)}
+        onNavigateToStadium={() => {
+          mapRef.current?.flyTo({ center: POGON_STADIUM_COORDS, zoom: 15 });
+        }}
       />
 
       {/* Live Construction Weather Widget */}
