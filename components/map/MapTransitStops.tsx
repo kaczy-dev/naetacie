@@ -31,6 +31,7 @@ export function MapTransitStops({ isVisible, onClose }: MapTransitStopsProps) {
     <div className="absolute top-16 right-4 z-20 max-w-xs w-full pointer-events-auto">
       <AnimatePresence>
         <motion.div
+          key="transit-stops-panel"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}

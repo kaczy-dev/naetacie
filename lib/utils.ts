@@ -143,32 +143,22 @@ export function getAnnouncementExternalUrl(ad?: {
       if (abs.includes('olx.pl/oferta/')) {
         abs = abs.replace('olx.pl/oferta/', 'olx.pl/d/oferta/');
       }
-      
-      // Check if URL is a specific offer (contains ID, .html, ,oferta,, viewjob, jk=, or digits)
-      const isSpecificOfferUrl =
-        abs.includes('-ID') ||
-        abs.endsWith('.html') ||
-        abs.includes(',oferta,') ||
-        abs.includes('viewjob') ||
-        abs.includes('jk=') ||
-        abs.includes('search%5Bq%5D') ||
-        abs.includes('query') ||
-        /\d{3,}/.test(abs);
-
-      if (isSpecificOfferUrl) {
-        return abs;
+      if (abs.includes('search%5Bq%5D=')) {
+        const q = abs.split('search%5Bq%5D=')[1]?.split('&')[0] || '';
+        abs = `https://www.olx.pl/praca/szczecin/q-${q}/`;
+      } else if (abs.includes('search[q]=')) {
+        const q = abs.split('search[q]=')[1]?.split('&')[0] || '';
+        abs = `https://www.olx.pl/praca/szczecin/q-${q}/`;
       }
+      return abs;
     }
   }
 
-  // 2. Check if ad.id contains a numeric OLX ID or offer ID (e.g. olx_12345678 or 12345678)
-  if (ad.id) {
-    const numericMatch = ad.id.match(/\d+/);
-    if (numericMatch && numericMatch[0].length >= 5) {
-      const portal = (ad.source_portal || 'olx').toLowerCase();
-      if (portal === 'olx') {
-        return `https://www.olx.pl/d/oferta/-ID${numericMatch[0]}.html`;
-      }
+  // 2. If ad.id explicitly contains a raw numeric OLX offer ID (e.g. olx_raw_1234567)
+  if (ad.id && ad.id.startsWith('olx_raw_')) {
+    const rawNumericId = ad.id.replace('olx_raw_', '');
+    if (/^\d{5,12}$/.test(rawNumericId)) {
+      return `https://www.olx.pl/d/oferta/-ID${rawNumericId}.html`;
     }
   }
 
@@ -200,8 +190,8 @@ export function getAnnouncementExternalUrl(ad?: {
     return `https://pl.indeed.com/jobs?q=${encodeURIComponent(queryText)}&l=Szczecin`;
   }
 
-  // OLX targeted search query fallback (never redirects to home, opens matching live offers on OLX in Szczecin)
-  return `https://www.olx.pl/praca/szczecin/?search%5Bq%5D=${encodeURIComponent(queryText)}`;
+  // OLX targeted search query fallback (modern OLX q-slug search URL)
+  return `https://www.olx.pl/praca/szczecin/q-${encodeURIComponent(queryText)}/`;
 }
 
 

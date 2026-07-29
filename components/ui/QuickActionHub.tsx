@@ -43,6 +43,7 @@ export function QuickActionHub({
         {/* Back to Top Floating QOL Button */}
         {showBackToTop && (
           <motion.button
+            key="quick-back-to-top"
             initial={{ scale: 0, opacity: 0, y: 10 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0, opacity: 0, y: 10 }}
@@ -59,6 +60,7 @@ export function QuickActionHub({
 
         {/* View Toggle (Mapa ↔ Lista) Floating Hub */}
         <motion.div
+          key="quick-view-toggle"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="pointer-events-auto flex items-center gap-1 p-1.5 rounded-2xl bg-card/85 backdrop-blur-xl border border-border/80 shadow-2xl"
