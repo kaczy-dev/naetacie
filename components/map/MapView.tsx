@@ -538,15 +538,7 @@ function MarkerPopup({
             target="_blank"
             rel="noopener noreferrer"
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const url = getAnnouncementExternalUrl(ad);
-              if (url) {
-                const win = window.open(url, '_blank', 'noopener,noreferrer');
-                if (!win) window.location.href = url;
-              }
-            }}
+            onClick={(e) => e.stopPropagation()}
             style={{
               flex: 1, textAlign: 'center', padding: '8px 10px',
               background: `linear-gradient(135deg, ${cat.color}, ${cat.color}cc)`,

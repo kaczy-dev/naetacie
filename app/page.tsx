@@ -228,10 +228,10 @@ function AnnouncementCard({
       >
         <Card
           className={cn(
-            'group cursor-pointer transition-all duration-300 overflow-hidden border border-border/60 backdrop-blur-md',
+            'group cursor-pointer transition-all duration-300 overflow-hidden wow-glass-card rounded-2xl',
             isSelected 
-              ? 'bg-gradient-to-r from-primary/5 via-card to-card border-primary ring-2 ring-primary/10 shadow-md' 
-              : 'hover:border-primary/40 hover:shadow-md hover:bg-accent/10 dark:hover:bg-accent/5'
+              ? 'bg-gradient-to-r from-primary/15 via-card to-card border-primary ring-2 ring-primary/20 shadow-xl' 
+              : 'hover:border-emerald-500/50 hover:shadow-emerald-500/10 hover:shadow-xl'
           )}
           onClick={() => setExpanded(!expanded)}
         >
@@ -308,15 +308,7 @@ function AnnouncementCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const url = getAnnouncementExternalUrl(ad);
-                      if (url) {
-                        const win = window.open(url, '_blank', 'noopener,noreferrer');
-                        if (!win) window.location.href = url;
-                      }
-                    }}
+                    onClick={(e) => e.stopPropagation()}
                     className="hover:underline inline-flex items-center gap-1.5 cursor-pointer"
                     title="Otwórz ogłoszenie w nowej karcie"
                   >
@@ -879,9 +871,6 @@ export default function HomePage() {
 
         return (
           <div className="max-w-3xl mx-auto space-y-2">
-            {/* Real Offers & Salaries Terminal Typer */}
-            <TerminalTyper className="mt-1 shadow-md" />
-
             {/* QOL Quick Filter Bar */}
             <QuickFilterBar
               onSearchChange={(q) => setSearchQuery(q)}

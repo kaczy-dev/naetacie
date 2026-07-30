@@ -84,7 +84,7 @@ export function ensureAbsoluteUrl(url: string | null | undefined, portalHint?: s
     return `https://${trimmed}`;
   }
 
-  // Relative paths (e.g. /d/oferta/123.html or /announcements/1)
+  // Relative paths (e.g. /d/oferta/123.html or /announcements/1 or d/oferta/...)
   const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
   const p = (portalHint || '').toLowerCase();
 
@@ -100,7 +100,7 @@ export function ensureAbsoluteUrl(url: string | null | undefined, portalHint?: s
   if (p === 'fixly') {
     return `https://fixly.pl${path}`;
   }
-  if (p === 'indeed') {
+  if (p === 'indeed' || path.startsWith('/viewjob')) {
     return `https://pl.indeed.com${path}`;
   }
 
@@ -142,6 +142,12 @@ export function getAnnouncementExternalUrl(ad?: {
     if (abs) {
       if (abs.includes('olx.pl/oferta/')) {
         abs = abs.replace('olx.pl/oferta/', 'olx.pl/d/oferta/');
+      }
+      if (abs.includes('indeed.com')) {
+        const jkMatch = abs.match(/[?&](?:jk|vjk)=([a-zA-Z0-9_-]+)/i);
+        if (jkMatch) {
+          abs = `https://pl.indeed.com/viewjob?jk=${jkMatch[1]}`;
+        }
       }
       if (abs.includes('olx.pl') && (abs.includes('/q-') || abs.includes('search[q]=') || abs.includes('search%5Bq%5D='))) {
         let rawQuery = '';

@@ -52,7 +52,7 @@ function cleanHtml(raw: string): string {
 }
 
 const CONSTRUCTION_RX =
-  /murar|tynkar|glazur|płytk|malarz|dekar|brukar|zbrojarz|ciesl|cieśl|beton|elektry|hydraulik|instalac|monter|spawacz|budowl|budow|remont|dociepl|posadzk|regips|wykończ|sanitarn|fotowolta|klimatyz|koparki|operator koparki|rusztowa|okien|glazurnik|kafelk|szpachl/i;
+  /murar|tynkar|glazur|płytk|malarz|dekar|brukar|zbrojarz|ciesl|cieśl|beton|elektry|hydraulik|instalac|monter|spawacz|budowl|budow|remont|dociepl|posadzk|regips|wykończ|sanitarn|fotowolta|klimatyz|koparki|operator koparki|rusztowa|okien|glazurnik|kafelk|szpachl|stolarz|elewac|gładz|kamieniarz|szklarz|złota rączka|parkiet/i;
 
 function isConstruction(title: string, desc: string): boolean {
   return CONSTRUCTION_RX.test(`${title} ${desc}`);
@@ -127,17 +127,24 @@ function parseOlxOffer(offer: OlxOffer): ScrapedAd | null {
   const rawUrl = (offer.url || '').trim();
   let sourceUrl = '';
   if (rawUrl) {
-    const abs = ensureAbsoluteUrl(rawUrl, 'olx');
-    if (abs && (abs.endsWith('.html') || abs.includes('-ID'))) {
-      sourceUrl = abs;
-    } else if (offer.id) {
-      sourceUrl = `https://www.olx.pl/d/oferta/-ID${offer.id}.html`;
-    } else if (abs) {
-      sourceUrl = abs;
+    let abs = ensureAbsoluteUrl(rawUrl, 'olx');
+    if (abs) {
+      if (abs.includes('olx.pl/oferta/')) {
+        abs = abs.replace('olx.pl/oferta/', 'olx.pl/d/oferta/');
+      }
+      if (abs.endsWith('.html') || abs.includes('-ID') || abs.includes('/d/oferta/')) {
+        sourceUrl = abs;
+      } else if (offer.id) {
+        sourceUrl = `https://www.olx.pl/d/oferta/-ID${offer.id}.html`;
+      } else {
+        sourceUrl = abs;
+      }
     }
-  } else if (offer.id) {
+  }
+  if (!sourceUrl && offer.id) {
     sourceUrl = `https://www.olx.pl/d/oferta/-ID${offer.id}.html`;
-  } else {
+  }
+  if (!sourceUrl) {
     const cleanTitle = removePolishDiacritics(title).replace(/[^\w\s]/gi, ' ').trim();
     sourceUrl = `https://www.olx.pl/praca/szczecin/?search%5Bq%5D=${encodeURIComponent(cleanTitle)}`;
   }

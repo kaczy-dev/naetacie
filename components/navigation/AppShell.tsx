@@ -250,11 +250,6 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
 
       {/* Main content */}
       <main className="flex-1 min-w-0 pt-12 md:pt-0 pb-[72px] md:pb-0 relative overflow-hidden flex flex-col">
-        {/* Mobile Terminal Stream Banner directly under mobile top bar */}
-        <div className="md:hidden px-3 pt-2.5 pb-0.5">
-          <TerminalTyper className="shadow-md" />
-        </div>
-
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={activeTab}

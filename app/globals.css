@@ -200,3 +200,51 @@ body {
   opacity: 0.9;
 }
 
+/* --- WOW Visual Effects & Glassmorphism --- */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.25), 0 0 30px rgba(16, 185, 129, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.45), 0 0 50px rgba(16, 185, 129, 0.2);
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s infinite ease-in-out;
+}
+
+.animate-float-slow {
+  animation: float-slow 6s infinite ease-in-out;
+}
+
+.gradient-text-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #14b8a6 50%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.wow-glass-card {
+  background: color-mix(in srgb, var(--color-card) 85%, transparent);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, #10b981 30%);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wow-glass-card:hover {
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 12px 40px 0 rgba(16, 185, 129, 0.15);
+  transform: translateY(-2px);
+}
+
+

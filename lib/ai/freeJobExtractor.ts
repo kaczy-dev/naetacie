@@ -29,15 +29,18 @@ const CERTIFICATION_PATTERNS: { name: string; rx: RegExp }[] = [
   { name: 'Uprawnienia HDS', rx: /\bhds\b|operator hds/i },
   { name: 'Praca na wysokości', rx: /praca na wysokości|badania wysokościowe|brak lęku wysokości/i },
   { name: 'Uprawnienia spawalnicze', rx: /uprawnienia spawalnicze|spawacz mig|spawacz mag|spawacz tig/i },
+  { name: 'Operator koparki / podestu', rx: /operator koparki|koparko-ładowarka|zwyżka|podest ruchomy/i },
+  { name: 'Uprawnienia gazowe / CO', rx: /uprawnienia gazowe|g3|gazownik|kotły c\.?o\.?/i },
 ];
 
 const BENEFIT_PATTERNS: { name: string; rx: RegExp }[] = [
   { name: 'Zakwaterowanie gratis', rx: /zakwaterowanie|darmowe mieszkanie|nocleg|zapewniamy nocleg/i },
   { name: 'Darmowy transport', rx: /dowóz|dojazd do pracy|darmowy transport|bus służbowy/i },
-  { name: 'Narzędzia i odzież', rx: /narzędzia|odzież robocza|zapewniamy sprzęt|auto służbowe/i },
+  { name: 'Narzędzia i odzież', rx: /narzędzia|odzież robocza|zapewniamy sprzęt|auto służbowe|samochód służbowy/i },
   { name: 'Płatne nadgodziny', rx: /nadgodziny|możliwość nadgodzin|płatne nadgodziny/i },
   { name: 'Premie i bonusy', rx: /premia|premie|prowizja|bonus/i },
   { name: 'Tygodniowe wypłaty', rx: /tygodniówka|rozliczenie tygodniowe|wypłata co tydzień/i },
+  { name: 'Pakiety socjalne', rx: /multisport|opieka medyczna|posiłki|dieta|ubezpieczenie/i },
 ];
 
 /**

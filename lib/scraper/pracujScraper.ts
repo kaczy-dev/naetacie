@@ -52,6 +52,9 @@ interface PracujApiOffer {
   companyName?: string;
   employer?: string;
   offerUrl?: string;
+  offerAbsoluteUrl?: string;
+  displayOfferUrl?: string;
+  clsOfferUrl?: string;
   link?: string;
   workplaceName?: string;
   location?: string;
@@ -66,7 +69,7 @@ function parsePracujRawOffer(item: PracujApiOffer, queryFallback: string): Scrap
   const title = (item.jobTitle || item.offerTitle || '').trim();
   if (!title) return null;
 
-  const rawUrl = item.offerUrl || item.link || '';
+  const rawUrl = item.offerAbsoluteUrl || item.offerUrl || item.displayOfferUrl || item.clsOfferUrl || item.link || '';
   let sourceUrl = '';
   if (rawUrl) {
     sourceUrl = ensureAbsoluteUrl(rawUrl, 'pracuj') || rawUrl;

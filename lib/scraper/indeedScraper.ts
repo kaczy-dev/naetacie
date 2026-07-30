@@ -60,8 +60,8 @@ function parseIndeedRssItem(itemXml: string): ScrapedAd | null {
   const pubDate = pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString();
 
   let sourceUrl = rawUrl;
-  const jkMatch = rawUrl.match(/jk=([a-f0-9]+)/i);
-  if (jkMatch) {
+  const jkMatch = rawUrl.match(/(?:jk|vjk)=([a-zA-Z0-9_-]+)/i) || itemXml.match(/<guid[^>]*>([a-zA-Z0-9_-]+)<\/guid>/i);
+  if (jkMatch && jkMatch[1].length >= 8) {
     sourceUrl = `https://pl.indeed.com/viewjob?jk=${jkMatch[1]}`;
   } else {
     sourceUrl = ensureAbsoluteUrl(rawUrl, 'indeed') || rawUrl;
