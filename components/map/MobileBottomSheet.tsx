@@ -127,42 +127,42 @@ export function MobileBottomSheet({
 
       {/* Main Sheet Container */}
       <motion.div
-        className="fixed bottom-0 left-0 right-0 md:left-auto md:right-8 md:bottom-3 md:w-[420px] z-30 flex flex-col rounded-t-3xl md:rounded-3xl shadow-2xl border border-border/80 backdrop-blur-xl transition-all duration-300 pb-safe"
+        className="fixed bottom-0 left-0 right-0 md:left-auto md:right-8 md:bottom-3 md:w-[420px] z-30 flex flex-col rounded-t-3xl md:rounded-3xl shadow-2xl border border-border/80 backdrop-blur-2xl transition-all duration-300 pb-safe touch-manipulation"
         style={{
           height: SNAP_HEIGHTS[snapState],
-          background: isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)',
+          background: isDark ? 'rgba(15, 23, 42, 0.97)' : 'rgba(255, 255, 255, 0.98)',
           color: ui.text,
         }}
         animate={{ height: SNAP_HEIGHTS[snapState] }}
-        transition={{ type: 'spring', stiffness: 350, damping: 32 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
       >
         {/* Drag handle header */}
         <motion.div
-          className="w-full flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
+          className="w-full flex flex-col items-center pt-3 pb-2.5 cursor-grab active:cursor-grabbing touch-none select-none shrink-0 group active:scale-[0.99] transition-transform"
           onClick={toggleSnap}
           onPanEnd={handleDragEnd}
         >
-          <div className="w-14 h-1.5 rounded-full bg-muted-foreground/40 mb-2 transition-colors hover:bg-muted-foreground/60" />
+          <div className="w-16 h-1.5 rounded-full bg-muted-foreground/50 mb-2 transition-all group-hover:bg-primary group-active:scale-110" />
           <div className="flex items-center justify-between w-full px-5 text-xs font-semibold text-muted-foreground">
             <span className="flex items-center gap-1.5 text-foreground font-bold">
               <Sparkles className="w-4 h-4 text-emerald-500 animate-pulse" />
               Oferty w tym obszarze: <span className="text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">{ads.length}</span>
             </span>
-            <div className="flex items-center gap-1 text-muted-foreground font-semibold">
-              <span className="text-[11px]">
+            <div className="flex items-center gap-1 text-muted-foreground font-bold">
+              <span className="text-[11px] text-primary">
                 {snapState === 'collapsed' ? 'Rozwiń' : snapState === 'expanded' ? 'Zwiń' : 'Rozwiń pełną'}
               </span>
               {snapState === 'expanded' ? (
-                <ChevronDown className="w-4 h-4 text-emerald-500" />
+                <ChevronDown className="w-4 h-4 text-primary" />
               ) : (
-                <ChevronUp className="w-4 h-4 text-emerald-500" />
+                <ChevronUp className="w-4 h-4 text-primary animate-bounce" />
               )}
             </div>
           </div>
         </motion.div>
 
         {/* Scrollable / Content area */}
-        <div className="flex-1 overflow-y-auto px-4 pb-20 pt-1 space-y-3">
+        <div className="flex-1 overflow-y-auto px-4 pb-20 pt-1 space-y-3 overscroll-contain">
           {/* COLLAPSED & MEDIUM STATE: RICH SINGLE AD CARD PREVIEW */}
           {snapState !== 'expanded' && currentDisplayAd && (
             <div className="bg-card/90 border border-border/70 rounded-2xl p-4 space-y-3 shadow-md backdrop-blur-md">
@@ -237,27 +237,54 @@ export function MobileBottomSheet({
               </div>
 
               {/* Quick Actions */}
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={() => {
-                    onShowOnMap(currentDisplayAd.id);
-                    setSnapState('collapsed');
-                  }}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 bg-primary text-primary-foreground text-xs font-bold rounded-xl active:scale-95 transition-all shadow-md"
-                >
-                  <Navigation className="w-3.5 h-3.5" /> Pokaż na mapie
-                </button>
-                <a
-                  href={getAnnouncementExternalUrl(currentDisplayAd)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center justify-center gap-1 py-2.5 px-3 border border-border/80 text-foreground text-xs font-semibold rounded-xl hover:bg-accent active:scale-95 transition-all cursor-pointer"
-                >
-                  <span>Zobacz w {currentDisplayAd.source_portal || 'OLX'}</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+              <div className="flex flex-col gap-2 pt-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      onShowOnMap(currentDisplayAd.id);
+                      setSnapState('collapsed');
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-xs font-bold rounded-xl active:scale-95 transition-all shadow-md"
+                  >
+                    <Navigation className="w-3.5 h-3.5 text-emerald-400" /> Pokaż na mapie
+                  </button>
+                  
+                  <a
+                    href={`/api/announcements/redirect?url=${encodeURIComponent(currentDisplayAd.source_url || '')}&portal=${currentDisplayAd.source_portal}&title=${encodeURIComponent(currentDisplayAd.title)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-black text-xs font-extrabold rounded-xl active:scale-95 transition-all shadow-lg cursor-pointer"
+                  >
+                    <span>Otwórz ofertę</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
+                {/* Direct Call & WhatsApp Quick Buttons */}
+                {((currentDisplayAd as unknown as { contact_info?: string }).contact_info) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <a
+                      href={`tel:+48${(currentDisplayAd as unknown as { contact_info: string }).contact_info.replace(/\D/g, '')}`}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl text-center flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-transform"
+                    >
+                      <span>📞 Zadzwoń</span>
+                    </a>
+                    <a
+                      href={`https://wa.me/48${(currentDisplayAd as unknown as { contact_info: string }).contact_info.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      className="py-2 px-3 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl text-center flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-transform"
+                    >
+                      <span>💬 WhatsApp</span>
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           )}

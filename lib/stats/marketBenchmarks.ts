@@ -111,3 +111,32 @@ export function evaluateMarketSalary(title: string, priceStr: string | null): Ma
     badgeColor: 'blue',
   };
 }
+
+/**
+ * Free AI Salary Estimator (Zero-Cost, No Paid API Required).
+ * Estimates realistic monthly PLN salary range for job offers missing price info.
+ */
+export function estimateSalaryRange(title: string, description: string = ''): { minPln: number; maxPln: number; text: string } {
+  const evalResult = evaluateMarketSalary(`${title} ${description}`, null);
+  const avg = evalResult.avgPln;
+  
+  // Heuristic adjustments based on keywords
+  let multiplier = 1.0;
+  const combined = `${title} ${description}`.toLowerCase();
+  
+  if (combined.includes('kierownik') || combined.includes('inżynier') || combined.includes('mistrz')) multiplier += 0.25;
+  if (combined.includes('samodzielny') || combined.includes('doświadczony') || combined.includes('brygadzista')) multiplier += 0.15;
+  if (combined.includes('pomocnik') || combined.includes('uczeń') || combined.includes('bez doświadczenia')) multiplier -= 0.20;
+  if (combined.includes('wyjazd') || combined.includes('delegacja') || combined.includes('niemcy')) multiplier += 0.30;
+  
+  const estimatedAvg = Math.round(avg * multiplier);
+  const minPln = Math.round(estimatedAvg * 0.88 / 100) * 100;
+  const maxPln = Math.round(estimatedAvg * 1.15 / 100) * 100;
+  
+  return {
+    minPln,
+    maxPln,
+    text: `Estymacja AI: ~${minPln.toLocaleString('pl-PL')} - ${maxPln.toLocaleString('pl-PL')} zł/msc`
+  };
+}
+

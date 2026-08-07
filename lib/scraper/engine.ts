@@ -22,17 +22,55 @@ export interface EnrichedScrapedAd extends MergedScrapedAd {
 /** Coordinates lookup table for Szczecin districts and surrounding towns. */
 const LOCATION_COORDINATES: Record<string, { lat: number; lon: number }> = {
   gumieńce: { lat: 53.3973, lon: 14.5064 },
+  gumience: { lat: 53.3973, lon: 14.5064 },
   prawobrzeże: { lat: 53.409, lon: 14.6133 },
+  prawobrzeze: { lat: 53.409, lon: 14.6133 },
   dąbie: { lat: 53.4539, lon: 14.5281 },
+  dabie: { lat: 53.4539, lon: 14.5281 },
   pogodno: { lat: 53.437, lon: 14.521 },
   niebuszewo: { lat: 53.4468, lon: 14.5622 },
   centrum: { lat: 53.4285, lon: 14.5528 },
   bezrzecze: { lat: 53.3683, lon: 14.5789 },
   załom: { lat: 53.3932, lon: 14.6488 },
+  zalom: { lat: 53.3932, lon: 14.6488 },
+  warszewo: { lat: 53.465, lon: 14.545 },
+  pomorzany: { lat: 53.402, lon: 14.532 },
+  żelechowa: { lat: 53.456, lon: 14.572 },
+  zelechowa: { lat: 53.456, lon: 14.572 },
+  krzekowo: { lat: 53.442, lon: 14.492 },
+  stołczyn: { lat: 53.492, lon: 14.598 },
+  stolczyn: { lat: 53.492, lon: 14.598 },
+  skolwin: { lat: 53.522, lon: 14.618 },
+  bukowo: { lat: 53.475, lon: 14.568 },
+  bukowe: { lat: 53.376, lon: 14.648 },
+  majowe: { lat: 53.385, lon: 14.652 },
+  słoneczne: { lat: 53.382, lon: 14.636 },
+  sloneczne: { lat: 53.382, lon: 14.636 },
+  kijewo: { lat: 53.388, lon: 14.672 },
+  zdroje: { lat: 53.382, lon: 14.615 },
+  podjuchy: { lat: 53.365, lon: 14.595 },
+  golęcin: { lat: 53.468, lon: 14.588 },
+  golecin: { lat: 53.468, lon: 14.588 },
+  drzetowo: { lat: 53.452, lon: 14.568 },
+  osów: { lat: 53.472, lon: 14.512 },
+  osow: { lat: 53.472, lon: 14.512 },
+  głębokie: { lat: 53.475, lon: 14.485 },
+  glebokie: { lat: 53.475, lon: 14.485 },
+  świerczewo: { lat: 53.408, lon: 14.518 },
+  swierczewo: { lat: 53.408, lon: 14.518 },
+  turzyn: { lat: 53.425, lon: 14.532 },
+  zawadzkiego: { lat: 53.452, lon: 14.502 },
+  mierzyn: { lat: 53.421, lon: 14.462 },
+  dobra: { lat: 53.488, lon: 14.385 },
+  przecław: { lat: 53.372, lon: 14.468 },
+  przeclaw: { lat: 53.372, lon: 14.468 },
+  warzymice: { lat: 53.375, lon: 14.482 },
   police: { lat: 53.5513, lon: 14.5692 },
   goleniów: { lat: 53.564, lon: 14.8298 },
+  goleniow: { lat: 53.564, lon: 14.8298 },
   stargard: { lat: 53.3362, lon: 15.05 },
   gryfino: { lat: 53.2538, lon: 14.4889 },
+  nowogard: { lat: 53.6667, lon: 15.1167 },
   szczecin: { lat: 53.4285, lon: 14.5528 },
 };
 
@@ -144,16 +182,18 @@ export async function runMultiPortalScrape(
   // 1. Cross-portal fuzzy deduplication
   const mergedAds = deduplicateCrossPortalAds(rawAds);
 
-  // 2. Enrich with zero-cost AI NLP traits & Szczecin market benchmarks
-  const enrichedAds: EnrichedScrapedAd[] = mergedAds.map((ad) => {
-    const traits = extractJobTraits(ad.title, ad.description);
-    const market_evaluation = evaluateMarketSalary(ad.title, ad.price);
-    return {
-      ...ad,
-      traits,
-      market_evaluation,
-    };
-  });
+  // 2. Enrich with zero-cost AI NLP traits, equipment detection, anti-fraud analysis & Szczecin market benchmarks
+  const enrichedAds: EnrichedScrapedAd[] = mergedAds
+    .map((ad) => {
+      const traits = extractJobTraits(ad.title, ad.description, ad.price, ad.phone);
+      const market_evaluation = evaluateMarketSalary(ad.title, ad.price);
+      return {
+        ...ad,
+        traits,
+        market_evaluation,
+      };
+    })
+    .filter((ad) => !ad.traits.fraud_analysis?.isSuspicious || (ad.traits.fraud_analysis?.score ?? 0) < 0.7);
 
   // 3. Filter out unavailable/expired offers and auto-add only active ones
   const { availableOffers, summary } = await filterAndAddAvailableOffers(enrichedAds);

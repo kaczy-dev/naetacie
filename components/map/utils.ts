@@ -47,3 +47,49 @@ export function isPointInPolygon(
   return inside;
 }
 
+/**
+ * Formats numeric or string price into a compact badge label for map markers.
+ * e.g., 12000 -> "12k", 8500 -> "8.5k", null -> "Oferta"
+ */
+export function formatMarkerBadgePrice(price: number | string | null): string {
+  if (price === null || price === undefined) return 'Oferta';
+
+  let numPrice: number | null = null;
+  if (typeof price === 'number') {
+    numPrice = price;
+  } else if (typeof price === 'string') {
+    const extracted = parseFloat(price.replace(/[^\d.]/g, ''));
+    if (!isNaN(extracted) && extracted > 0) numPrice = extracted;
+  }
+
+  if (numPrice === null || numPrice <= 0) return 'Oferta';
+
+  if (numPrice >= 1000) {
+    const inK = numPrice / 1000;
+    return `${Number.isInteger(inK) ? inK : inK.toFixed(1)}k`;
+  }
+  return `${numPrice} zł`;
+}
+
+/**
+ * Determines price tier category for map pin styling.
+ * - 'high': >= 10000 PLN (Green Glow)
+ * - 'medium': 6000 - 9999 PLN (Blue Accent)
+ * - 'normal': < 6000 PLN or unstated
+ */
+export function getMarkerPriceTier(price: number | string | null): 'high' | 'medium' | 'normal' {
+  let numPrice: number | null = null;
+  if (typeof price === 'number') {
+    numPrice = price;
+  } else if (typeof price === 'string') {
+    const extracted = parseFloat(price.replace(/[^\d.]/g, ''));
+    if (!isNaN(extracted) && extracted > 0) numPrice = extracted;
+  }
+
+  if (numPrice !== null) {
+    if (numPrice >= 10000) return 'high';
+    if (numPrice >= 6000) return 'medium';
+  }
+  return 'normal';
+}
+

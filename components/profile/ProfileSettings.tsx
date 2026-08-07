@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
+import { SkillWallet } from './SkillWallet';
 import { triggerHaptic } from '@/lib/utils';
 
 export function ProfileSettings() {
@@ -251,6 +252,9 @@ export function ProfileSettings() {
           </div>
         </div>
       )}
+
+      {/* Digital Skill Wallet */}
+      <SkillWallet />
 
       {/* ─── 2. QUICK ACTIVITY STATS ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

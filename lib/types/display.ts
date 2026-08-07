@@ -6,6 +6,8 @@
  * Normalizing everything into this one shape as early as possible is what
  * lets the map and the list share the exact same filtering/selection logic.
  */
+import type { ExtractedJobTraits } from '@/lib/ai/freeJobExtractor';
+
 export interface DisplayAnnouncement {
   id: string;
   title: string;
@@ -23,4 +25,5 @@ export interface DisplayAnnouncement {
   company?: string | null;
   employment_type?: string | null;
   posted_days_ago?: number | null;
+  traits?: ExtractedJobTraits;
 }

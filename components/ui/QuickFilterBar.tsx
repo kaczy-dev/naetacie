@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Flame, Zap, MapPin, Briefcase, Filter, X, Sparkles, SlidersHorizontal, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Search, Flame, Zap, MapPin, Briefcase, Filter, X, Sparkles, SlidersHorizontal, RefreshCw, Sun } from 'lucide-react';
+import { cn, triggerHaptic } from '@/lib/utils';
+import { useTheme } from '@/components/theme/ThemeProvider';
 
 export interface QuickFilter {
   id: string;
@@ -35,6 +36,7 @@ export function QuickFilterBar({
   totalOffersCount = 750,
   onRefresh,
 }: QuickFilterBarProps) {
+  const { outdoorMode, setOutdoorMode } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -86,16 +88,37 @@ export function QuickFilterBar({
             <span>{totalOffersCount} zweryfikowanych ofert</span>
           </div>
 
-          <motion.button
-            onClick={handleRefreshClick}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent hover:bg-accent/80 text-xs font-medium text-foreground transition-all shadow-sm touch-manipulation"
-            title="Odśwież najnowsze oferty"
-          >
-            <RefreshCw className={cn('w-3.5 h-3.5 text-primary', isRefreshing && 'animate-spin')} />
-            <span className="hidden sm:inline">Odśwież</span>
-          </motion.button>
+          <div className="flex items-center gap-1.5">
+            <motion.button
+              onClick={() => {
+                triggerHaptic(10);
+                setOutdoorMode(!outdoorMode);
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm touch-manipulation cursor-pointer border',
+                outdoorMode
+                  ? 'bg-amber-500 text-black border-amber-400 shadow-amber-500/20 font-black'
+                  : 'bg-accent hover:bg-accent/80 text-foreground border-border'
+              )}
+              title="Tryb Na Budowę (Wysoki kontrast w słońcu)"
+            >
+              <Sun className="w-3.5 h-3.5 text-amber-500" />
+              <span className="hidden xs:inline">☀️ Budowa</span>
+            </motion.button>
+
+            <motion.button
+              onClick={handleRefreshClick}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent hover:bg-accent/80 text-xs font-medium text-foreground transition-all shadow-sm touch-manipulation cursor-pointer border border-border"
+              title="Odśwież najnowsze oferty"
+            >
+              <RefreshCw className={cn('w-3.5 h-3.5 text-primary', isRefreshing && 'animate-spin')} />
+              <span className="hidden sm:inline">Odśwież</span>
+            </motion.button>
+          </div>
         </div>
       </div>
 

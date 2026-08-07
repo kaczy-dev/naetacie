@@ -18,6 +18,7 @@ export interface TrackedApplication {
   status: ApplicationStatus;
   note: string;
   updatedAt: number;
+  history?: Array<{ status: ApplicationStatus; timestamp: number }>;
 }
 
 const STORAGE_KEY = 'tracked-applications';
@@ -52,7 +53,21 @@ export function useApplicationTracking() {
 
   const setStatus = useCallback((id: string, status: ApplicationStatus, note = '') => {
     setTracked((prev) => {
-      const next = { ...prev, [id]: { id, status, note, updatedAt: Date.now() } };
+      const existing = prev[id];
+      const prevHistory = existing?.history || [];
+      const now = Date.now();
+      const updatedHistory = [...prevHistory, { status, timestamp: now }];
+
+      const next = {
+        ...prev,
+        [id]: {
+          id,
+          status,
+          note,
+          updatedAt: now,
+          history: updatedHistory,
+        },
+      };
       persist(next);
       return next;
     });

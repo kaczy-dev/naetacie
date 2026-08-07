@@ -1,14 +1,12 @@
-/**
- * Zero-Cost Rule-Based AI/NLP Job Data Extractor.
- * Operates 100% locally with zero external API dependencies or costs.
- * Extracts structured attributes: certifications, benefits, experience level,
- * salary ranges, and work conditions.
- */
+import { extractEquipment, DetectedEquipment } from './equipmentDetector';
+import { analyzeJobFraud, FraudAnalysisResult } from './fraudDetector';
 
 export interface ExtractedJobTraits {
   experience_level: 'Brak doświadczenia' | '1–3 lata' | 'Powyżej 3 lat';
   certifications: string[];
   benefits: string[];
+  equipment_detected: DetectedEquipment[];
+  fraud_analysis: FraudAnalysisResult;
   employment_type_normalized: string;
   salary_parsed: {
     min: number | null;
@@ -46,7 +44,7 @@ const BENEFIT_PATTERNS: { name: string; rx: RegExp }[] = [
 /**
  * Extracts structured traits from a job posting title and description.
  */
-export function extractJobTraits(title: string, description: string): ExtractedJobTraits {
+export function extractJobTraits(title: string, description: string, price?: string | number | null, phone?: string | null): ExtractedJobTraits {
   const fullText = `${title} ${description}`;
 
   // 1. Certifications
@@ -65,7 +63,13 @@ export function extractJobTraits(title: string, description: string): ExtractedJ
     }
   }
 
-  // 3. Experience level
+  // 3. Equipment & Tools
+  const equipment_detected = extractEquipment(title, description);
+
+  // 4. Fraud & Anti-Spam Analysis
+  const fraud_analysis = analyzeJobFraud({ title, description, price, phone });
+
+  // 5. Experience level
   let expLevel: 'Brak doświadczenia' | '1–3 lata' | 'Powyżej 3 lat' = '1–3 lata';
   if (/nie wymagamy doświadczenia|bez doświadczenia|przyuczymy|dla początkujących|pomocnik/i.test(fullText)) {
     expLevel = 'Brak doświadczenia';
@@ -73,27 +77,54 @@ export function extractJobTraits(title: string, description: string): ExtractedJ
     expLevel = 'Powyżej 3 lat';
   }
 
-  // 4. Accommodation & Transport flags
-  const accommodation = /zakwaterowanie|darmowe mieszkanie|nocleg|zapewniamy nocleg/i.test(fullText);
-  const transport = /dowóz|dojazd do pracy|darmowy transport|bus służbowy/i.test(fullText);
+  // 6. Accommodation & Transport & Immediate Start flags
+  const accommodation = /zakwaterowanie|darmow[eay]\s+mieszkanie|nocleg|zapewniamy\s+nocleg/i.test(fullText);
+  const transport = /dowóz|dojazd\s+do\s+pracy|darmowy\s+transport|bus\s+służbowy/i.test(fullText);
+  if (/od\s+zaraz|od\s+dzisiaj|od\s+poniedziałku|pilnie\s+poszukuj/i.test(fullText)) {
+    benefits.push('Praca od zaraz');
+  }
 
-  // 5. Employment type normalization
+  // 7. Employment type normalization
   let empType = 'Umowa o pracę';
   if (/b2b|działalność|faktura/i.test(fullText)) {
     empType = 'B2B';
-  } else if (/zlecenie|umowa zlecenie|dniówka/i.test(fullText)) {
+  } else if (/zlecenie|umowa\s+zlecenie|dniówka/i.test(fullText)) {
     empType = 'Umowa zlecenie';
+  } else if (/o\s+dzieło|umowa\s+o\s+dzieło/i.test(fullText)) {
+    empType = 'Umowa o dzieło';
   }
 
-  // 6. Salary parsing
+  // 8. Enhanced multi-format Salary parsing (hourly, daily, monthly, piecework)
   let salaryParsed: ExtractedJobTraits['salary_parsed'] = null;
-  const hourlyMatch = fullText.match(/(\d{2,3})\s*(?:–|-|do)\s*(\d{2,3})\s*zł(?:\/|\s*na\s*)h/i) || fullText.match(/(\d{2,3})\s*zł(?:\/|\s*na\s*)h/i);
-  const monthlyMatch = fullText.match(/(\d{4,5})\s*(?:–|-|do)\s*(\d{4,5})\s*(?:zł|pln)/i) || fullText.match(/(\d{4,5})\s*(?:zł|pln)/i);
+
+  const hourlyMatch =
+    fullText.match(/(\d{2,3})\s*(?:–|-|do)\s*(\d{2,3})\s*zł(?:\/|\s*na\s*)(?:h|godz|godzinę)/i) ||
+    fullText.match(/(\d{2,3})\s*zł(?:\/|\s*na\s*)(?:h|godz|godzinę)/i);
+
+  const dailyMatch =
+    fullText.match(/(\d{2,3,4})\s*(?:–|-|do)\s*(\d{2,3,4})\s*zł(?:\/|\s*na\s*)(?:dzień|dniówk[ae])/i) ||
+    fullText.match(/(\d{2,3,4})\s*zł(?:\/|\s*na\s*)(?:dzień|dniówk[ae])/i);
+
+  const pieceworkMatch =
+    fullText.match(/(\d{2,3})\s*(?:–|-|do)\s*(\d{2,3})\s*zł(?:\/|\s*za\s*)(?:m2|m²|metr)/i) ||
+    fullText.match(/(\d{2,3})\s*zł(?:\/|\s*za\s*)(?:m2|m²|metr)/i);
+
+  const monthlyMatch =
+    fullText.match(/(\d{4,5})\s*(?:–|-|do)\s*(\d{4,5})\s*(?:zł|pln)/i) ||
+    fullText.match(/(\d{4,5})\s*(?:zł|pln)/i);
 
   if (hourlyMatch) {
     const min = parseInt(hourlyMatch[1], 10);
     const max = hourlyMatch[2] ? parseInt(hourlyMatch[2], 10) : min;
     salaryParsed = { min, max, currency: 'PLN', unit: 'hourly' };
+  } else if (dailyMatch) {
+    const min = parseInt(dailyMatch[1], 10);
+    const max = dailyMatch[2] ? parseInt(dailyMatch[2], 10) : min;
+    salaryParsed = { min: Math.round(min * 21), max: Math.round(max * 21), currency: 'PLN', unit: 'monthly' };
+  } else if (pieceworkMatch) {
+    const min = parseInt(pieceworkMatch[1], 10);
+    const max = pieceworkMatch[2] ? parseInt(pieceworkMatch[2], 10) : min;
+    salaryParsed = { min, max, currency: 'PLN', unit: 'project' };
   } else if (monthlyMatch) {
     const min = parseInt(monthlyMatch[1], 10);
     const max = monthlyMatch[2] ? parseInt(monthlyMatch[2], 10) : min;
@@ -104,9 +135,38 @@ export function extractJobTraits(title: string, description: string): ExtractedJ
     experience_level: expLevel,
     certifications: certs,
     benefits,
+    equipment_detected,
+    fraud_analysis,
     employment_type_normalized: empType,
     salary_parsed: salaryParsed,
     accommodation_provided: accommodation,
     transport_provided: transport,
   };
+}
+
+/**
+ * Extracts normalized Polish phone numbers from job text (e.g. +48 501 234 567 -> 501-234-567).
+ */
+export function extractPhoneNumber(text: string): string | null {
+  if (!text) return null;
+
+  const phoneRx = /(?:\+?48\s*)?(?:\(?\d{2,3}\)?[\s-]*){3,4}\d{2,4}/g;
+  const matches = text.match(phoneRx);
+
+  if (!matches) return null;
+
+  for (const m of matches) {
+    const digits = m.replace(/\D/g, '');
+    let cleanDigits = digits;
+
+    if (digits.startsWith('48') && digits.length === 11) {
+      cleanDigits = digits.slice(2);
+    }
+
+    if (cleanDigits.length === 9 && /^[456789]/.test(cleanDigits)) {
+      return `${cleanDigits.slice(0, 3)}-${cleanDigits.slice(3, 6)}-${cleanDigits.slice(6)}`;
+    }
+  }
+
+  return null;
 }

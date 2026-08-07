@@ -5,6 +5,7 @@
 
 import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, JobCategory } from './types';
 import { ensureAbsoluteUrl } from '@/lib/utils';
+import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
 
 const INDEED_BASE = 'https://pl.indeed.com';
 
@@ -67,6 +68,8 @@ function parseIndeedRssItem(itemXml: string): ScrapedAd | null {
     sourceUrl = ensureAbsoluteUrl(rawUrl, 'indeed') || rawUrl;
   }
 
+  const phone = extractPhoneNumber(`${title} ${description}`);
+
   return {
     id: hashId(sourceUrl || title),
     title,
@@ -78,6 +81,7 @@ function parseIndeedRssItem(itemXml: string): ScrapedAd | null {
     latitude: null,
     longitude: null,
     price: null,
+    phone,
     scraped_at: new Date().toISOString(),
     published_at: pubDate,
     company,

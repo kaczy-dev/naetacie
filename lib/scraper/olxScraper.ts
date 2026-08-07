@@ -6,6 +6,7 @@
 import { Agent } from 'undici';
 import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, JobCategory } from './types';
 import { ensureAbsoluteUrl, removePolishDiacritics } from '@/lib/utils';
+import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
 
 const olxDispatcher = new Agent({
   connect: { rejectUnauthorized: false, timeout: 8000 },
@@ -126,27 +127,21 @@ function parseOlxOffer(offer: OlxOffer): ScrapedAd | null {
 
   const rawUrl = (offer.url || '').trim();
   let sourceUrl = '';
+
   if (rawUrl) {
-    let abs = ensureAbsoluteUrl(rawUrl, 'olx');
+    const abs = ensureAbsoluteUrl(rawUrl, 'olx');
     if (abs) {
-      if (abs.includes('olx.pl/oferta/')) {
-        abs = abs.replace('olx.pl/oferta/', 'olx.pl/d/oferta/');
-      }
-      if (abs.endsWith('.html') || abs.includes('-ID') || abs.includes('/d/oferta/')) {
-        sourceUrl = abs;
-      } else if (offer.id) {
-        sourceUrl = `https://www.olx.pl/d/oferta/-ID${offer.id}.html`;
-      } else {
-        sourceUrl = abs;
-      }
+      sourceUrl = abs.includes('olx.pl/oferta/') ? abs.replace('olx.pl/oferta/', 'olx.pl/d/oferta/') : abs;
     }
   }
+
   if (!sourceUrl && offer.id) {
     sourceUrl = `https://www.olx.pl/d/oferta/-ID${offer.id}.html`;
   }
+
   if (!sourceUrl) {
     const cleanTitle = removePolishDiacritics(title).replace(/[^\w\s]/gi, ' ').trim();
-    sourceUrl = `https://www.olx.pl/praca/szczecin/?search%5Bq%5D=${encodeURIComponent(cleanTitle)}`;
+    sourceUrl = `https://www.olx.pl/praca/szczecin/q-${encodeURIComponent(cleanTitle)}/`;
   }
 
   const city = offer.location?.city?.name || 'Szczecin';
@@ -165,6 +160,7 @@ function parseOlxOffer(offer: OlxOffer): ScrapedAd | null {
   if (!isConstruction(title, description)) return null;
 
   const company = offer.business ? offer.user?.company_name || offer.user?.name || null : null;
+  const phone = extractPhoneNumber(`${title} ${description}`);
 
   return {
     id: hashId(sourceUrl || String(offer.id ?? title)),
@@ -177,6 +173,7 @@ function parseOlxOffer(offer: OlxOffer): ScrapedAd | null {
     latitude: offer.map?.lat ?? null,
     longitude: offer.map?.lon ?? null,
     price: salary,
+    phone,
     scraped_at: new Date().toISOString(),
     published_at: offer.created_time || offer.last_refresh_time || null,
     company,

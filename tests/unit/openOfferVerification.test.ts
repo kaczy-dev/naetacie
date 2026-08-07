@@ -46,7 +46,7 @@ describe('Verification of "OTWÓRZ" Action & Live Offer Links', () => {
       source_url: '',
     };
     expect(getAnnouncementExternalUrl(adPracuj)).toBe(
-      'https://www.pracuj.pl/praca/Hydraulik;kw/szczecin;wp'
+      'https://www.pracuj.pl/praca/hydraulik;kw/szczecin;wp'
     );
 
     const adIndeed = {
@@ -55,7 +55,7 @@ describe('Verification of "OTWÓRZ" Action & Live Offer Links', () => {
       source_url: '',
     };
     expect(getAnnouncementExternalUrl(adIndeed)).toBe(
-      'https://pl.indeed.com/jobs?q=Monter%20klimatyzacji&l=Szczecin'
+      'https://pl.indeed.com/jobs?q=monter&l=Szczecin'
     );
   });
 

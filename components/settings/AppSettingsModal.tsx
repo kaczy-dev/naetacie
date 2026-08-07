@@ -135,10 +135,11 @@ export function AppSettingsModal({ isOpen, onClose }: AppSettingsModalProps) {
                 <Sparkles className="w-3.5 h-3.5" /> Motyw i Efekty Wizualne
               </h3>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 {[
                   { id: 'light', label: 'Jasny', icon: Sun },
                   { id: 'dark', label: 'Ciemny', icon: Moon },
+                  { id: 'oled', label: 'OLED Black', icon: Moon },
                   { id: 'system', label: 'Auto (System)', icon: Monitor },
                 ].map((t) => {
                   const Icon = t.icon;
@@ -148,9 +149,9 @@ export function AppSettingsModal({ isOpen, onClose }: AppSettingsModalProps) {
                       key={t.id}
                       onClick={() => setMode(t.id as any)}
                       className={cn(
-                        'flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all',
+                        'flex flex-col items-center gap-1.5 p-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer',
                         isActive
-                          ? 'bg-primary/10 border-primary text-primary shadow-sm'
+                          ? 'bg-primary/10 border-primary text-primary shadow-sm font-bold'
                           : 'bg-accent/40 border-border/60 text-muted-foreground hover:text-foreground hover:bg-accent'
                       )}
                     >

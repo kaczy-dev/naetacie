@@ -15,7 +15,8 @@ import {
   MapPin, Clock, Sparkles, X, ArrowRight, RefreshCw, Loader2,
   Search, Heart, ExternalLink, SlidersHorizontal, Map as MapIcon,
   Target, Briefcase, Share2, Check, Mic, WifiOff, Download,
-  ChevronDown, ChevronUp, List,
+  ChevronDown, ChevronUp, List, Phone, Copy, Wrench, ShieldCheck,
+  FileEdit, Calculator,
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -25,6 +26,8 @@ import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
 import { useScraper } from '@/lib/hooks/useScraper';
 import { useFavorites } from '@/lib/hooks/useFavorites';
 import { useJobPreferences } from '@/lib/hooks/useJobPreferences';
+import { useUserNotes } from '@/lib/hooks/useUserNotes';
+import { calculateNetSalary } from '@/lib/salary/calculator';
 import { useApplicationTracking, STATUS_META, type ApplicationStatus } from '@/lib/hooks/useApplicationTracking';
 import { scoreMatch, hasNoPreferences } from '@/lib/matching/engine';
 import { useShare } from '@/lib/hooks/useShare';
@@ -35,6 +38,7 @@ import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistratio
 import { JobPreferencesPanel } from '@/components/list/JobPreferencesPanel';
 import { QuickSearchChips } from '@/components/list/QuickSearchChips';
 import { MarketStats } from '@/components/list/MarketStats';
+import CollapsibleAnnouncementList from '@/components/list/CollapsibleAnnouncementList';
 import { computeMarketOverview } from '@/lib/stats/market';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,17 +51,19 @@ import type { DisplayAnnouncement } from '@/lib/types/display';
 import type { MatchResult } from '@/lib/matching/types';
 
 import MapViewDynamic from '@/components/map/MapViewDynamic';
-import { ProfileSettings } from '@/components/profile';
 import { Hero } from '@/components/landing/Hero';
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt';
-import PullToRefresh from '@/components/feedback/PullToRefresh';
 import { RecentSearchChips } from '@/components/list/RecentSearchChips';
 import { SalaryNetModal } from '@/components/salary/SalaryNetModal';
-import { JobComparisonModal } from '@/components/compare/JobComparisonModal';
+import { calculateDistanceKm } from '@/lib/geo/distance';
+import { JobComparisonModal } from '@/components/list/JobComparisonModal';
+import { ApplicationTimelineModal } from '@/components/list/ApplicationTimelineModal';
+import ConstructionSalaryModal from '@/components/calculator/ConstructionSalaryModal';
 import { KinematicQuickView } from '@/components/list/KinematicQuickView';
 import { MarketPulseBar } from '@/components/list/MarketPulseBar';
 import { CommandPaletteModal } from '@/components/navigation/CommandPaletteModal';
-import { NotificationsView } from '@/components/notifications/NotificationsView';
+import { SettingsDashboard } from '@/components/settings/SettingsDashboard';
+import { FavoritesView } from '@/components/favorites';
 import { TerminalTyper } from '@/components/brand/TerminalTyper';
 import { playUiChime } from '@/lib/audio/chime';
 import { AiInterviewModal } from '@/components/ai/AiInterviewModal';
@@ -141,7 +147,7 @@ function MatchBadge({ score, label }: { score: number; label: string }) {
 }
 
 function AnnouncementCard({
-  ad, index, isFavorite, isSelected, match, status, onToggleFavorite, onShowOnMap, onSetStatus, onQuickView, onOpenAiInterview, onOpenSalaryBenchmark,
+  ad, index, isFavorite, isSelected, match, status, onToggleFavorite, onShowOnMap, onSetStatus, onQuickView, onOpenAiInterview, onOpenSalaryBenchmark, onOpenTimeline, onOpenCalculator, isCompared = false, onToggleCompare,
 }: {
   ad: DisplayAnnouncement;
   index: number;
@@ -155,6 +161,10 @@ function AnnouncementCard({
   onQuickView?: () => void;
   onOpenAiInterview?: () => void;
   onOpenSalaryBenchmark?: () => void;
+  onOpenTimeline?: () => void;
+  onOpenCalculator?: () => void;
+  isCompared?: boolean;
+  onToggleCompare?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { share, copied } = useShare();
@@ -190,6 +200,15 @@ function AnnouncementCard({
   
   const portalColor = portalColors[ad.source_portal.toLowerCase()] || '#6b7280';
   const statusMeta = status ? STATUS_META[status] : null;
+  const { show: showToast } = useToast();
+  const [isFullDescShown, setIsFullDescShown] = useState(false);
+
+  const { getNote, saveNote } = useUserNotes();
+  const userNote = getNote(ad.id);
+  const [noteInput, setNoteInput] = useState(userNote);
+  useEffect(() => { setNoteInput(userNote); }, [userNote]);
+
+  const netBreakdown = typeof ad.price === 'number' ? calculateNetSalary(ad.price) : null;
 
   const handleSwipeEnd = (_: unknown, info: PanInfo) => {
     triggerHaptic(12);
@@ -267,6 +286,20 @@ function AnnouncementCard({
                     </div>
 
                     <div className="flex items-center gap-1">
+                      {ad.phone && (
+                        <a
+                          href={`tel:${ad.phone.replace(/\s+/g, '')}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerHaptic(15);
+                          }}
+                          className="shrink-0 p-1.5 rounded-full text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 hover:scale-110 transition-transform cursor-pointer"
+                          title={`Zadzwoń do majstra: ${ad.phone}`}
+                          aria-label={`Zadzwoń do majstra: ${ad.phone}`}
+                        >
+                          <Phone className="w-4 h-4 fill-current" />
+                        </a>
+                      )}
                       {onQuickView && (
                         <button
                           onClick={(e) => {
@@ -379,12 +412,174 @@ function AnnouncementCard({
                 className="overflow-hidden bg-muted/30 dark:bg-muted/10 border-t border-border/40"
               >
                 <div className="p-4.5 space-y-4">
-                  {/* Detailed Description */}
+                  {/* Detailed Description with Rozwijany Opis Toggle */}
                   <div className="space-y-1.5">
-                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Opis ogłoszenia</h4>
-                    <p className="text-xs md:text-sm text-muted-foreground leading-relaxed whitespace-pre-line bg-background/50 p-3 rounded-lg border border-border/30">
-                      <HighlightText text={ad.description} query={searchWord} />
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Opis ogłoszenia</h4>
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> ~{Math.max(1, Math.ceil((ad.description || '').split(/\s+/).length / 150))} min czytania
+                      </span>
+                    </div>
+                    <p className="text-xs md:text-sm text-muted-foreground leading-relaxed whitespace-pre-line bg-background/60 p-3.5 rounded-xl border border-border/40 shadow-2xs">
+                      <HighlightText
+                        text={isFullDescShown || (ad.description || '').length <= 220 ? ad.description : ad.description.slice(0, 220) + '...'}
+                        query={searchWord}
+                      />
                     </p>
+                    {(ad.description || '').length > 220 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic(10);
+                          setIsFullDescShown(!isFullDescShown);
+                        }}
+                        className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer pt-0.5"
+                      >
+                        {isFullDescShown ? (
+                          <>Zwiń opis <ChevronUp className="w-3.5 h-3.5" /></>
+                        ) : (
+                          <>Pokaż pełny opis ({(ad.description || '').length} znaków) <ChevronDown className="w-3.5 h-3.5" /></>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Kalkulator Wynagrodzenia Netto (Na rękę) */}
+                  {netBreakdown && (
+                    <div className="p-3.5 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <Calculator className="w-4 h-4 text-emerald-500" /> Przelicznik Wynagrodzenia Netto
+                        </span>
+                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                          ~{netBreakdown.uopNet.toLocaleString('pl-PL')} zł na rękę (UoP)
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground pt-1 border-t border-emerald-500/20">
+                        <div>Umowa Zlecenie: <strong>~{netBreakdown.uzNet.toLocaleString('pl-PL')} zł</strong></div>
+                        <div>UZ Student (&lt;26): <strong>{netBreakdown.uzStudentNet.toLocaleString('pl-PL')} zł</strong></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Private User Notes Feature */}
+                  <div className="space-y-1.5 p-3 rounded-xl bg-muted/40 border border-border/40">
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <FileEdit className="w-3.5 h-3.5 text-primary" /> Moja prywatna notatka do oferty
+                    </h4>
+                    <textarea
+                      value={noteInput}
+                      onChange={(e) => {
+                        setNoteInput(e.target.value);
+                        saveNote(ad.id, e.target.value);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      placeholder="Dodaj prywatną notatkę (np. Ustalenia z majstrem, termin rozmowy)..."
+                      rows={2}
+                      className="w-full p-2 text-xs rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                    />
+                  </div>
+
+                  {/* Extracted Equipment, Certifications & Benefits */}
+                  {ad.traits && (
+                    <div className="space-y-2 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1">
+                        <Wrench className="w-3.5 h-3.5" /> Wyryty sprzęt, certyfikaty i korzyści
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ad.traits.certifications?.map((c, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                            ⚡ {c}
+                          </span>
+                        ))}
+                        {ad.traits.equipment_detected?.map((eq, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+                            🛠️ {eq.name}
+                          </span>
+                        ))}
+                        {ad.traits.benefits?.map((b, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                            ✨ {b}
+                          </span>
+                        ))}
+                        {ad.traits.accommodation_provided && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                            🏠 Zakwaterowanie gratis
+                          </span>
+                        )}
+                        {ad.traits.transport_provided && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20">
+                            🚌 Transport gratis
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Safety & Authenticity Badge */}
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+                    <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span>Zweryfikowana oferta — 100% bezpieczna i zgodna ze standardami rynkowymi</span>
+                  </div>
+
+                  {/* QOL Quick Share & Copy & Timeline Action Row */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const shareText = `${ad.title} — ${ad.price ? ad.price + ' zł' : 'Do uzgodnienia'} w ${ad.location_text}\n${getAnnouncementExternalUrl(ad)}`;
+                        navigator.clipboard.writeText(shareText);
+                        triggerHaptic(15);
+                        showToast('success', 'Skopiowano treść i link oferty do schowka!');
+                      }}
+                      className="flex-1 text-xs gap-1.5 h-8 font-semibold border-border/60 hover:bg-accent min-w-[120px]"
+                    >
+                      <Copy className="w-3.5 h-3.5" /> Kopiuj treść
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const shareUrl = getAnnouncementExternalUrl(ad);
+                        if (navigator.share) {
+                          navigator.share({ title: ad.title, text: ad.title, url: shareUrl }).catch(() => {});
+                        } else {
+                          navigator.clipboard.writeText(shareUrl);
+                          showToast('success', 'Skopiowano link oferty do schowka!');
+                        }
+                        triggerHaptic(15);
+                      }}
+                      className="flex-1 text-xs gap-1.5 h-8 font-semibold border-border/60 hover:bg-accent min-w-[100px]"
+                    >
+                      <Share2 className="w-3.5 h-3.5" /> Udostępnij
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onOpenTimeline) onOpenTimeline();
+                      }}
+                      className="flex-1 text-xs gap-1.5 h-8 font-semibold border-border/60 hover:bg-accent min-w-[120px]"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-primary" /> Postęp
+                    </Button>
+                    <Button
+                      variant={isCompared ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onToggleCompare) onToggleCompare();
+                      }}
+                      className="text-xs gap-1 h-8 font-semibold min-w-[100px]"
+                    >
+                      ⚖️ {isCompared ? 'Porównujesz' : 'Porównaj'}
+                    </Button>
                   </div>
 
                   {/* Reasons list (positive & negative matching criteria) */}
@@ -485,6 +680,15 @@ function AnnouncementCard({
                       title="Porównaj stawkę z rynkiem"
                     >
                       📊 Stawki
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); onOpenCalculator?.(); }}
+                      className="gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 cursor-pointer"
+                      title="Zaawansowany kalkulator zarobków budowlanych"
+                    >
+                      🧮 Kalkulator
                     </Button>
                     {ad.phone && (() => {
                       const msgDraft = generateApplicationMessageDraft(ad.phone, ad.title, ad.source_portal);
@@ -588,7 +792,7 @@ export default function HomePage() {
   const { ads: scrapedAds, loading: scrapeLoading, lastScrapedAt, scrapeNow } = useScraper();
   const { isFavorite, toggleFavorite, favoriteCount } = useFavorites();
   const { preferences, update: updatePreferences, reset: resetPreferences } = useJobPreferences();
-  const { setStatus, getStatus, count: trackedCount } = useApplicationTracking();
+  const { setStatus, getStatus, count: trackedCount, tracked } = useApplicationTracking();
   const pushNotifications = usePushNotifications();
 
   const [prefsPanelOpen, setPrefsPanelOpen] = useState(false);
@@ -597,7 +801,6 @@ export default function HomePage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<TabId>('list');
-  const [isListCollapsed, setIsListCollapsed] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [guestPrompt, setGuestPrompt] = useState<string | null>(null);
 
@@ -650,6 +853,9 @@ export default function HomePage() {
 
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [comparedAdIds, setComparedAdIds] = useState<Set<string>>(new Set());
+  const [commuteRadiusKm, setCommuteRadiusKm] = useState<number>(0);
+  const [timelineAd, setTimelineAd] = useState<DisplayAnnouncement | null>(null);
+  const [constructionCalcModalAd, setConstructionCalcModalAd] = useState<DisplayAnnouncement | null>(null);
 
   // --- Quick View Drawer & Command Palette State ---
   const [quickViewAd, setQuickViewAd] = useState<DisplayAnnouncement | null>(null);
@@ -740,7 +946,7 @@ export default function HomePage() {
       : [...allAnnouncements];
 
     if (filterPortal !== 'all') {
-      result = result.filter((a) => a.source_portal === filterPortal);
+      result = result.filter((a) => (a.source_portal || '').toLowerCase() === filterPortal.toLowerCase());
     }
 
     if (showFavoritesOnly) {
@@ -749,6 +955,15 @@ export default function HomePage() {
 
     if (showTrackedOnly) {
       result = result.filter((a) => getStatus(a.id) !== null);
+    }
+
+    if (commuteRadiusKm > 0) {
+      const centerLat = 53.4285;
+      const centerLon = 14.5528;
+      result = result.filter((a) => {
+        if (a.latitude == null || a.longitude == null) return true;
+        return calculateDistanceKm(centerLat, centerLon, a.latitude, a.longitude) <= commuteRadiusKm;
+      });
     }
 
     const scoreOf = (id: string) => matchMap.get(id)?.score ?? 0;
@@ -823,10 +1038,6 @@ export default function HomePage() {
   }, []);
 
   function handleTabChange(tab: TabId) {
-    if (isGuest && (tab === 'notifications' || tab === 'profile')) {
-      setGuestPrompt(tab);
-      return;
-    }
     setActiveTab(tab);
   }
 
@@ -960,11 +1171,27 @@ export default function HomePage() {
                 >
                   💰 Netto
                 </Button>
+                <select
+                  value={commuteRadiusKm}
+                  onChange={(e) => {
+                    triggerHaptic(10);
+                    setCommuteRadiusKm(Number(e.target.value));
+                  }}
+                  className="h-9 px-2.5 rounded-lg border border-input bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+                  title="Filtruj według promienia dojazdu z Szczecina"
+                >
+                  <option value={0}>📍 Dojazd: Wszędzie</option>
+                  <option value={5}>📍 Dojazd: max 5 km</option>
+                  <option value={10}>📍 Dojazd: max 10 km</option>
+                  <option value={15}>📍 Dojazd: max 15 km</option>
+                  <option value={25}>📍 Dojazd: max 25 km</option>
+                  <option value={50}>📍 Dojazd: max 50 km</option>
+                </select>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCompareModalOpen(true)}
-                  className="gap-1 text-xs relative"
+                  className="gap-1 text-xs relative font-bold"
                   title="Porównywarka ofert"
                 >
                   ⚖️ Porównaj
@@ -1056,10 +1283,12 @@ export default function HomePage() {
                     <select
                       value={filterPortal}
                       onChange={(e) => setFilterPortal(e.target.value)}
-                      className="h-8 px-2 text-xs rounded-md border border-input bg-background"
+                      className="h-8 px-2 text-xs rounded-md border border-input bg-background cursor-pointer"
                     >
-                      <option value="all">Wszystkie portale</option>
+                      <option value="all">Wszystkie portale (OLX, Pracuj, Indeed...)</option>
                       <option value="olx">OLX</option>
+                      <option value="pracuj">Pracuj.pl</option>
+                      <option value="indeed">Indeed</option>
                       <option value="oferteo">Oferteo</option>
                       <option value="fixly">Fixly</option>
                     </select>
@@ -1102,110 +1331,105 @@ export default function HomePage() {
               <MarketStats overview={marketOverview} />
             )}
 
-            {/* Prominent Collapsible List Accordion Toggle Bar */}
-            <div className="mx-4 my-2 px-4 py-2.5 flex items-center justify-between bg-card/90 border border-primary/20 rounded-2xl shadow-md glass">
-              <div className="flex items-center gap-2">
-                <List className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-foreground">
-                  Zwijana Lista Ofert ({listAds.length} {listAds.length === 1 ? 'oferta' : 'ofert'})
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  triggerHaptic(10);
-                  setIsListCollapsed(!isListCollapsed);
-                }}
-                className="gap-1.5 text-xs font-extrabold text-primary hover:bg-primary/10 rounded-xl h-8 cursor-pointer"
-              >
-                {isListCollapsed ? (
-                  <>
-                    <span>Rozwiń Listę</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </>
-                ) : (
-                  <>
-                    <span>Zwiń Listę</span>
-                    <ChevronUp className="w-4 h-4" />
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* List Content */}
-            <AnimatePresence>
-              {!isListCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.25 }}
+            {/* Prominent Collapsible List Component */}
+            <CollapsibleAnnouncementList
+              items={listAds}
+              isLoading={scrapeLoading && allAnnouncements.length === 0}
+              onRefresh={async () => {
+                triggerHaptic(15);
+                await scrapeNow(undefined, 40);
+              }}
+              emptyState={
+                <div className="p-8 text-center bg-card/40 rounded-2xl mx-4 my-2 border border-border/50">
+                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+                    <MapPin className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-muted-foreground text-sm">
+                      {searchQuery ? 'Brak wyników dla tego wyszukiwania' : showFavoritesOnly ? 'Brak ulubionych ogłoszeń' : 'Brak ogłoszeń'}
+                    </p>
+                    {!searchQuery && !showFavoritesOnly && (
+                      <Button variant="outline" className="mt-4" onClick={() => scrapeNow(undefined, 40)} disabled={scrapeLoading}>
+                        {scrapeLoading ? 'Scrapuję...' : 'Pobierz ogłoszenia'}
+                      </Button>
+                    )}
+                  </motion.div>
+                </div>
+              }
+              renderItem={(ad, i) => (
+                <div
+                  key={ad.id}
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(ad.id, el);
+                    else cardRefs.current.delete(ad.id);
+                  }}
                 >
-                  {scrapeLoading && allAnnouncements.length === 0 ? (
-                    <ListSkeleton />
-                  ) : listAds.length === 0 ? (
-                    <div className="p-8 text-center">
-                      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-                        <MapPin className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                        <p className="text-muted-foreground text-sm">
-                          {searchQuery ? 'Brak wyników dla tego wyszukiwania' : showFavoritesOnly ? 'Brak ulubionych ogłoszeń' : 'Brak ogłoszeń'}
-                        </p>
-                        {!searchQuery && !showFavoritesOnly && (
-                          <Button variant="outline" className="mt-4" onClick={() => scrapeNow(undefined, 40)} disabled={scrapeLoading}>
-                            {scrapeLoading ? 'Scrapuję...' : 'Pobierz ogłoszenia'}
-                          </Button>
-                        )}
-                      </motion.div>
-                    </div>
-                  ) : (
-                    <PullToRefresh onRefresh={async () => { triggerHaptic(15); await scrapeNow(undefined, 40); }}>
-                      <div className="p-4 space-y-3">
-                        {listAds.map((ad, i) => (
-                          <div
-                            key={ad.id}
-                            ref={(el) => {
-                              if (el) cardRefs.current.set(ad.id, el);
-                              else cardRefs.current.delete(ad.id);
-                            }}
-                          >
-                            <AnnouncementCard
-                              ad={ad}
-                              index={i}
-                              isFavorite={isFavorite(ad.id)}
-                              isSelected={ad.id === selectedId}
-                              match={prefsActive ? matchMap.get(ad.id) ?? null : null}
-                              status={getStatus(ad.id)}
-                              onToggleFavorite={() => {
-                                const wasFav = isFavorite(ad.id);
-                                toggleFavorite(ad.id);
-                                showToast('success', wasFav ? 'Usunięto z ulubionych' : 'Dodano do ulubionych ❤️');
-                              }}
-                              onShowOnMap={() => handleShowOnMap(ad.id)}
-                              onSetStatus={(s) => {
-                                setStatus(ad.id, s);
-                                showToast('info', `Status: ${STATUS_META[s].label}`);
-                              }}
-                              onQuickView={() => setQuickViewAd(ad)}
-                              onOpenAiInterview={() => setInterviewModalAd(ad)}
-                              onOpenSalaryBenchmark={() => setBenchmarkModalAd(ad)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </PullToRefresh>
-                  )}
-                </motion.div>
+                  <AnnouncementCard
+                    ad={ad}
+                    index={i}
+                    isFavorite={isFavorite(ad.id)}
+                    isSelected={ad.id === selectedId}
+                    match={prefsActive ? matchMap.get(ad.id) ?? null : null}
+                    status={getStatus(ad.id)}
+                    onToggleFavorite={() => {
+                      const wasFav = isFavorite(ad.id);
+                      toggleFavorite(ad.id);
+                      showToast('success', wasFav ? 'Usunięto z ulubionych' : 'Dodano do ulubionych ❤️');
+                    }}
+                    onShowOnMap={() => handleShowOnMap(ad.id)}
+                    onSetStatus={(s) => {
+                      setStatus(ad.id, s);
+                      showToast('info', `Status: ${STATUS_META[s].label}`);
+                    }}
+                    onQuickView={() => setQuickViewAd(ad)}
+                    onOpenAiInterview={() => setInterviewModalAd(ad)}
+                    onOpenSalaryBenchmark={() => setBenchmarkModalAd(ad)}
+                    onOpenTimeline={() => setTimelineAd(ad)}
+                    onOpenCalculator={() => setConstructionCalcModalAd(ad)}
+                    isCompared={comparedAdIds.has(ad.id)}
+                    onToggleCompare={() => {
+                      setComparedAdIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(ad.id)) {
+                          next.delete(ad.id);
+                        } else {
+                          if (next.size >= 3) {
+                            showToast('error', 'Możesz porównywać maksymalnie 3 oferty jednocześnie!');
+                            return prev;
+                          }
+                          next.add(ad.id);
+                        }
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
               )}
-            </AnimatePresence>
+            />
           </div>
         );
       }
 
-      case 'notifications':
-        return <NotificationsView />;
-      case 'profile':
-        return <ProfileSettings />;
+      case 'favorites': {
+        const favoriteAds = allAnnouncements.filter((a) => isFavorite(a.id));
+        return (
+          <FavoritesView
+            favoriteAds={favoriteAds}
+            onToggleFavorite={toggleFavorite}
+            onShowOnMap={(id) => {
+              setActiveTab('map');
+              setSelectedId(id);
+              setFlyToken((t) => t + 1);
+            }}
+            onQuickView={(ad) => setQuickViewAd(ad)}
+            onOpenAiInterview={(ad) => setInterviewModalAd(ad)}
+            onOpenSalaryBenchmark={(ad) => setBenchmarkModalAd(ad)}
+            onOpenCvGenerator={() => setCvGeneratorOpen(true)}
+            onGoToBrowse={() => setActiveTab('list')}
+          />
+        );
+      }
+
+      case 'settings':
+        return <SettingsDashboard />;
       default:
         return null;
     }
@@ -1263,7 +1487,7 @@ export default function HomePage() {
         isOpen={compareModalOpen}
         ads={allAnnouncements.filter((a) => comparedAdIds.has(a.id))}
         onClose={() => setCompareModalOpen(false)}
-        onRemove={(id) => {
+        onRemoveFromComparison={(id: string) => {
           setComparedAdIds((prev) => {
             const next = new Set(prev);
             next.delete(id);
@@ -1351,6 +1575,34 @@ export default function HomePage() {
       <AppSettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      {/* Side-by-Side Job Comparison Modal */}
+      <JobComparisonModal
+        ads={allAnnouncements.filter((a) => comparedAdIds.has(a.id))}
+        isOpen={compareModalOpen}
+        onClose={() => setCompareModalOpen(false)}
+        onRemoveFromComparison={(id) => {
+          setComparedAdIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        }}
+      />
+
+      {/* Application Timeline & Progress Modal */}
+      <ApplicationTimelineModal
+        ad={timelineAd}
+        trackedApp={timelineAd ? tracked[timelineAd.id] : null}
+        isOpen={timelineAd !== null}
+        onClose={() => setTimelineAd(null)}
+        onSetStatus={(st) => {
+          if (timelineAd) {
+            setStatus(timelineAd.id, st);
+            showToast('success', `Zmieniono status na: ${STATUS_META[st].label}`);
+          }
+        }}
       />
 
       {/* Floating QOL Quick Action Hub */}

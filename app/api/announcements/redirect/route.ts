@@ -1,10 +1,10 @@
 /**
  * Real-Time Direct Offer Redirect & Live Link Resolver API.
- * Ensures clicking "OTWÓRZ" always takes the user to the active live job posting on OLX, Pracuj.pl, or Indeed.
+ * Guarantees clicking "OTWÓRZ" ALWAYS takes the user to an active live job offer or its healed portal equivalent.
  */
 
 import { NextResponse } from 'next/server';
-import { ensureAbsoluteUrl, getAnnouncementExternalUrl } from '@/lib/utils';
+import { healAnnouncementLink } from '@/lib/verification/linkHealer';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,21 +15,18 @@ export async function GET(request: Request): Promise<NextResponse> {
   const title = url.searchParams.get('title');
   const id = url.searchParams.get('id');
 
-  // Compute canonical external URL using centralized helper
-  const targetUrl = getAnnouncementExternalUrl({
-    source_url: rawUrl,
-    source_portal: portal,
-    title,
-    id: id || undefined,
-  });
-
-  // Verify real-time availability with a quick 2-second HEAD/GET check
   try {
-    const verifiedUrl = ensureAbsoluteUrl(targetUrl, portal || 'olx') || targetUrl;
-    return NextResponse.redirect(verifiedUrl, { status: 307 });
+    const healed = await healAnnouncementLink({
+      source_url: rawUrl,
+      source_portal: portal,
+      title,
+      id: id || undefined,
+    });
+
+    return NextResponse.redirect(healed.url, { status: 307 });
   } catch (e) {
-    console.warn('Real-time redirect fallback triggered:', (e as Error).message);
-    const fallbackUrl = getAnnouncementExternalUrl({ source_portal: portal, title });
+    console.warn('Real-time redirect heal fallback:', (e as Error).message);
+    const fallbackUrl = `https://www.olx.pl/praca/szczecin/?search%5Bq%5D=${encodeURIComponent(title || 'budowlana')}`;
     return NextResponse.redirect(fallbackUrl, { status: 307 });
   }
 }

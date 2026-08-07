@@ -168,11 +168,25 @@ function getMarkerHtml(
 
   const shortPrice = price ? formatShortPrice(price) : null;
   const priceFontSize = isMobile ? '8px' : '10px';
-  const pricePadding = isMobile ? '1px 4px' : '1.5px 6px';
+  const pricePadding = isMobile ? '1px 5px' : '1.5px 7px';
   const priceBottom = isMobile ? '-14px' : '-18px';
 
+  const numPrice = typeof price === 'number' ? price : (typeof price === 'string' ? parseFloat(price.replace(/[^\d.]/g, '')) : null);
+  const isHighPay = numPrice !== null && numPrice >= 10000;
+
+  const badgeBg = isSelected
+    ? 'linear-gradient(135deg, #059669, #047857)'
+    : isHighPay
+    ? 'linear-gradient(135deg, #10b981, #059669)'
+    : '#0f172a';
+
+  const badgeBorder = isSelected || isHighPay ? '#34d399' : 'rgba(255,255,255,0.25)';
+  const badgeShadow = isHighPay
+    ? '0 2px 8px rgba(16,185,129,0.5), 0 0 10px rgba(16,185,129,0.3)'
+    : '0 2px 6px rgba(0,0,0,0.35)';
+
   const priceBadgeHtml = shortPrice
-    ? `<div style="position:absolute;bottom:${priceBottom};left:50%;transform:translateX(-50%);background:${isSelected ? '#059669' : '#0f172a'};color:#ffffff;font-size:${priceFontSize};font-weight:800;padding:${pricePadding};border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);border:1px solid ${isSelected ? '#34d399' : 'rgba(255,255,255,0.2)'};">${shortPrice}</div>`
+    ? `<div style="position:absolute;bottom:${priceBottom};left:50%;transform:translateX(-50%);background:${badgeBg};color:#ffffff;font-size:${priceFontSize};font-weight:900;padding:${pricePadding};border-radius:10px;white-space:nowrap;box-shadow:${badgeShadow};border:1px solid ${badgeBorder};">${isHighPay ? '🔥 ' : ''}${shortPrice}</div>`
     : '';
 
   const pulseSize = isMobile ? '30px' : '44px';

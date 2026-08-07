@@ -16,13 +16,13 @@ interface SideNavTabConfig {
 }
 
 const SIDE_NAV_TABS: SideNavTabConfig[] = [
-  { id: 'map', label: 'Map' },
-  { id: 'list', label: 'List' },
-  { id: 'notifications', label: 'Notifications' },
-  { id: 'profile', label: 'Profile' },
+  { id: 'list', label: 'Lista Ofert' },
+  { id: 'map', label: 'Mapa 3D' },
+  { id: 'favorites', label: 'Ulubione' },
+  { id: 'settings', label: 'Ustawienia' },
 ];
 
-const TAB_ORDER: TabId[] = ['map', 'list', 'notifications', 'profile'];
+const TAB_ORDER: TabId[] = ['list', 'map', 'favorites', 'settings'];
 
 const SIDE_NAV_WIDTH = 240;
 

@@ -6,6 +6,7 @@
 import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, JobCategory } from './types';
 import { ensureAbsoluteUrl, removePolishDiacritics } from '@/lib/utils';
 import { extractJsonLd } from '@/functions/src/scraper/extractor';
+import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
 
 const PRACUJ_BASE = 'https://www.pracuj.pl';
 
@@ -87,6 +88,7 @@ function parsePracujRawOffer(item: PracujApiOffer, queryFallback: string): Scrap
   const publishedAt = item.lastPublicated || item.datePublished || new Date().toISOString();
 
   const description = cleanText(`${title} - Praca w ${company ? company + ', ' : ''}${locationText}.`).slice(0, 300);
+  const phone = extractPhoneNumber(`${title} ${description}`);
 
   return {
     id: hashId(sourceUrl || title + locationText),
@@ -99,6 +101,7 @@ function parsePracujRawOffer(item: PracujApiOffer, queryFallback: string): Scrap
     latitude: null,
     longitude: null,
     price: salary,
+    phone,
     scraped_at: new Date().toISOString(),
     published_at: publishedAt,
     company,

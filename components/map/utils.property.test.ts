@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { filterGeocodedAnnouncements } from './utils';
+import { filterGeocodedAnnouncements, formatMarkerBadgePrice, getMarkerPriceTier } from './utils';
 import { MaskedAnnouncement, SourcePortal } from '@/lib/types/announcement';
 
 /**
@@ -82,5 +82,17 @@ describe('Property 9: Map marker coordinate filtering', () => {
       }),
       { numRuns: 100 }
     );
+  });
+});
+
+describe('formatMarkerBadgePrice & getMarkerPriceTier helpers', () => {
+  it('formats numeric prices into compact k-suffix strings', () => {
+    expect(formatMarkerBadgePrice(12000)).toBe('12k');
+    expect(formatMarkerBadgePrice(8500)).toBe('8.5k');
+    expect(formatMarkerBadgePrice(null)).toBe('Oferta');
+
+    expect(getMarkerPriceTier(12000)).toBe('high');
+    expect(getMarkerPriceTier(7500)).toBe('medium');
+    expect(getMarkerPriceTier(4000)).toBe('normal');
   });
 });

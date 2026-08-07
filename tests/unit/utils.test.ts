@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ensureAbsoluteUrl, formatShortPrice, triggerHaptic } from '@/lib/utils';
+import { ensureAbsoluteUrl, formatShortPrice, triggerHaptic, extractTradeKeyword, getAnnouncementExternalUrl } from '@/lib/utils';
 
 describe('Utility Helper Functions (Unit Tests)', () => {
   describe('ensureAbsoluteUrl', () => {
@@ -39,6 +39,20 @@ describe('Utility Helper Functions (Unit Tests)', () => {
       expect(formatShortPrice(8000)).toBe('8k zł');
       expect(formatShortPrice(15000)).toBe('15k zł');
       expect(formatShortPrice(22500)).toBe('22.5k zł');
+    });
+  });
+
+  describe('extractTradeKeyword', () => {
+    it('extracts exact trade keyword from long sentence titles', () => {
+      expect(extractTradeKeyword('Firma Onesto zatrudni dekarza z doświadczeniem')).toBe('dekarz');
+      expect(extractTradeKeyword('Pilnie poszukujemy elektryka do budowy')).toBe('elektryk');
+      expect(extractTradeKeyword('Zatrudnię pomocnika od zaraz')).toBe('pomocnik');
+
+      const url = getAnnouncementExternalUrl({
+        title: 'Firma Onesto zatrudni dekarza z doświadczeniem',
+        source_portal: 'olx',
+      });
+      expect(url).toBe('https://www.olx.pl/praca/szczecin/q-dekarz/');
     });
   });
 

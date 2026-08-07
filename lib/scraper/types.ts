@@ -17,6 +17,7 @@ export interface ScrapedAd {
   latitude: number | null;
   longitude: number | null;
   price: string | null;
+  phone?: string | null;
   scraped_at: string;
   published_at: string | null;
   company: string | null;

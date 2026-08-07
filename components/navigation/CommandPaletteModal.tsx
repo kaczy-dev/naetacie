@@ -7,6 +7,7 @@ import {
   Moon, Sun, X, ArrowRight, Sparkles
 } from 'lucide-react';
 import type { DisplayAnnouncement } from '@/lib/types/display';
+import type { TabId } from '@/components/navigation/AppShell';
 import { useTheme } from '@/components/theme';
 
 export interface CommandPaletteModalProps {
@@ -14,7 +15,7 @@ export interface CommandPaletteModalProps {
   onClose: () => void;
   ads: DisplayAnnouncement[];
   onSelectAd: (id: string) => void;
-  onSelectTab: (tab: 'map' | 'list' | 'notifications' | 'profile') => void;
+  onSelectTab: (tab: TabId) => void;
   onOpenCalculator: () => void;
   onOpenCompare: () => void;
   onFilterSalaryOnly?: () => void;

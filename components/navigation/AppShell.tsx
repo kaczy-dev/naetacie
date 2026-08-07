@@ -9,7 +9,7 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion, type PanInfo } from 'framer-motion';
-import { Map, List, Bell, User, Wifi, WifiOff, Moon, Sun, Monitor, Settings, Command, Terminal } from 'lucide-react';
+import { Map, List, Heart, Wifi, WifiOff, Moon, Sun, Monitor, Settings, Command, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { useOfflineSync } from '@/lib/hooks/useOfflineSync';
@@ -18,7 +18,7 @@ import { MotivationalTagline } from '@/components/brand/MotivationalTagline';
 import { SystemHealthBadge } from '@/components/feedback/SystemHealthBadge';
 import { TerminalTyper } from '@/components/brand/TerminalTyper';
 
-export type TabId = 'map' | 'list' | 'notifications' | 'profile';
+export type TabId = 'list' | 'map' | 'favorites' | 'settings';
 
 interface AppShellProps {
   activeTab: TabId;
@@ -32,11 +32,11 @@ interface AppShellProps {
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'list', label: 'Lista Ofert', icon: List },
   { id: 'map', label: 'Mapa 3D', icon: Map },
-  { id: 'notifications', label: 'Powiadomienia', icon: Bell },
-  { id: 'profile', label: 'Profil', icon: User },
+  { id: 'favorites', label: 'Ulubione', icon: Heart },
+  { id: 'settings', label: 'Ustawienia', icon: Settings },
 ];
 
-const TAB_ORDER: TabId[] = ['list', 'map', 'notifications', 'profile'];
+const TAB_ORDER: TabId[] = ['list', 'map', 'favorites', 'settings'];
 const SWIPE_VELOCITY = 300;
 const SWIPE_DISTANCE = 80;
 
@@ -78,7 +78,7 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
         exit: (dir: number) => ({ x: dir < 0 ? '15%' : '-15%', opacity: 0, scale: 0.97 }),
       };
 
-  const themeIcons = { light: Sun, dark: Moon, system: Monitor };
+  const themeIcons = { light: Sun, dark: Moon, oled: Moon, system: Monitor };
 
   return (
     <div className="flex min-h-[100dvh] max-w-[100vw] overflow-x-hidden bg-background">
@@ -123,7 +123,7 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
                   className={cn(
-                    'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 touch-manipulation',
+                    'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 touch-manipulation cursor-pointer',
                     isActive
                       ? 'bg-gradient-to-r from-primary/20 via-primary/15 to-primary/5 text-primary shadow-sm border border-primary/20'
                       : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground'
@@ -132,7 +132,7 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
                   whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
                 >
                   <Icon className={cn('w-5 h-5 transition-transform duration-200', isActive ? 'text-primary scale-110' : 'text-muted-foreground')} />
-                  {tab.label}
+                  <span>{tab.label}</span>
                   {isActive && (
                     <motion.div
                       layoutId="sidebar-indicator"
@@ -172,10 +172,10 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
           <div className="relative">
             <button
               onClick={() => setThemeMenuOpen(!themeMenuOpen)}
-              className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full px-2.5 py-2 rounded-lg hover:bg-accent border border-transparent hover:border-border"
+              className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full px-2.5 py-2 rounded-lg hover:bg-accent border border-transparent hover:border-border cursor-pointer"
             >
               {React.createElement(themeIcons[mode], { className: 'w-3.5 h-3.5 text-primary' })}
-              <span>Motyw: {mode === 'system' ? 'Systemowy' : mode === 'dark' ? 'Ciemny 🌙' : 'Jasny ☀️'}</span>
+              <span>Motyw: {mode === 'system' ? 'Systemowy' : mode === 'oled' ? 'OLED Black 🖤' : mode === 'dark' ? 'Ciemny 🌙' : 'Jasny ☀️'}</span>
             </button>
             {themeMenuOpen && (
               <motion.div
@@ -184,17 +184,17 @@ export function AppShell({ activeTab, onTabChange, children, isLive, onOpenSetti
                 exit={{ opacity: 0 }}
                 className="absolute bottom-full left-0 mb-1 w-full bg-popover/95 backdrop-blur-md border border-border rounded-xl shadow-xl p-1.5 z-50"
               >
-                {(['light', 'dark', 'system'] as const).map((m) => (
+                {(['light', 'dark', 'oled', 'system'] as const).map((m) => (
                   <button
                     key={m}
                     onClick={() => { setMode(m); setThemeMenuOpen(false); }}
                     className={cn(
-                      'w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-colors',
+                      'w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer',
                       mode === m ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent'
                     )}
                   >
                     {React.createElement(themeIcons[m], { className: 'w-3.5 h-3.5' })}
-                    {m === 'system' ? 'Systemowy' : m === 'dark' ? 'Ciemny (Dark Mode)' : 'Jasny (Light Mode)'}
+                    {m === 'system' ? 'Systemowy' : m === 'oled' ? 'OLED Pure Black' : m === 'dark' ? 'Ciemny (Dark Mode)' : 'Jasny (Light Mode)'}
                   </button>
                 ))}
               </motion.div>
