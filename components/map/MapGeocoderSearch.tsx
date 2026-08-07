@@ -94,11 +94,11 @@ export function MapGeocoderSearch({
       ref={containerRef}
       style={{
         position: 'absolute',
-        top: '10px',
-        right: '58px',
-        zIndex: 15,
-        width: '260px',
-        maxWidth: 'calc(100vw - 120px)',
+        top: '76px',
+        left: '10px',
+        right: '10px',
+        zIndex: 25,
+        maxWidth: '300px',
       }}
     >
       <div
@@ -111,11 +111,11 @@ export function MapGeocoderSearch({
           border: `1.5px solid ${ui.border}`,
           borderRadius: '20px',
           boxShadow: ui.shadow,
-          padding: '2px 10px',
+          padding: '1px 8px',
           transition: 'all 0.2s ease',
         }}
       >
-        <span style={{ fontSize: '14px', marginRight: '6px', opacity: 0.7 }}>🔍</span>
+        <span style={{ fontSize: '11px', marginRight: '5px', opacity: 0.7 }}>🔍</span>
         <input
           type="text"
           value={query}
@@ -129,10 +129,10 @@ export function MapGeocoderSearch({
             background: 'transparent',
             border: 'none',
             outline: 'none',
-            fontSize: '12px',
+            fontSize: '11px',
             fontWeight: 500,
             color: ui.text,
-            padding: '6px 0',
+            padding: '4px 0',
           }}
         />
         {loading && (

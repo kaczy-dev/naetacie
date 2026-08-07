@@ -152,9 +152,9 @@ export default function CollapsibleAnnouncementList<T extends { id: string; cate
         onKeyDown={handleKeyDownHeader}
         onClick={toggleMainCollapse}
         className={cn(
-          'mx-3 sm:mx-4 my-2 px-3.5 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2.5',
+          'mx-2 sm:mx-4 my-1 sm:my-2 px-2.5 sm:px-4 py-2 sm:py-3 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2.5',
           'bg-card/95 dark:bg-slate-900/95 border border-primary/30 hover:border-primary/60',
-          'rounded-2xl shadow-xl backdrop-blur-2xl transition-all duration-200 cursor-pointer glass group active:scale-[0.985] touch-manipulation'
+          'rounded-xl sm:rounded-2xl shadow-xl backdrop-blur-2xl transition-all duration-200 cursor-pointer glass group active:scale-[0.985] touch-manipulation'
         )}
       >
         {/* Left Side: Icon, Title, Counter */}

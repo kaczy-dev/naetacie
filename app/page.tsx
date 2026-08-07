@@ -38,6 +38,7 @@ import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistratio
 import { JobPreferencesPanel } from '@/components/list/JobPreferencesPanel';
 import { QuickSearchChips } from '@/components/list/QuickSearchChips';
 import { MarketStats } from '@/components/list/MarketStats';
+import { OlxLinkActions } from '@/components/olx/OlxLinkActions';
 import CollapsibleAnnouncementList from '@/components/list/CollapsibleAnnouncementList';
 import { computeMarketOverview } from '@/lib/stats/market';
 import { Card, CardContent } from '@/components/ui/card';
@@ -634,25 +635,7 @@ function AnnouncementCard({
 
                   {/* Action buttons */}
                   <div className="flex items-center gap-2 pt-2 border-t border-border/30">
-                    <Button
-                      asChild
-                      variant="default"
-                      size="sm"
-                      className="flex-1 gap-2 text-xs font-bold shadow-md cursor-pointer hover:scale-[1.01] transition-transform"
-                      onPointerDown={(e) => e.stopPropagation()}
-                    >
-                      <a
-                        href={getAnnouncementExternalUrl(ad)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        <ExternalLink className="w-4 h-4" /> Zobacz w {ad.source_portal || 'OLX'}
-                      </a>
-                    </Button>
+                    <OlxLinkActions ad={ad} variant="default" size="sm" className="flex-1 text-xs" />
                     {hasLocation && (
                       <Button
                         variant="secondary"

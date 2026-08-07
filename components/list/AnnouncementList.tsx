@@ -237,23 +237,21 @@ export default function AnnouncementList({ onItemClick }: AnnouncementListProps)
 
       {announcements.map((announcement, index) => {
         const portalLabel = getPortalLabel(announcement.source_portal);
+        const directOfferUrl = getAnnouncementExternalUrl(announcement);
 
         return (
-          <motion.button
+          <motion.div
             key={announcement.deduplication_key}
-            className="announcement-card"
+            className="announcement-card group"
             custom={index}
             initial="hidden"
             animate="visible"
             variants={variants}
-            whileTap={prefersReducedMotion ? undefined : { scale: 0.98, transition: { duration: 0.1 } }}
             onClick={() => onItemClick?.(announcement.deduplication_key)}
-            type="button"
-            aria-label={`View details for ${announcement.title}`}
           >
             {/* Header: title + portal badge */}
             <div className="announcement-card__header">
-              <h3 className="announcement-card__title">{announcement.title}</h3>
+              <h3 className="announcement-card__title group-hover:text-primary transition-colors">{announcement.title}</h3>
               <span className="announcement-card__badge">
                 {portalLabel}
               </span>
@@ -265,23 +263,35 @@ export default function AnnouncementList({ onItemClick }: AnnouncementListProps)
               <span>{announcement.location_text}</span>
             </div>
 
-            {/* Footer: price + relative time */}
-            <div className="announcement-card__footer">
-              <span className="announcement-card__price">
-                {formatPrice(announcement.price)}
-              </span>
-              <time
-                className="announcement-card__time"
-                dateTime={
-                  typeof announcement.scraped_at === 'string'
-                    ? announcement.scraped_at
-                    : announcement.scraped_at.toISOString()
-                }
+            {/* Footer: price + relative time + direct open button */}
+            <div className="announcement-card__footer flex items-center justify-between gap-2 pt-2 border-t border-border/40">
+              <div className="flex items-center gap-2">
+                <span className="announcement-card__price font-bold text-emerald-600 dark:text-emerald-400">
+                  {formatPrice(announcement.price)}
+                </span>
+                <time
+                  className="announcement-card__time text-xs text-muted-foreground"
+                  dateTime={
+                    typeof announcement.scraped_at === 'string'
+                      ? announcement.scraped_at
+                      : announcement.scraped_at.toISOString()
+                  }
+                >
+                  {formatRelativeTime(announcement.scraped_at)}
+                </time>
+              </div>
+
+              <a
+                href={directOfferUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-black text-xs font-extrabold rounded-lg shadow-sm active:scale-95 transition-transform flex items-center gap-1 cursor-pointer"
               >
-                {formatRelativeTime(announcement.scraped_at)}
-              </time>
+                <span>Otwórz 🚀</span>
+              </a>
             </div>
-          </motion.button>
+          </motion.div>
         );
       })}
 

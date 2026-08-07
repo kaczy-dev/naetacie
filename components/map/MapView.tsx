@@ -22,6 +22,7 @@ import { MapIsochrone } from './MapIsochrone';
 import { MapDistrictAnalytics } from './MapDistrictAnalytics';
 import { MapGeoAlert } from './MapGeoAlert';
 import { MobileBottomSheet } from './MobileBottomSheet';
+import { DraggableJobModal } from './DraggableJobModal';
 import { SearchAreaButton } from './SearchAreaButton';
 import { MapWeatherWidget } from './MapWeatherWidget';
 import { calculateCommuteEstimate } from './MapCommuteRoute';
@@ -339,19 +340,20 @@ function MapStats({ ads, total, visible, ui, isDark }: {
 }
 
 function CategoryFilter({
-  active, onChange, ui,
+  active, onChange, ui, top = 50,
 }: {
   active: Set<CategoryKey>;
   onChange: (cats: Set<CategoryKey>) => void;
   ui: typeof UI.light;
+  top?: number;
 }) {
   const allSelected = active.size === ALL_CATEGORY_KEYS.length;
 
   return (
     <div
-      className="no-scrollbar max-w-[calc(100%-52px)]"
+      className="no-scrollbar max-w-[calc(100%-16px)] md:max-w-[calc(100%-52px)]"
       style={{
-        position: 'absolute', top: '10px', left: '10px', right: '52px', zIndex: 10,
+        position: 'absolute', top: `${top}px`, left: '10px', right: '10px', zIndex: 20,
         display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px',
       }}
     >
@@ -434,22 +436,22 @@ function MarkerPopup({
   const divider = isDark ? 'rgba(55,65,81,0.6)' : 'rgba(229,231,235,0.8)';
 
   return (
-    <div style={{ minWidth: '240px', maxWidth: '310px', fontFamily: "'Inter', 'system-ui', sans-serif", background: bg, overflow: 'hidden', borderRadius: '4px' }}>
+    <div style={{ minWidth: '140px', maxWidth: '175px', fontFamily: "'Inter', 'system-ui', sans-serif", background: bg, overflow: 'hidden', borderRadius: '4px' }}>
 
       {/* ── Category Header Bar ── */}
       <div style={{
         background: `linear-gradient(135deg, ${cat.color}22 0%, ${cat.color}08 100%)`,
         borderBottom: `1px solid ${cat.color}30`,
-        padding: '10px 14px 8px',
+        padding: '5px 7px 4px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: '5px',
-          padding: '3px 10px', borderRadius: '99px',
+          display: 'inline-flex', alignItems: 'center', gap: '3px',
+          padding: '2px 6px', borderRadius: '99px',
           background: `${cat.color}18`, border: `1px solid ${cat.color}35`,
-          color: cat.color, fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em',
+          color: cat.color, fontSize: '9px', fontWeight: 700, letterSpacing: '0.03em',
         }}>
-          <span style={{ fontSize: '13px' }}>{cat.icon}</span>
+          <span style={{ fontSize: '10px' }}>{cat.icon}</span>
           {cat.label.toUpperCase()}
         </span>
         <button
@@ -457,8 +459,8 @@ function MarkerPopup({
           aria-label={isFavorite ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
           style={{
             border: 'none', background: isFavorite ? 'rgba(239,68,68,0.12)' : 'transparent',
-            cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '4px 6px',
-            borderRadius: '8px', color: isFavorite ? '#ef4444' : textMuted,
+            cursor: 'pointer', fontSize: '13px', lineHeight: 1, padding: '2px 4px',
+            borderRadius: '4px', color: isFavorite ? '#ef4444' : textMuted,
             transition: 'all 0.2s ease',
           }}
         >
@@ -467,61 +469,55 @@ function MarkerPopup({
       </div>
 
       {/* ── Main Content ── */}
-      <div style={{ padding: '12px 14px' }}>
-        <h3 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 700, lineHeight: 1.4, color: textPrimary }}>
+      <div style={{ padding: '6px 8px' }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: 700, lineHeight: 1.2, color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {ad.title}
         </h3>
 
         {ad.description && (
-          <p style={{ margin: '0 0 10px', fontSize: '12px', color: textMuted, lineHeight: 1.6,
-            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden'
+          <p style={{ margin: '0 0 5px', fontSize: '10px', color: textMuted, lineHeight: 1.3,
+            display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden'
           }}>
             {ad.description}
           </p>
         )}
 
         {/* ── Info chips ── */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '10px' }}>
-          <span style={{ fontSize: '11px', background: chipBg, color: textPrimary, padding: '3px 9px', borderRadius: '99px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginBottom: '5px' }}>
+          <span style={{ fontSize: '9px', background: chipBg, color: textPrimary, padding: '2px 6px', borderRadius: '99px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
             <span>📍</span> {ad.location_text}
           </span>
           {distKm != null && (
             <span style={{
-              fontSize: '11px', background: isDark ? 'rgba(16,185,129,0.2)' : '#d1fae5',
+              fontSize: '9px', background: isDark ? 'rgba(16,185,129,0.2)' : '#d1fae5',
               color: isDark ? '#34d399' : '#047857',
               border: `1px solid ${isDark ? 'rgba(16,185,129,0.35)' : '#a7f3d0'}`,
-              padding: '3px 9px', borderRadius: '99px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px'
+              padding: '2px 6px', borderRadius: '99px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px'
             }}>
-              <span>🚗</span> {distKm} km (~{estDriveMin} min)
+              <span>🚗</span> {distKm}km (~{estDriveMin}m)
             </span>
           )}
           {priceDisplay && (
             <span style={{
-              fontSize: '11px', padding: '3px 9px', borderRadius: '99px', fontWeight: 700,
+              fontSize: '9px', padding: '2px 6px', borderRadius: '99px', fontWeight: 700,
               background: isDark ? 'rgba(37,99,235,0.2)' : '#dbeafe',
               color: isDark ? '#60a5fa' : '#1d4ed8',
               border: `1px solid ${isDark ? 'rgba(37,99,235,0.35)' : '#bfdbfe'}`,
-              display: 'inline-flex', alignItems: 'center', gap: '4px'
+              display: 'inline-flex', alignItems: 'center', gap: '2px'
             }}>
               <span>💰</span> {priceDisplay}
             </span>
           )}
-          <span style={{
-            fontSize: '10px', background: chipBg, color: textMuted, padding: '3px 9px',
-            borderRadius: '99px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em'
-          }}>
-            {ad.source_portal}
-          </span>
         </div>
 
         {/* ── Phone ── */}
         {ad.phone && (
           <a href={`tel:${ad.phone}`} style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '7px 10px', marginBottom: '10px',
+            display: 'flex', alignItems: 'center', gap: '4px',
+            padding: '4px 6px', marginBottom: '5px',
             background: isDark ? 'rgba(22,163,74,0.15)' : 'rgba(220,252,231,0.8)',
             border: `1px solid ${isDark ? 'rgba(22,163,74,0.3)' : '#86efac'}`,
-            borderRadius: '8px', fontSize: '13px', color: isDark ? '#4ade80' : '#15803d',
+            borderRadius: '5px', fontSize: '10px', color: isDark ? '#4ade80' : '#15803d',
             fontWeight: 600, textDecoration: 'none',
           }}>
             <span>📞</span> {ad.phone}
@@ -529,17 +525,17 @@ function MarkerPopup({
         )}
 
         {/* ── Divider ── */}
-        <div style={{ height: '1px', background: divider, marginBottom: '10px' }} />
+        <div style={{ height: '1px', background: divider, marginBottom: '5px' }} />
 
         {/* ── Action Buttons ── */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
           <button
             onClick={onShowInList}
             style={{
-              flex: 1, textAlign: 'center', padding: '8px 10px',
+              flex: 1, textAlign: 'center', padding: '4px 5px',
               background: chipBg, color: textPrimary,
               border: `1px solid ${divider}`,
-              borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+              borderRadius: '5px', fontSize: '9px', fontWeight: 600,
               cursor: 'pointer', transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isDark ? '#374151' : '#e5e7eb'; }}
@@ -554,11 +550,11 @@ function MarkerPopup({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             style={{
-              flex: 1, textAlign: 'center', padding: '8px 10px',
+              flex: 1, textAlign: 'center', padding: '4px 5px',
               background: `linear-gradient(135deg, ${cat.color}, ${cat.color}cc)`,
-              color: 'white', borderRadius: '8px', fontSize: '12px',
+              color: 'white', borderRadius: '5px', fontSize: '9px',
               fontWeight: 700, textDecoration: 'none',
-              boxShadow: `0 2px 8px ${cat.color}55`,
+              boxShadow: `0 2px 6px ${cat.color}44`,
               cursor: 'pointer',
             }}
           >
@@ -568,14 +564,14 @@ function MarkerPopup({
 
         {/* ── Navigate & Street View ── */}
         {ad.latitude != null && ad.longitude != null && (
-          <div style={{ display: 'flex', gap: '6px' }}>
+          <div style={{ display: 'flex', gap: '4px' }}>
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${ad.latitude},${ad.longitude}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-                padding: '6px', borderRadius: '7px', fontSize: '11px', fontWeight: 600,
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
+                padding: '4px 2px', borderRadius: '5px', fontSize: '9px', fontWeight: 600,
                 textDecoration: 'none', color: isDark ? '#93c5fd' : '#1d4ed8',
                 background: isDark ? 'rgba(30,41,59,0.8)' : 'rgba(241,245,249,0.9)',
                 border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`,
@@ -590,8 +586,8 @@ function MarkerPopup({
               rel="noopener noreferrer"
               title="Zobacz widok sferyczny ulicy"
               style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-                padding: '6px', borderRadius: '7px', fontSize: '11px', fontWeight: 600,
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
+                padding: '4px 2px', borderRadius: '5px', fontSize: '9px', fontWeight: 600,
                 textDecoration: 'none', color: isDark ? '#34d399' : '#047857',
                 background: isDark ? 'rgba(6,78,59,0.25)' : 'rgba(209,250,229,0.9)',
                 border: `1px solid ${isDark ? 'rgba(52,211,153,0.3)' : '#a7f3d0'}`,
@@ -611,125 +607,8 @@ function MarkerPopup({
 // CAROUSEL OF OFFERS
 // ═══════════════════════════════════════════════════════════════════
 
-function ResultsCarousel({
-  ads, selectedId, ui, isDark, isFavorite, onSelect,
-}: {
-  ads: DisplayAnnouncement[];
-  selectedId: string | null;
-  ui: typeof UI.light;
-  isDark: boolean;
-  isFavorite: (id: string) => boolean;
-  onSelect: (id: string) => void;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-
-  useEffect(() => {
-    if (selectedId) {
-      cardRefs.current.get(selectedId)?.scrollIntoView({
-        behavior: 'smooth', inline: 'center', block: 'nearest',
-      });
-    }
-  }, [selectedId]);
-
-  if (ads.length === 0) return null;
-
-  return (
-    <div
-      className="hidden md:flex no-scrollbar"
-      ref={scrollRef}
-      style={{
-        position: 'absolute', bottom: '10px', left: '10px', right: '10px', zIndex: 10,
-        display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', paddingTop: '2px',
-        scrollSnapType: 'x mandatory', pointerEvents: 'auto',
-      }}
-    >
-      {ads.map((ad) => {
-        const cat = CATEGORIES[normalizeCategory(ad.category)];
-        const active = ad.id === selectedId;
-        const fav = isFavorite(ad.id);
-        const price = ad.price
-          ? (typeof ad.price === 'number' ? `${ad.price.toLocaleString('pl-PL')} zł` : ad.price)
-          : null;
-        return (
-          <button
-            key={ad.id}
-            ref={(el) => { if (el) cardRefs.current.set(ad.id, el); else cardRefs.current.delete(ad.id); }}
-            onClick={() => onSelect(ad.id)}
-            style={{
-              flexShrink: 0, width: '220px', scrollSnapAlign: 'center', textAlign: 'left',
-              background: active
-                ? (isDark ? 'rgba(17,24,39,0.97)' : 'rgba(255,255,255,0.99)')
-                : ui.surfaceAlpha,
-              backdropFilter: 'blur(12px)',
-              border: `2px solid ${active ? cat.color : (isDark ? 'rgba(75,85,99,0.5)' : 'rgba(209,213,219,0.6)')}`,
-              borderRadius: '14px', padding: '0', cursor: 'pointer',
-              boxShadow: active
-                ? `0 8px 24px ${cat.color}44, 0 2px 8px rgba(0,0,0,0.15)`
-                : '0 2px 8px rgba(0,0,0,0.1)',
-              transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-              transform: active ? 'translateY(-4px) scale(1.02)' : 'translateY(0) scale(1)',
-              overflow: 'hidden',
-            }}
-          >
-            {/* Color accent top bar */}
-            <div style={{
-              height: '3px',
-              background: active
-                ? `linear-gradient(90deg, ${cat.color}, ${cat.color}88)`
-                : (isDark ? 'rgba(75,85,99,0.3)' : 'rgba(209,213,219,0.4)'),
-              transition: 'background 0.25s ease',
-            }} />
-
-            <div style={{ padding: '9px 11px 10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <span style={{
-                  fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em',
-                  color: active ? cat.color : ui.textMuted,
-                  display: 'inline-flex', alignItems: 'center', gap: '3px',
-                  padding: '2px 6px', borderRadius: '99px',
-                  background: active ? `${cat.color}18` : 'transparent',
-                  transition: 'all 0.2s ease',
-                }}>
-                  <span style={{ fontSize: '11px' }}>{cat.icon}</span>
-                  {cat.label}
-                </span>
-                {fav && <span style={{ fontSize: '12px', color: '#ef4444', lineHeight: 1 }}>♥</span>}
-              </div>
-
-              <div style={{
-                fontSize: '12px', fontWeight: 600, color: ui.text, lineHeight: 1.3,
-                overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box',
-                WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginBottom: '6px', minHeight: '30px',
-              }}>
-                {ad.title}
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
-                <span style={{
-                  fontSize: '10px', color: ui.textMuted,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  display: 'inline-flex', alignItems: 'center', gap: '3px', flex: 1,
-                }}>
-                  <span style={{ flexShrink: 0 }}>📍</span>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.location_text}</span>
-                </span>
-                {price && (
-                  <span style={{
-                    fontSize: '11px', fontWeight: 800, whiteSpace: 'nowrap',
-                    color: active ? cat.color : (isDark ? '#60a5fa' : '#2563eb'),
-                    transition: 'color 0.2s ease',
-                  }}>
-                    {price}
-                  </span>
-                )}
-              </div>
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
+function ResultsCarousel() {
+  return null;
 }
 
 function EmptyOverlay({ ui, hasAny, onReset }: { ui: typeof UI.light; hasAny: boolean; onReset?: () => void }) {
@@ -1630,7 +1509,6 @@ export default function MapView({
             e.stopPropagation();
             triggerHaptic(10);
             onMarkerClick?.(ad.id);
-            openPopup(ad, targetCoords);
           });
 
           markersRef.current.set(ad.id, marker);
@@ -1657,7 +1535,7 @@ export default function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geocodedAds, selectedId, isFavorite, mapLoaded]);
 
-  // FlyTo & Open popup on external selectedId (e.g. "Pokaż na mapie" click)
+  // FlyTo on external selectedId (e.g. "Pokaż na mapie" click)
   const lastFlyToken = useRef(-1);
   useEffect(() => {
     const map = mapRef.current;
@@ -1686,13 +1564,7 @@ export default function MapView({
       essential: true,
       duration: prefersReducedMotion ? 0 : 1200,
     });
-
-    const timeout = setTimeout(() => {
-      openPopup(ad, coordinates);
-    }, prefersReducedMotion ? 50 : 700);
-
-    return () => clearTimeout(timeout);
-  }, [selectedId, flyToken, geocodedAds, mapLoaded, openPopup, prefersReducedMotion, sheetSnapState]);
+  }, [selectedId, flyToken, geocodedAds, mapLoaded, prefersReducedMotion, sheetSnapState]);
 
   const handleCarouselSelect = useCallback((id: string) => {
     onMarkerClick?.(id);
@@ -1877,7 +1749,7 @@ export default function MapView({
       </ControlButton>
 
       {/* Advanced Map Tools Drawer */}
-      <div style={{ position: 'absolute', top: '124px', right: '10px', zIndex: 10 }}>
+      <div className="hidden md:block" style={{ position: 'absolute', top: '124px', right: '10px', zIndex: 10 }}>
         <button
           onClick={() => setShowDistrictAnalytics(!showDistrictAnalytics)}
           title="Statystyki dzielnic"
@@ -1895,7 +1767,7 @@ export default function MapView({
       </div>
 
       {/* District Salary Heatmap Overlay Toggle */}
-      <div style={{ position: 'absolute', top: '200px', right: '10px', zIndex: 10 }}>
+      <div className="hidden md:block" style={{ position: 'absolute', top: '200px', right: '10px', zIndex: 10 }}>
         <button
           onClick={() => {
             triggerHaptic(10);
@@ -1917,7 +1789,7 @@ export default function MapView({
       </div>
 
       {/* Praca Blisko Mnie (5km Auto-Zoom) Button */}
-      <div style={{ position: 'absolute', top: '238px', right: '10px', zIndex: 10 }}>
+      <div className="hidden md:block" style={{ position: 'absolute', top: '238px', right: '10px', zIndex: 10 }}>
         <button
           onClick={handleNearMeClick}
           title="Praca blisko mnie (5km)"
@@ -1935,7 +1807,7 @@ export default function MapView({
       </div>
 
       {/* Zen Mode Fullscreen Map Toggle */}
-      <div style={{ position: 'absolute', top: '276px', right: '10px', zIndex: 10 }}>
+      <div className="hidden md:block" style={{ position: 'absolute', top: '276px', right: '10px', zIndex: 10 }}>
         <button
           onClick={() => {
             triggerHaptic(10);
@@ -1957,7 +1829,7 @@ export default function MapView({
       </div>
 
       {/* Construction Sites Toggle */}
-      <div style={{ position: 'absolute', top: '315px', right: '10px', zIndex: 10 }}>
+      <div className="hidden md:block" style={{ position: 'absolute', top: '315px', right: '10px', zIndex: 10 }}>
         <button
           onClick={() => {
             triggerHaptic(10);
@@ -1979,7 +1851,7 @@ export default function MapView({
       </div>
 
       {/* ZTM Transit Hubs Toggle */}
-      <div style={{ position: 'absolute', top: '354px', right: '10px', zIndex: 10 }}>
+      <div className="hidden md:block" style={{ position: 'absolute', top: '354px', right: '10px', zIndex: 10 }}>
         <button
           onClick={() => {
             triggerHaptic(10);
@@ -2001,7 +1873,7 @@ export default function MapView({
       </div>
 
       {/* Pogoń Szczecin Hub Toggle */}
-      <div style={{ position: 'absolute', top: '393px', right: '10px', zIndex: 10 }}>
+      <div className="hidden md:block" style={{ position: 'absolute', top: '393px', right: '10px', zIndex: 10 }}>
         <button
           onClick={() => {
             triggerHaptic(10);
@@ -2088,19 +1960,41 @@ export default function MapView({
       {/* Geo-Alerts Spatial Notifications Overlay */}
       <MapGeoAlert map={mapRef.current} ui={ui} />
 
-      {/* Mobile Snap Bottom Sheet */}
-      <MobileBottomSheet
-        ads={geocodedAds}
-        selectedAd={geocodedAds.find((a) => a.id === selectedId) || null}
-        selectedId={selectedId}
-        onSelectAd={(id: string) => onMarkerClick?.(id)}
-        isFavorite={isFavorite}
-        onToggleFavorite={onToggleFavorite}
-        onShowOnMap={(id: string) => onMarkerClick?.(id)}
-        onSnapStateChange={setSheetSnapState}
-        ui={ui}
-        isDark={isDark}
-      />
+      {/* Mobile Snap Bottom Sheet (Hidden when a specific job modal is active) */}
+      {!selectedId && (
+        <MobileBottomSheet
+          ads={geocodedAds}
+          selectedAd={geocodedAds.find((a) => a.id === selectedId) || null}
+          selectedId={selectedId}
+          onSelectAd={(id: string) => onMarkerClick?.(id)}
+          isFavorite={isFavorite}
+          onToggleFavorite={onToggleFavorite}
+          onShowOnMap={(id: string) => onMarkerClick?.(id)}
+          onSnapStateChange={setSheetSnapState}
+          ui={ui}
+          isDark={isDark}
+        />
+      )}
+
+      {/* 🚀 Draggable Centered Job Modal */}
+      {selectedId && (
+        <DraggableJobModal
+          ad={geocodedAds.find((a) => a.id === selectedId) || null}
+          onClose={() => onMarkerClick?.('')}
+          onShowInList={() => {
+            const ad = geocodedAds.find((a) => a.id === selectedId);
+            if (ad) onSelect(ad);
+          }}
+          isFavorite={selectedId ? isFavorite(selectedId) : false}
+          onToggleFavorite={() => {
+            if (selectedId) onToggleFavorite(selectedId);
+          }}
+          ui={ui}
+          isDark={isDark}
+          homeLat={homeLat}
+          homeLng={homeLng}
+        />
+      )}
 
       {/* "Search in this area" button */}
       <SearchAreaButton
@@ -2111,10 +2005,15 @@ export default function MapView({
 
       {/* ⚡ Smart Quick Filters Floating Chips Bar */}
       <div
-        className="no-scrollbar max-w-[calc(100%-52px)]"
+        className="no-scrollbar max-w-[calc(100%-16px)] md:max-w-[calc(100%-52px)]"
         style={{
-          position: 'absolute', top: '44px', left: '10px', right: '52px', zIndex: 10,
-          display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px',
+          position: 'absolute', top: '8px', left: '10px', right: '10px', zIndex: 20,
+          display: 'flex', gap: '4px', overflowX: 'auto', padding: '3px 4px',
+          background: isDark ? 'rgba(15, 23, 42, 0.75)' : 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(16px)',
+          borderRadius: '9999px',
+          border: `1px solid ${ui.border}`,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         }}
       >
         {[
@@ -2134,22 +2033,23 @@ export default function MapView({
                 setQuickFilter(chip.id as 'all' | 'high_pay' | 'remote' | 'recent' | 'budowa' | 'instalacje');
               }}
               style={{
-                background: isActive ? '#2563eb' : ui.surfaceAlpha,
+                background: isActive
+                  ? 'linear-gradient(135deg, #2563eb 0%, #059669 100%)'
+                  : isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.8)',
                 color: isActive ? '#ffffff' : ui.text,
-                border: `1px solid ${isActive ? '#2563eb' : ui.border}`,
-                backdropFilter: 'blur(8px)',
-                borderRadius: '20px',
-                padding: '5px 12px',
-                fontSize: '11px',
-                fontWeight: isActive ? 700 : 500,
+                border: `1px solid ${isActive ? 'rgba(37,99,235,0.8)' : ui.border}`,
+                borderRadius: '9999px',
+                padding: '4px 10px',
+                fontSize: '10px',
+                fontWeight: isActive ? 700 : 600,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
-                boxShadow: ui.shadow,
-                display: 'flex', alignItems: 'center', gap: '4px',
-                transition: 'all 0.15s ease',
+                boxShadow: isActive ? '0 2px 10px rgba(37,99,235,0.4)' : 'none',
+                display: 'flex', alignItems: 'center', gap: '3px',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
-              <span>{chip.icon}</span>
+              <span style={{ fontSize: '10px' }}>{chip.icon}</span>
               <span>{chip.label}</span>
             </button>
           );
@@ -2174,7 +2074,7 @@ export default function MapView({
       )}
 
       {/* Category filter bar */}
-      <CategoryFilter active={activeCategories} onChange={onCategoryChange} ui={ui} />
+      <CategoryFilter active={activeCategories} onChange={onCategoryChange} ui={ui} top={44} />
 
       {/* Statistics board */}
       <MapStats ads={geocodedAds} total={totalCount ?? ads.length} visible={geocodedAds.length} ui={ui} isDark={isDark} />

@@ -5,6 +5,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MaskedAnnouncement } from '@/lib/types/announcement';
 import { filterGeocodedAnnouncements, formatPrice } from './utils';
+import { getAnnouncementExternalUrl } from '@/lib/utils';
 import { SearchAreaButton } from './SearchAreaButton';
 
 // Szczecin coordinates and default zoom [lng, lat] for MapLibre
@@ -103,9 +104,7 @@ export default function MapComponent({
       el.className = `map-price-pin ${badgeColorClass}`;
       el.innerHTML = `<div class="map-price-badge ${badgeColorClass}">${priceLabel}</div>`;
 
-      const redirectUrl = announcement.source_url 
-        ? `/api/announcements/redirect?url=${encodeURIComponent(announcement.source_url)}&portal=${announcement.source_portal}&title=${encodeURIComponent(announcement.title)}`
-        : `/announcements/${announcement.deduplication_key}`;
+      const redirectUrl = getAnnouncementExternalUrl(announcement);
 
       const contactPhone = (announcement as { contact_info?: string | null }).contact_info;
       const phoneDigits = contactPhone ? contactPhone.replace(/\D/g, '') : null;

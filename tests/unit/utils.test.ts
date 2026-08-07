@@ -11,12 +11,12 @@ describe('Utility Helper Functions (Unit Tests)', () => {
     });
 
     it('preserves existing https:// and http:// URLs', () => {
-      expect(ensureAbsoluteUrl('https://olx.pl/oferta/123')).toBe('https://olx.pl/oferta/123');
+      expect(ensureAbsoluteUrl('https://example.com/oferta/123')).toBe('https://example.com/oferta/123');
       expect(ensureAbsoluteUrl('http://pracuj.pl/oferty/456')).toBe('http://pracuj.pl/oferty/456');
     });
 
     it('prefixes URLs missing scheme with https://', () => {
-      expect(ensureAbsoluteUrl('olx.pl/oferta/123')).toBe('https://olx.pl/oferta/123');
+      expect(ensureAbsoluteUrl('example.com/oferta/123')).toBe('https://example.com/oferta/123');
       expect(ensureAbsoluteUrl('www.oferteo.pl/szczecin')).toBe('https://www.oferteo.pl/szczecin');
     });
 

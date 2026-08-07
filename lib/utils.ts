@@ -64,10 +64,15 @@ export function exportApplicationsToCSV(ads: Array<Record<string, any>>, getStat
   document.body.removeChild(link);
 }
 
+import { resolveOlxLink, extractOlxNativeId, normalizeOlxUrl } from '@/lib/olx/olxLinkResolver';
+
 export function ensureAbsoluteUrl(url: string | null | undefined, portalHint?: string | null): string | null {
   if (!url || typeof url !== 'string') return null;
-  const trimmed = url.trim();
+  let trimmed = url.trim();
   if (!trimmed) return null;
+
+  // Unescape &amp;
+  trimmed = trimmed.replace(/&amp;/g, '&');
 
   // Protocol relative links like //www.olx.pl/...
   if (trimmed.startsWith('//')) {
@@ -132,7 +137,7 @@ export function extractTradeKeyword(title?: string | null): string {
   const ascii = removePolishDiacritics(title).toLowerCase();
 
   // Match core trade keywords first
-  const tradeMatch = ascii.match(/\b(dekarz|dekarza|murarz|murarza|elektryk|elektryka|hydraulik|hydraulika|brukarz|brukarza|ciesla|ciesle|malarz|malarza|tynkarz|tynkarza|stolarz|stolarza|spawacz|spawacza|posadzkarz|posadzkarza|glazurnik|glazurnika|kierownik|operator|operatora|pomocnik|pomocnika|monter|montera|zbrojarz|zbrojarza|inzynier|inzyniera)\b/i);
+  const tradeMatch = ascii.match(/\b(dekarz|dekarza|murarz|murarza|elektryk|elektryka|hydraulik|hydraulika|brukarz|brukarza|ciesla|ciesle|malarz|malarza|tynkarz|tynkarza|stolarz|stolarza|spawacz|spawacza|posadzkarz|posadzkarza|glazurnik|glazurnika|kierownik|kierownika|operator|operatora|pomocnik|pomocnika|monter|montera|zbrojarz|zbrojarza|inzynier|inzyniera)\b/i);
 
   if (tradeMatch && tradeMatch[1]) {
     let word = tradeMatch[1].toLowerCase();
@@ -147,7 +152,7 @@ export function extractTradeKeyword(title?: string | null): string {
     'firma', 'zatrudni', 'zatrudnimy', 'poszukuje', 'poszukujemy', 'doswiadczeniem',
     'doswiadczenia', 'zaraz', 'praca', 'pracy', 'szukam', 'dla', 'oraz', 'szczecin',
     'dobra', 'stawka', 'umowa', 'pilnie', 'ogolnobudowlany', 'ogolnobudowlane', 'osiedla',
-    'budowie', 'prace', 'nowych', 'budynkach'
+    'budowie', 'prace', 'nowych', 'budynkach', 'remont', 'remonty'
   ]);
 
   const words = ascii
@@ -168,67 +173,54 @@ export function getAnnouncementExternalUrl(ad?: {
   source_portal?: string | null;
   title?: string | null;
   id?: string;
+  category?: string | null;
 } | null): string {
   if (!ad) return 'https://www.olx.pl/praca/szczecin/';
 
-  // 1. Check if we have a direct absolute URL to an exact offer
-  if (ad.source_url) {
-    let abs = ensureAbsoluteUrl(ad.source_url, ad.source_portal);
+  const portal = (ad.source_portal || 'olx').toLowerCase();
+
+  // 1. Non-OLX Portals: Check direct source URL first
+  if (portal !== 'olx' && ad.source_url && typeof ad.source_url === 'string' && ad.source_url.trim()) {
+    let abs = ensureAbsoluteUrl(ad.source_url.trim(), portal);
     if (abs) {
-      if (abs.includes('olx.pl/oferta/')) {
-        abs = abs.replace('olx.pl/oferta/', 'olx.pl/d/oferta/');
-      }
       if (abs.includes('indeed.com')) {
         const jkMatch = abs.match(/[?&](?:jk|vjk)=([a-zA-Z0-9_-]+)/i);
         if (jkMatch) {
           abs = `https://pl.indeed.com/viewjob?jk=${jkMatch[1]}`;
         }
       }
+      return abs;
+    }
+  }
 
-      // If abs is a direct offer link (contains /d/oferta/, -ID, ,oferta,, /viewjob, or .html), return it directly!
-      const isDirectOffer =
-        abs.includes('/d/oferta/') ||
-        abs.includes('-ID') ||
-        abs.includes(',oferta,') ||
-        abs.includes('/viewjob') ||
-        abs.endsWith('.html');
+  // 2. Delegate to OLX Link Resolver for OLX or default portal
+  if (portal === 'olx' || !ad.source_portal || (ad.source_url && ad.source_url.includes('olx'))) {
+    const resolved = resolveOlxLink({
+      source_url: ad.source_url,
+      source_portal: ad.source_portal,
+      title: ad.title,
+      id: ad.id,
+      category: ad.category,
+    });
+    return resolved.url;
+  }
 
-      if (isDirectOffer) {
-        return abs;
-      }
-
-      // If abs is a search query URL, extract clean trade query
-      if (abs.includes('olx.pl') && (abs.includes('/q-') || abs.includes('search[q]=') || abs.includes('search%5Bq%5D=') || abs.includes('?q='))) {
-        let rawQuery = '';
-        if (abs.includes('/q-')) {
-          rawQuery = abs.split('/q-')[1]?.split('/')[0]?.replace(/\+/g, ' ') || '';
-        } else if (abs.includes('search%5Bq%5D=')) {
-          rawQuery = abs.split('search%5Bq%5D=')[1]?.split('&')[0] || '';
-        } else if (abs.includes('search[q]=')) {
-          rawQuery = abs.split('search[q]=')[1]?.split('&')[0] || '';
-        } else if (abs.includes('?q=')) {
-          rawQuery = abs.split('?q=')[1]?.split('&')[0] || '';
+  // 2. Non-OLX Portals: Check direct source URL
+  if (ad.source_url) {
+    let abs = ensureAbsoluteUrl(ad.source_url, ad.source_portal);
+    if (abs) {
+      if (abs.includes('indeed.com')) {
+        const jkMatch = abs.match(/[?&](?:jk|vjk)=([a-zA-Z0-9_-]+)/i);
+        if (jkMatch) {
+          abs = `https://pl.indeed.com/viewjob?jk=${jkMatch[1]}`;
         }
-        const decoded = decodeURIComponent(rawQuery).trim();
-        const cleanQuery = decoded ? extractTradeKeyword(decoded) : extractTradeKeyword(ad.title);
-        return `https://www.olx.pl/praca/szczecin/q-${encodeURIComponent(cleanQuery)}/`;
       }
       return abs;
     }
   }
 
-  // 2. If ad.id contains numeric ID
-  if (ad.id) {
-    const rawId = ad.id.replace('olx_raw_', '').replace('olx_', '');
-    if (/^\d{5,12}$/.test(rawId)) {
-      return `https://www.olx.pl/d/oferta/-ID${rawId}.html`;
-    }
-  }
-
-  // 3. Build targeted portal search link using precise trade keyword
-  const portal = (ad.source_portal || 'olx').toLowerCase();
+  // 3. Fallback for non-OLX portals
   const queryText = extractTradeKeyword(ad.title);
-
   if (portal === 'pracuj') {
     return `https://www.pracuj.pl/praca/${encodeURIComponent(queryText)};kw/szczecin;wp`;
   }
@@ -242,7 +234,6 @@ export function getAnnouncementExternalUrl(ad?: {
     return `https://pl.indeed.com/jobs?q=${encodeURIComponent(queryText)}&l=Szczecin`;
   }
 
-  // OLX targeted search query fallback
   return `https://www.olx.pl/praca/szczecin/q-${encodeURIComponent(queryText)}/`;
 }
 

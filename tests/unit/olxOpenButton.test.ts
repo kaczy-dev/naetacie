@@ -53,6 +53,30 @@ describe('OLX "Zobacz w OLX" / "Otwórz" Button Unit Test Suite', () => {
       const url = getAnnouncementExternalUrl(ad);
       expect(url).toBe('https://www.olx.pl/d/oferta/-ID7654321.html');
     });
+
+    it('resolves alphanumeric OLX native ID (olx-ID108H31 or olx_108H31) into direct offer URL', () => {
+      const ad = {
+        source_portal: 'olx',
+        source_url: null,
+        title: 'Monter ogrodzeń',
+        id: 'olx-ID108H31',
+      };
+
+      const url = getAnnouncementExternalUrl(ad);
+      expect(url).toBe('https://www.olx.pl/d/oferta/-ID108H31.html');
+    });
+
+    it('unescapes HTML entities (&amp;) and normalizes m.olx.pl domains', () => {
+      const ad = {
+        source_portal: 'olx',
+        source_url: 'https://m.olx.pl/d/oferta/spawacz-ID998.html?bs=srp_list&amp;reason=seller',
+        title: 'Spawacz',
+        id: 'olx_998',
+      };
+
+      const url = getAnnouncementExternalUrl(ad);
+      expect(url).toBe('https://www.olx.pl/d/oferta/spawacz-ID998.html?bs=srp_list&reason=seller');
+    });
   });
 
   describe('Search Query Fallback Resolution', () => {

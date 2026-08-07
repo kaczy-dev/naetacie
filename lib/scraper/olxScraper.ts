@@ -6,6 +6,7 @@
 import { Agent } from 'undici';
 import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, JobCategory } from './types';
 import { ensureAbsoluteUrl, removePolishDiacritics } from '@/lib/utils';
+import { extractOlxNativeId } from '@/lib/olx/olxLinkResolver';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
 
 const olxDispatcher = new Agent({
@@ -162,8 +163,11 @@ function parseOlxOffer(offer: OlxOffer): ScrapedAd | null {
   const company = offer.business ? offer.user?.company_name || offer.user?.name || null : null;
   const phone = extractPhoneNumber(`${title} ${description}`);
 
+  const nativeOlxId = offer.id ? String(offer.id) : extractOlxNativeId(sourceUrl);
+  const adId = nativeOlxId ? `olx-${nativeOlxId}` : hashId(sourceUrl || String(title));
+
   return {
-    id: hashId(sourceUrl || String(offer.id ?? title)),
+    id: adId,
     title,
     description,
     source_url: sourceUrl,
