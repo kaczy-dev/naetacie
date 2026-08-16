@@ -48,7 +48,7 @@ export default function AnnouncementDetailPage() {
           location_text: seedItem.location_text,
           latitude: seedItem.latitude,
           longitude: seedItem.longitude,
-          price: seedItem.price,
+          price: typeof seedItem.price === 'number' ? seedItem.price : (seedItem.price ? parseFloat(seedItem.price) || null : null),
           scraped_at: new Date(),
           published_at: new Date(),
           source_url: ensureAbsoluteUrl(seedItem.source_url, seedItem.source_portal) || seedItem.source_url,

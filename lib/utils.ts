@@ -179,8 +179,20 @@ export function getAnnouncementExternalUrl(ad?: {
 
   const portal = (ad.source_portal || 'olx').toLowerCase();
 
-  // 1. Non-OLX Portals: Check direct source URL first
-  if (portal !== 'olx' && ad.source_url && typeof ad.source_url === 'string' && ad.source_url.trim()) {
+  // 1. OLX Portal URL resolution
+  if (portal === 'olx' || (!ad.source_portal && (!ad.source_url || ad.source_url.includes('olx')))) {
+    const resolved = resolveOlxLink({
+      source_url: ad.source_url,
+      source_portal: ad.source_portal,
+      title: ad.title,
+      id: ad.id,
+      category: ad.category,
+    });
+    return resolved.url;
+  }
+
+  // 2. Non-OLX Portals (Pracuj, Indeed, Jooble, GoWork, Oferteo, Fixly)
+  if (ad.source_url && typeof ad.source_url === 'string' && ad.source_url.trim()) {
     let abs = ensureAbsoluteUrl(ad.source_url.trim(), portal);
     if (abs) {
       if (abs.includes('indeed.com')) {
@@ -193,45 +205,25 @@ export function getAnnouncementExternalUrl(ad?: {
     }
   }
 
-  // 2. Delegate to OLX Link Resolver for OLX or default portal
-  if (portal === 'olx' || !ad.source_portal || (ad.source_url && ad.source_url.includes('olx'))) {
-    const resolved = resolveOlxLink({
-      source_url: ad.source_url,
-      source_portal: ad.source_portal,
-      title: ad.title,
-      id: ad.id,
-      category: ad.category,
-    });
-    return resolved.url;
-  }
-
-  // 2. Non-OLX Portals: Check direct source URL
-  if (ad.source_url) {
-    let abs = ensureAbsoluteUrl(ad.source_url, ad.source_portal);
-    if (abs) {
-      if (abs.includes('indeed.com')) {
-        const jkMatch = abs.match(/[?&](?:jk|vjk)=([a-zA-Z0-9_-]+)/i);
-        if (jkMatch) {
-          abs = `https://pl.indeed.com/viewjob?jk=${jkMatch[1]}`;
-        }
-      }
-      return abs;
-    }
-  }
-
-  // 3. Fallback for non-OLX portals
+  // 3. Smart Search Fallbacks per portal
   const queryText = extractTradeKeyword(ad.title);
   if (portal === 'pracuj') {
     return `https://www.pracuj.pl/praca/${encodeURIComponent(queryText)};kw/szczecin;wp`;
   }
   if (portal === 'oferteo') {
-    return `https://www.oferteo.pl/remont-i-wykonczenie-mieszkan/szczecin`;
+    return `https://www.oferteo.pl/zlecenia-budowlane/szczecin?q=${encodeURIComponent(queryText)}`;
   }
   if (portal === 'fixly') {
-    return `https://fixly.pl/uslugi/budowa-remont`;
+    return `https://fixly.pl/szukaj?q=${encodeURIComponent(queryText)}&location=Szczecin`;
   }
   if (portal === 'indeed') {
     return `https://pl.indeed.com/jobs?q=${encodeURIComponent(queryText)}&l=Szczecin`;
+  }
+  if (portal === 'jooble') {
+    return `https://pl.jooble.org/SearchResult?ukw=${encodeURIComponent(queryText)}&rgns=Szczecin`;
+  }
+  if (portal === 'gowork') {
+    return `https://www.gowork.pl/praca/szczecin;l/${encodeURIComponent(queryText)};kw`;
   }
 
   return `https://www.olx.pl/praca/szczecin/q-${encodeURIComponent(queryText)}/`;

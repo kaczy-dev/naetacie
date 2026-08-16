@@ -607,7 +607,16 @@ function MarkerPopup({
 // CAROUSEL OF OFFERS
 // ═══════════════════════════════════════════════════════════════════
 
-function ResultsCarousel() {
+interface ResultsCarouselProps {
+  ads: DisplayAnnouncement[];
+  selectedId: string | null;
+  ui: typeof UI.light;
+  isDark: boolean;
+  isFavorite: (id: string) => boolean;
+  onSelect: (id: string) => void;
+}
+
+function ResultsCarousel(_props: ResultsCarouselProps) {
   return null;
 }
 
@@ -1983,7 +1992,7 @@ export default function MapView({
           onClose={() => onMarkerClick?.('')}
           onShowInList={() => {
             const ad = geocodedAds.find((a) => a.id === selectedId);
-            if (ad) onSelect(ad);
+            if (ad) onShowInList?.(ad.id);
           }}
           isFavorite={selectedId ? isFavorite(selectedId) : false}
           onToggleFavorite={() => {

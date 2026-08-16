@@ -1,11 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { GripHorizontal, X, MapPin, Compass, Globe, Heart, Phone, ListFilter, QrCode, Share2, Search, Check, Copy } from 'lucide-react';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
+import { GripHorizontal, X, MapPin, Compass, Globe, Heart, Phone, ListFilter, QrCode, Share2, Search, Check } from 'lucide-react';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { CATEGORIES, normalizeCategory } from '@/lib/data/categories';
-import { getAnnouncementExternalUrl, haversineKm, triggerHaptic } from '@/lib/utils';
+import { getAnnouncementExternalUrl, triggerHaptic } from '@/lib/utils';
+import { haversineKm } from '@/lib/matching/engine';
 import { OlxLinkActions } from '@/components/olx/OlxLinkActions';
 import { OlxQrModal } from '@/components/olx/OlxQrModal';
 
@@ -37,6 +38,7 @@ export function DraggableJobModal({
   homeLat,
   homeLng,
 }: DraggableJobModalProps) {
+  const dragControls = useDragControls();
   const [qrOpen, setQrOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -94,13 +96,15 @@ export function DraggableJobModal({
         <motion.div
           key={ad.id}
           drag
+          dragControls={dragControls}
+          dragListener={false}
           dragMomentum={false}
           dragElastic={0.12}
           initial={{ opacity: 0, scale: 0.85, y: '-45%', x: '-50%' }}
           animate={{ opacity: 1, scale: 1, y: '-50%', x: '-50%' }}
           exit={{ opacity: 0, scale: 0.85, y: '-45%' }}
           transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-          className="fixed top-1/2 left-1/2 z-50 w-[270px] sm:w-[290px] max-w-[calc(100vw-20px)] rounded-2xl shadow-2xl border border-white/30 dark:border-slate-700/80 backdrop-blur-2xl overflow-hidden cursor-grab active:cursor-grabbing select-none"
+          className="fixed top-1/2 left-1/2 z-50 w-[270px] sm:w-[290px] max-w-[calc(100vw-20px)] rounded-2xl shadow-2xl border border-white/30 dark:border-slate-700/80 backdrop-blur-2xl overflow-hidden select-none"
           style={{
             background: isDark ? 'rgba(15, 23, 42, 0.97)' : 'rgba(255, 255, 255, 0.98)',
             color: ui.text,
@@ -115,8 +119,9 @@ export function DraggableJobModal({
             }}
           />
 
-          {/* Drag Handle Top Header */}
+          {/* Dedicated Drag Handle Top Header */}
           <div
+            onPointerDown={(e) => dragControls.start(e)}
             className="w-full flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border/40 cursor-grab active:cursor-grabbing select-none touch-none"
             style={{
               background: `linear-gradient(135deg, ${cat.color}18 0%, ${cat.color}05 100%)`,
@@ -133,7 +138,7 @@ export function DraggableJobModal({
               </span>
             </div>
 
-            <div className="flex items-center gap-0.5 shrink-0">
+            <div className="flex items-center gap-0.5 shrink-0" onPointerDown={(e) => e.stopPropagation()}>
               <motion.button
                 whileHover={{ scale: 1.15 }}
                 whileTap={{ scale: 0.9 }}
@@ -168,8 +173,8 @@ export function DraggableJobModal({
             </div>
           </div>
 
-          {/* Content Body */}
-          <div className="p-3 space-y-2">
+          {/* Content Body - Fully Unblocked Clicks */}
+          <div className="p-3 space-y-2 select-text" onPointerDown={(e) => e.stopPropagation()}>
             {/* Title & Company */}
             <div>
               <h4 className="font-bold text-[12px] leading-snug text-foreground truncate">{ad.title}</h4>
@@ -284,7 +289,7 @@ export function DraggableJobModal({
                     href={`https://www.google.com/maps/dir/?api=1&destination=${ad.latitude},${ad.longitude}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1 h-7 px-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold rounded-lg transition-all text-center"
+                    className="flex items-center justify-center gap-1 h-7 px-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold rounded-lg transition-all text-center cursor-pointer"
                   >
                     <Compass className="w-3 h-3" />
                     <span>Nawigacja</span>
@@ -296,7 +301,7 @@ export function DraggableJobModal({
                     href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ad.latitude},${ad.longitude}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1 h-7 px-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold rounded-lg transition-all text-center"
+                    className="flex items-center justify-center gap-1 h-7 px-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold rounded-lg transition-all text-center cursor-pointer"
                   >
                     <Globe className="w-3 h-3" />
                     <span>Widok ulicy</span>

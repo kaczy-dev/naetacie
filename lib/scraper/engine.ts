@@ -1,5 +1,6 @@
 /**
- * Master Multi-Portal Scraper Engine for Job Announcements (OLX, Pracuj.pl, Indeed).
+ * Master Multi-Portal Scraper Engine for Job Announcements.
+ * Supports OLX, Pracuj.pl, Indeed, Jooble, and GoWork.
  * Coordinates parallel extraction, cross-portal fuzzy deduplication, NLP trait extraction,
  * Szczecin market benchmark evaluation, district geocoding, and Firestore persistence.
  */
@@ -8,11 +9,16 @@ import { ScrapedAd, PortalScraperResult } from './types';
 import { scrapeOlx } from './olxScraper';
 import { scrapePracuj } from './pracujScraper';
 import { scrapeIndeed } from './indeedScraper';
+import { scrapeJooble } from './joobleScraper';
+import { scrapeGoWork } from './goworkScraper';
+import { scrapeOferteo } from './oferteoScraper';
+import { scrapeFixly } from './fixlyScraper';
 import { deduplicateCrossPortalAds, MergedScrapedAd } from '@/lib/deduplication/crossPortalDeduplicator';
 import { extractJobTraits, ExtractedJobTraits } from '@/lib/ai/freeJobExtractor';
 import { evaluateMarketSalary, MarketEvaluation } from '@/lib/stats/marketBenchmarks';
 import { adminFirestore } from '@/lib/firebase/admin';
 import { filterAndAddAvailableOffers } from '@/lib/verification/offerAvailability';
+import { generateRunId, logScraperRun, type PortalRunResult } from './runLogger';
 
 export interface EnrichedScrapedAd extends MergedScrapedAd {
   traits: ExtractedJobTraits;
@@ -95,10 +101,12 @@ function enrichCoordinates(ad: ScrapedAd): ScrapedAd {
   };
 }
 
+export type SupportedPortal = 'olx' | 'pracuj' | 'indeed' | 'jooble' | 'gowork' | 'oferteo' | 'fixly';
+
 export interface MultiPortalScrapeOptions {
   query?: string;
   limit?: number;
-  portals?: ('olx' | 'pracuj' | 'indeed')[];
+  portals?: SupportedPortal[];
 }
 
 export interface MultiPortalScrapeResponse {
@@ -117,7 +125,11 @@ export interface MultiPortalScrapeResponse {
 export async function runMultiPortalScrape(
   options: MultiPortalScrapeOptions = {}
 ): Promise<MultiPortalScrapeResponse> {
-  const { query, limit = 60, portals = ['olx', 'pracuj', 'indeed'] } = options;
+  const { query, limit = 60, portals = ['olx', 'pracuj', 'indeed', 'jooble', 'gowork', 'oferteo', 'fixly'] } = options;
+
+  const runId = generateRunId();
+  const runStartedAt = new Date();
+  const portalRunResults: PortalRunResult[] = [];
 
   const tasks: Promise<PortalScraperResult>[] = [];
 
@@ -163,15 +175,82 @@ export async function runMultiPortalScrape(
     );
   }
 
+  if (portals.includes('jooble')) {
+    tasks.push(
+      (async () => {
+        const start = Date.now();
+        try {
+          const ads = await scrapeJooble({ query, limit: Math.ceil(limit / 3) });
+          return { portal: 'jooble' as const, ads, durationMs: Date.now() - start };
+        } catch (e) {
+          return { portal: 'jooble' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
+        }
+      })()
+    );
+  }
+
+  if (portals.includes('gowork')) {
+    tasks.push(
+      (async () => {
+        const start = Date.now();
+        try {
+          const ads = await scrapeGoWork({ query, limit: Math.ceil(limit / 3) });
+          return { portal: 'gowork' as const, ads, durationMs: Date.now() - start };
+        } catch (e) {
+          return { portal: 'gowork' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
+        }
+      })()
+    );
+  }
+
+  if (portals.includes('oferteo')) {
+    tasks.push(
+      (async () => {
+        const start = Date.now();
+        try {
+          const ads = await scrapeOferteo({ query, limit: Math.ceil(limit / 3) });
+          return { portal: 'oferteo' as const, ads, durationMs: Date.now() - start };
+        } catch (e) {
+          return { portal: 'oferteo' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
+        }
+      })()
+    );
+  }
+
+  if (portals.includes('fixly')) {
+    tasks.push(
+      (async () => {
+        const start = Date.now();
+        try {
+          const ads = await scrapeFixly({ query, limit: Math.ceil(limit / 3) });
+          return { portal: 'fixly' as const, ads, durationMs: Date.now() - start };
+        } catch (e) {
+          return { portal: 'fixly' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
+        }
+      })()
+    );
+  }
+
   const results = await Promise.allSettled(tasks);
 
   const rawAds: ScrapedAd[] = [];
-  const breakdown: Record<string, number> = { olx: 0, pracuj: 0, indeed: 0 };
+  const breakdown: Record<string, number> = {};
+  for (const p of portals) breakdown[p] = 0;
 
   for (const r of results) {
     if (r.status === 'fulfilled') {
       const res = r.value;
       breakdown[res.portal] = res.ads.length;
+
+      portalRunResults.push({
+        portal: res.portal,
+        adsFound: res.ads.length,
+        adsNew: 0,
+        adsDuplicated: 0,
+        adsFilteredFraud: 0,
+        errors: res.error ? [res.error] : [],
+        responseTimeMs: res.durationMs,
+      });
 
       for (const rawAd of res.ads) {
         rawAds.push(enrichCoordinates(rawAd));
@@ -253,6 +332,19 @@ export async function runMultiPortalScrape(
       console.warn('Firestore write non-fatal timeout or error:', (e as Error).message);
     }
   }
+
+  // Best-effort run logging for health dashboard
+  logScraperRun({
+    runId,
+    startedAt: runStartedAt,
+    completedAt: new Date(),
+    trigger: 'on-demand',
+    portalResults: portalRunResults,
+    totalFirestoreWrites: storedCount,
+    totalAdsScraped: rawAds.length,
+    totalNewAds: limitedAds.length,
+    queries: query ? [query] : ['murarz', 'elektryk', 'hydraulik', 'malarz', 'dekarz', 'brukarz', 'monter', 'budowlany'],
+  }).catch(() => {}); // fire-and-forget
 
   return {
     success: true,

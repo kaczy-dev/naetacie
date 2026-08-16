@@ -1,23 +1,23 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn, triggerHaptic } from '@/lib/utils';
 
 /**
  * Horizontal row of one-tap popular trade searches.
  * Tapping a chip sets the search query; tapping the active one clears it.
  */
 const POPULAR_TRADES = [
-  { label: 'Murarz', q: 'murarz' },
-  { label: 'Elektryk', q: 'elektryk' },
-  { label: 'Hydraulik', q: 'hydraulik' },
-  { label: 'Malarz', q: 'malarz' },
-  { label: 'Dekarz', q: 'dekarz' },
-  { label: 'Brukarz', q: 'brukarz' },
-  { label: 'Spawacz', q: 'spawacz' },
-  { label: 'Cieśla', q: 'cieśla' },
-  { label: 'Pomocnik', q: 'pomocnik' },
-  { label: 'Kierownik', q: 'kierownik' },
+  { label: '🔥 > 10k PLN', q: '10000' },
+  { label: '⚡ Elektryk (SEP)', q: 'elektryk' },
+  { label: '🏗️ Murarz-Tynkarz', q: 'murarz' },
+  { label: '🛠️ Hydraulik', q: 'hydraulik' },
+  { label: '🏠 Dekarz', q: 'dekarz' },
+  { label: '🚜 Operator UDT', q: 'koparki' },
+  { label: '🎨 Wykończenia', q: 'wykończenia' },
+  { label: '🪵 Cieśla', q: 'cieśla' },
+  { label: '💼 B2B / Kontrakt', q: 'b2b' },
+  { label: '🚛 Kierowca C+E', q: 'kierowca' },
 ];
 
 export function QuickSearchChips({
@@ -38,12 +38,15 @@ export function QuickSearchChips({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.02 }}
-            onClick={() => onChange(active ? '' : t.q)}
+            onClick={() => {
+              triggerHaptic(8);
+              onChange(active ? '' : t.q);
+            }}
             className={cn(
-              'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap',
+              'shrink-0 px-3 py-1 rounded-full text-[11px] font-bold border transition-all whitespace-nowrap cursor-pointer',
               active
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
+                ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                : 'bg-card text-muted-foreground border-border/70 hover:border-primary/50 hover:text-foreground'
             )}
           >
             {t.label}

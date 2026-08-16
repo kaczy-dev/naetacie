@@ -19,6 +19,7 @@ export interface OlxResolvedLink {
 /**
  * Extracts native OLX offer ID from various URL formats or ID strings.
  * Examples:
+ * - 'https://www.olx.pl/d/oferta/-IDn2cwpf.html' -> 'n2cwpf'
  * - 'olx_91827364' -> '91827364'
  * - 'olx_raw_91827364' -> '91827364'
  * - 'olx-ID8eLk' -> '8eLk'
@@ -31,14 +32,14 @@ export function extractOlxNativeId(urlOrId?: string | null): string | null {
   const str = urlOrId.trim();
   if (!str) return null;
 
-  // 1. Check for canonical -ID suffix in URL or string (e.g. -ID108H31.html or -ID918273.html)
-  const canonicalMatch = str.match(/-ID([a-zA-Z0-9]+)(?:\.html)?(?:\?|$)/i);
+  // 1. Check for canonical -ID suffix in URL or string (e.g. -IDn2cwpf.html, -ID108H31.html, -ID918273.html)
+  const canonicalMatch = str.match(/[-_]ID([a-zA-Z0-9]+)(?:\.html)?(?:\?|$)/i);
   if (canonicalMatch && canonicalMatch[1]) {
     return canonicalMatch[1];
   }
 
-  // 2. Check for explicit ID in URL path (e.g., /oferta/...-ID108H31)
-  const idInUrlMatch = str.match(/[-_]ID([a-zA-Z0-9]{3,12})/i);
+  // 2. Check for explicit ID in URL path
+  const idInUrlMatch = str.match(/[-_]ID([a-zA-Z0-9]{3,14})/i);
   if (idInUrlMatch && idInUrlMatch[1]) {
     return idInUrlMatch[1];
   }
@@ -52,7 +53,7 @@ export function extractOlxNativeId(urlOrId?: string | null): string | null {
     return cleaned;
   }
 
-  // 4. Explicit ID prefix (e.g. 'ID108H31' or 'ID8eLk')
+  // 4. Explicit ID prefix (e.g. 'ID108H31' or 'ID8eLk' or 'IDn2cwpf')
   if (/^ID[a-zA-Z0-9]{3,12}$/i.test(cleaned)) {
     return cleaned.replace(/^ID/i, '');
   }
@@ -127,11 +128,11 @@ export function isDirectOlxOfferUrl(url?: string | null): boolean {
 
   const lower = normalized.toLowerCase();
 
-  // Generic category or query URLs are NOT direct offer pages
+  // Generic category or query search URLs are NOT direct offer pages
   if (
     lower === 'https://www.olx.pl/d/oferta/' ||
     lower === 'https://www.olx.pl/oferta/' ||
-    lower.includes('/praca/') ||
+    lower.includes('/praca/szczecin/q-') ||
     lower.includes('?q=') ||
     lower.includes('/q-')
   ) {
@@ -140,6 +141,7 @@ export function isDirectOlxOfferUrl(url?: string | null): boolean {
 
   return (
     lower.includes('/d/oferta/') ||
+    lower.includes('/oferta/') ||
     /-id[a-z0-9]+\.html/i.test(lower) ||
     /,oferta,/i.test(lower)
   );
@@ -185,8 +187,8 @@ export function buildOlxAndroidIntent(urlOrId?: string | null): string | null {
 }
 
 /**
- * Master OLX Resolver function.
- * Resolves an announcement into a guaranteed working OLX direct offer link with fallback and metadata.
+ * Master Enterprise OLX Resolver function.
+ * Resolves an announcement into a guaranteed working OLX live offer link.
  */
 export function resolveOlxLink(ad?: OlxAdMinimal | null): OlxResolvedLink {
   if (!ad) {
@@ -216,7 +218,7 @@ export function resolveOlxLink(ad?: OlxAdMinimal | null): OlxResolvedLink {
   // 2. ID-based reconstruction
   const nativeId = extractOlxNativeId(ad.id);
   if (nativeId) {
-    const reconstructedUrl = `https://www.olx.pl/d/oferta/-ID${nativeId}.html`;
+    const reconstructedUrl = `https://www.olx.pl/d/oferta/ogloszenie-ID${nativeId}.html`;
     return {
       url: reconstructedUrl,
       isDirectOffer: true,
@@ -226,7 +228,7 @@ export function resolveOlxLink(ad?: OlxAdMinimal | null): OlxResolvedLink {
     };
   }
 
-  // 3. Smart Search Fallback
+  // 3. Smart Targeted Search Fallback
   const fallbackUrl = buildOlxSearchFallback(ad.title, ad.category);
   return {
     url: fallbackUrl,

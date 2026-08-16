@@ -74,9 +74,16 @@ export function OlxLinkActions({
   };
 
   const handleOpenClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     triggerHaptic(15);
+    if (typeof window !== 'undefined') {
+      window.open(externalUrl, '_blank', 'noopener,noreferrer');
+    }
   };
+
+  const portalRaw = (ad.source_portal || 'olx').toLowerCase();
+  const buttonLabel = portalRaw === 'olx' ? 'Zobacz na OLX' : `Zobacz w ${portalName}`;
 
   if (variant === 'compact') {
     return (
@@ -86,11 +93,11 @@ export function OlxLinkActions({
         rel="noopener noreferrer"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={handleOpenClick}
-        className={`inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline cursor-pointer ${className}`}
+        className={`inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer ${className}`}
         title={`Otwórz w ${portalName}`}
       >
         <ExternalLink className="w-3.5 h-3.5" />
-        <span>Zobacz w {portalName}</span>
+        <span>{buttonLabel}</span>
       </a>
     );
   }
@@ -104,10 +111,10 @@ export function OlxLinkActions({
           rel="noopener noreferrer"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={handleOpenClick}
-          className={`inline-flex items-center justify-center gap-1.5 font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-md active:scale-97 transition-all cursor-pointer text-xs ${className}`}
+          className={`inline-flex items-center justify-center gap-1.5 font-extrabold px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-600/20 active:scale-97 transition-all cursor-pointer text-xs ${className}`}
         >
           <ExternalLink className="w-3.5 h-3.5 shrink-0 text-current" />
-          <span>Zobacz w {portalName}</span>
+          <span>{buttonLabel}</span>
         </a>
 
         {showMenu && (

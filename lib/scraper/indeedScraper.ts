@@ -3,46 +3,60 @@
  * Extracts construction job postings from Indeed Poland for the Szczecin area.
  */
 
-import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, JobCategory } from './types';
+import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, SalaryRange } from './types';
 import { ensureAbsoluteUrl } from '@/lib/utils';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
+import { getRandomUserAgent, hashId, cleanText, inferCategory } from './network';
 
 const INDEED_BASE = 'https://pl.indeed.com';
 
-const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-];
-
-function getRandomUserAgent(): string {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-}
-
-function hashId(input: string): string {
-  let h = 0;
-  for (let i = 0; i < input.length; i++) {
-    h = (h << 5) - h + input.charCodeAt(i);
-    h &= h;
+/**
+ * Extracts salary information from Indeed RSS description text.
+ * Handles formats like: "od 5 000 do 7 000 PLN", "5000-7000 zł", "30 zł/h"
+ */
+function extractSalaryFromText(text: string): { price: string; salaryRange: SalaryRange } | null {
+  // Range format: "5 000 – 7 000 zł" or "5000-7000 PLN" or "od 5000 do 7000"
+  const rangeMatch = text.match(/(\d[\d\s]*(?:,\d+)?)\s*(?:–|-|do)\s*(\d[\d\s]*(?:,\d+)?)\s*(?:zł|PLN|brutto|netto)/i);
+  if (rangeMatch) {
+    const min = parseFloat(rangeMatch[1].replace(/\s/g, '').replace(',', '.'));
+    const max = parseFloat(rangeMatch[2].replace(/\s/g, '').replace(',', '.'));
+    if (Number.isFinite(min) && Number.isFinite(max)) {
+      const isHourly = /\/\s*h|za godzin|hourly/i.test(text);
+      const raw = rangeMatch[0].trim();
+      return {
+        price: raw,
+        salaryRange: {
+          min, max,
+          currency: 'PLN',
+          type: isHourly ? 'hourly' : 'monthly',
+          isGross: !/netto/i.test(text),
+          raw,
+        },
+      };
+    }
   }
-  return `indeed_${Math.abs(h).toString(36)}`;
-}
 
-function cleanText(raw: string): string {
-  return raw
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+  // Single value format: "5000 zł"
+  const singleMatch = text.match(/(\d[\d\s]*(?:,\d+)?)\s*(?:zł|PLN)/i);
+  if (singleMatch) {
+    const val = parseFloat(singleMatch[1].replace(/\s/g, '').replace(',', '.'));
+    if (Number.isFinite(val) && val > 0) {
+      const isHourly = /\/\s*h|za godzin|hourly/i.test(text);
+      const raw = singleMatch[0].trim();
+      return {
+        price: raw,
+        salaryRange: {
+          min: val, max: val,
+          currency: 'PLN',
+          type: isHourly ? 'hourly' : 'monthly',
+          isGross: true,
+          raw,
+        },
+      };
+    }
+  }
 
-function inferCategory(title: string, desc: string): JobCategory {
-  const t = `${title} ${desc}`.toLowerCase();
-  if (/elektryk|hydraulik|instalac|klimatyz|gaz\b|sanitarn|wod-kan|fotowolta|pomp[ay] ciepła|c\.?o\.?\b/.test(t)) {
-    return 'instalacje';
-  }
-  if (/malarz|glazur|płytk|gładz|regips|tynkar|posadzk|wykończ|tapet|panele|podłog/.test(t)) {
-    return 'wykończenia';
-  }
-  return 'budowa';
+  return null;
 }
 
 function parseIndeedRssItem(itemXml: string): ScrapedAd | null {
@@ -70,8 +84,10 @@ function parseIndeedRssItem(itemXml: string): ScrapedAd | null {
 
   const phone = extractPhoneNumber(`${title} ${description}`);
 
+  const salaryInfo = extractSalaryFromText(`${title} ${description}`);
+
   return {
-    id: hashId(sourceUrl || title),
+    id: hashId(sourceUrl || title, 'indeed'),
     title,
     description,
     source_url: sourceUrl,
@@ -80,7 +96,8 @@ function parseIndeedRssItem(itemXml: string): ScrapedAd | null {
     location_text: 'Szczecin',
     latitude: null,
     longitude: null,
-    price: null,
+    price: salaryInfo?.price ?? null,
+    salary_range: salaryInfo?.salaryRange ?? null,
     phone,
     scraped_at: new Date().toISOString(),
     published_at: pubDate,

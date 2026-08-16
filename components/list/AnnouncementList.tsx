@@ -7,6 +7,9 @@ import ListSkeleton from '@/components/feedback/ListSkeleton';
 import type { MaskedAnnouncement } from '@/lib/types/announcement';
 import type { PaginatedResponse } from '@/lib/types/api';
 
+import { getAnnouncementExternalUrl } from '@/lib/utils';
+import { OlxLinkActions } from '@/components/olx/OlxLinkActions';
+
 export interface AnnouncementListProps {
   onItemClick?: (id: string) => void;
 }
@@ -281,15 +284,18 @@ export default function AnnouncementList({ onItemClick }: AnnouncementListProps)
                 </time>
               </div>
 
-              <a
-                href={directOfferUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-black text-xs font-extrabold rounded-lg shadow-sm active:scale-95 transition-transform flex items-center gap-1 cursor-pointer"
-              >
-                <span>Otwórz 🚀</span>
-              </a>
+              <OlxLinkActions
+                ad={{
+                  id: announcement.deduplication_key,
+                  title: announcement.title,
+                  source_url: announcement.source_url,
+                  source_portal: announcement.source_portal,
+                  category: announcement.category,
+                }}
+                variant="default"
+                size="sm"
+                showMenu={false}
+              />
             </div>
           </motion.div>
         );

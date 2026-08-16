@@ -102,21 +102,24 @@ export function AppShell({
 
   return (
     <div className="flex flex-col min-h-[100dvh] max-w-[100vw] overflow-x-hidden bg-background">
-      {/* Top Header Navigation Bar (Replaces side menu, includes Dropdown Menu) */}
-      <header className="sticky top-0 z-50 w-full bg-card/85 backdrop-blur-xl border-b border-border/50 shadow-sm h-14 px-4 flex items-center justify-between">
-        {/* Left: Brand logo */}
+      {/* Top Header Navigation Bar */}
+      <header className="sticky top-0 z-50 w-full glass-header h-14 px-3 sm:px-6 flex items-center justify-between transition-all">
+        {/* Left: Brand logo & Live status */}
         <div className="flex items-center gap-3">
-          <Logo size={32} animated={true} interactive3D={false} />
-          <Wordmark className="text-base md:text-lg" />
+          <div className="relative group cursor-pointer" onClick={() => onTabChange('list')}>
+            <Logo size={34} animated={true} interactive3D={false} />
+            <div className="absolute -inset-1 bg-primary/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+          <Wordmark className="text-base sm:text-lg font-black tracking-tight" />
           {isLive && (
-            <span className="hidden sm:flex items-center gap-1 text-[10px] font-extrabold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/25 shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE 24/7
             </span>
           )}
         </div>
 
-        {/* Center: Desktop Navigation Tabs */}
-        <div className="hidden md:flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/40">
+        {/* Center: Desktop Navigation Tabs with Kinetic LayoutId Spring */}
+        <nav className="hidden md:flex items-center gap-1 bg-muted/50 dark:bg-muted/30 p-1 rounded-2xl border border-border/50 backdrop-blur-md shadow-inner">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
@@ -125,30 +128,37 @@ export function AppShell({
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 className={cn(
-                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                  'relative flex items-center gap-2 px-4 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer select-none',
+                  isActive ? 'text-primary-foreground font-extrabold' : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
                 )}
               >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{tab.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="header-active-tab-pill"
+                    className="absolute inset-0 bg-primary rounded-xl shadow-md"
+                    transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 450, damping: 35 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-2">
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{tab.label}</span>
+                </span>
               </button>
             );
           })}
-        </div>
+        </nav>
 
         {/* Right: Rozwijane Menu (Dropdown Menu) & Command Palette Trigger */}
         <div className="flex items-center gap-2">
           {onOpenCommandPalette && (
             <button
               onClick={onOpenCommandPalette}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs group"
               title="Otwórz paletę komend (⌘K)"
             >
-              <Command className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Paleta Komend</span>
-              <kbd className="px-1 py-0.2 text-[9px] font-mono font-extrabold bg-background/90 text-primary rounded border border-primary/30">
+              <Command className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
+              <span className="hidden lg:inline">Paleta Komend</span>
+              <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-black bg-background/90 text-primary rounded-md border border-primary/30 shadow-2xs">
                 ⌘K
               </kbd>
             </button>
@@ -158,128 +168,145 @@ export function AppShell({
           <div className="relative">
             <button
               onClick={() => setDropdownMenuOpen(!dropdownMenuOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-              aria-label="Rozwijane menu"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground font-extrabold text-xs shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer border border-primary-foreground/20"
+              aria-label="Rozwijane menu nawigacji"
+              aria-expanded={dropdownMenuOpen}
             >
               {dropdownMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               <span className="inline">Menu</span>
               <ChevronDown className={cn('w-3.5 h-3.5 transition-transform duration-200', dropdownMenuOpen && 'rotate-180')} />
             </button>
 
+            {/* Backdrop click dismiss */}
+            {dropdownMenuOpen && (
+              <div
+                className="fixed inset-0 z-40 bg-transparent"
+                onClick={() => setDropdownMenuOpen(false)}
+              />
+            )}
+
             {/* Dropdown Menu Container */}
             <AnimatePresence>
               {dropdownMenuOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                  initial={{ opacity: 0, y: 10, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-72 p-2 bg-popover/95 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl z-50 text-xs space-y-2 animate-in fade-in zoom-in-95"
+                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  className="absolute right-0 top-full mt-2 w-80 p-3 bg-popover/95 backdrop-blur-2xl border border-border/80 rounded-2xl shadow-2xl z-50 text-xs space-y-3"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="px-3 py-2 border-b border-border/50 flex items-center justify-between">
-                    <span className="font-extrabold text-foreground flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-primary" /> Rozwijane Menu Nawigacji
+                    <span className="font-black text-foreground flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-primary animate-pulse" /> Menu Główny NaEtacie
                     </span>
                     <SystemHealthBadge />
                   </div>
 
                   {/* Navigation Tabs in Dropdown */}
                   <div className="space-y-1">
-                    <span className="px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                      Widoki Aplikacji
+                    <span className="px-2 text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
+                      Główne Widoki
                     </span>
-                    {TABS.map((tab) => {
-                      const isActive = activeTab === tab.id;
-                      const Icon = tab.icon;
-                      return (
-                        <button
-                          key={tab.id}
-                          onClick={() => {
-                            onTabChange(tab.id);
-                            setDropdownMenuOpen(false);
-                          }}
-                          className={cn(
-                            'w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold transition-colors cursor-pointer',
-                            isActive ? 'bg-primary/15 text-primary font-bold border border-primary/20' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                          )}
-                        >
-                          <span className="flex items-center gap-2.5">
-                            <Icon className="w-4 h-4" />
-                            <span>{tab.label}</span>
-                          </span>
-                          {isActive && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                        </button>
-                      );
-                    })}
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      {TABS.map((tab) => {
+                        const isActive = activeTab === tab.id;
+                        const Icon = tab.icon;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => {
+                              onTabChange(tab.id);
+                              setDropdownMenuOpen(false);
+                            }}
+                            className={cn(
+                              'flex items-center justify-between px-3 py-2 rounded-xl font-bold transition-all cursor-pointer',
+                              isActive
+                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                            )}
+                          >
+                            <span className="flex items-center gap-2">
+                              <Icon className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">{tab.label}</span>
+                            </span>
+                            {isActive && <span className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Theme Switcher Submenu */}
-                  <div className="pt-2 border-t border-border/50 space-y-1">
-                    <button
-                      onClick={() => setThemeSubmenuOpen(!themeSubmenuOpen)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent font-medium cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        {React.createElement(themeIcons[mode], { className: 'w-4 h-4 text-primary' })}
-                        <span>Motyw: {mode === 'system' ? 'Systemowy' : mode === 'oled' ? 'OLED Black' : mode === 'dark' ? 'Ciemny' : 'Jasny'}</span>
-                      </span>
-                      <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', themeSubmenuOpen && 'rotate-180')} />
-                    </button>
+                  <div className="pt-2 border-t border-border/50 space-y-1.5">
+                    <div className="flex items-center justify-between px-2 text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
+                      <span>Wybierz Motyw Interfejsu</span>
+                      <span className="text-primary font-bold capitalize">{mode}</span>
+                    </div>
 
-                    {themeSubmenuOpen && (
-                      <div className="pl-4 space-y-1 pt-1">
-                        {(['light', 'dark', 'oled', 'system'] as const).map((m) => (
+                    <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                      {(['light', 'dark', 'oled', 'system'] as const).map((m) => {
+                        const Icon = themeIcons[m];
+                        const isThemeActive = mode === m;
+                        const label = m === 'system' ? 'System' : m === 'oled' ? 'OLED Black' : m === 'dark' ? 'Ciemny' : 'Jasny';
+                        return (
                           <button
                             key={m}
                             onClick={() => {
                               setMode(m);
-                              setThemeSubmenuOpen(false);
                             }}
                             className={cn(
-                              'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer',
-                              mode === m && 'text-primary font-bold bg-primary/10'
+                              'flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer',
+                              isThemeActive
+                                ? 'bg-primary/15 text-primary border-primary/40 font-extrabold shadow-2xs'
+                                : 'border-border/50 text-muted-foreground hover:text-foreground hover:bg-accent/60'
                             )}
                           >
-                            {React.createElement(themeIcons[m], { className: 'w-3.5 h-3.5' })}
-                            <span>{m === 'system' ? 'Systemowy' : m === 'oled' ? 'OLED Pure Black' : m === 'dark' ? 'Ciemny (Dark Mode)' : 'Jasny (Light Mode)'}</span>
+                            <Icon className="w-3.5 h-3.5 text-primary" />
+                            <span>{label}</span>
                           </button>
-                        ))}
-                      </div>
-                    )}
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Settings & Terminal Console */}
-                  <div className="pt-2 border-t border-border/50 space-y-1">
+                  <div className="pt-2 border-t border-border/50 space-y-1.5">
                     {onOpenSettings && (
                       <button
                         onClick={() => {
                           onOpenSettings();
                           setDropdownMenuOpen(false);
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent font-semibold cursor-pointer"
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent font-semibold transition-colors cursor-pointer"
                       >
-                        <Settings className="w-4 h-4 text-primary" />
-                        <span>Ustawienia Aplikacji</span>
+                        <span className="flex items-center gap-2">
+                          <Settings className="w-4 h-4 text-primary" />
+                          <span>Ustawienia Aplikacji</span>
+                        </span>
+                        <ChevronDown className="w-3.5 h-3.5 -rotate-90 text-muted-foreground" />
                       </button>
                     )}
 
                     {/* Network status */}
-                    <div className="px-3 py-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                      {isOnline ? (
-                        <>
-                          <Wifi className="w-3.5 h-3.5 text-emerald-500" />
-                          <span>Połączono z serwerem</span>
-                        </>
-                      ) : (
-                        <>
-                          <WifiOff className="w-3.5 h-3.5 text-orange-500" />
-                          <span>Tryb Offline</span>
-                        </>
-                      )}
+                    <div className="px-3 py-1.5 rounded-xl bg-muted/40 flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+                      <span className="flex items-center gap-2">
+                        {isOnline ? (
+                          <>
+                            <Wifi className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+                            <span>Połączono z serwerem</span>
+                          </>
+                        ) : (
+                          <>
+                            <WifiOff className="w-3.5 h-3.5 text-orange-500" />
+                            <span>Tryb Offline</span>
+                          </>
+                        )}
+                      </span>
+                      <span className="text-[10px] text-emerald-500 font-extrabold">v2.4 Live</span>
                     </div>
 
-                    <TerminalTyper className="mt-1 shadow-sm" />
+                    <TerminalTyper className="mt-1 shadow-xs" />
                   </div>
                 </motion.div>
               )}

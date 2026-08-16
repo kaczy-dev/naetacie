@@ -120,13 +120,20 @@ export function MobileBottomSheet({
     return `sms:?body=${text}`;
   };
 
+  const getDirectionsUrl = (ad: DisplayAnnouncement) => {
+    if (ad.latitude && ad.longitude) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${ad.latitude},${ad.longitude}`;
+    }
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ad.location_text || 'Szczecin')}`;
+  };
+
   return (
     <>
       {/* Floating Action Toggle Button - 1/3 smaller icons & typography */}
       <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-40">
         <button
           onClick={() => setSnapState((prev) => (prev === 'expanded' ? 'medium' : 'expanded'))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 dark:bg-slate-100 text-slate-100 dark:text-slate-900 font-extrabold text-[10px] shadow-2xl backdrop-blur-xl active:scale-95 transition-all border border-slate-700/60 cursor-pointer"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-900 dark:bg-slate-100 text-slate-100 dark:text-slate-900 font-extrabold text-[10px] shadow-2xl backdrop-blur-xl active:scale-95 transition-all border border-slate-700/60 cursor-pointer"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
           {snapState === 'expanded' ? (
@@ -228,7 +235,7 @@ export function MobileBottomSheet({
               {/* Title & Price */}
               <div className="flex items-start justify-between gap-1.5">
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-bold text-[11px] text-foreground truncate leading-tight">
+                  <h4 className="font-heading font-bold text-[11px] text-foreground truncate leading-tight">
                     {currentDisplayAd.title}
                   </h4>
                   {currentDisplayAd.company && (
@@ -248,33 +255,35 @@ export function MobileBottomSheet({
                 </div>
               </div>
 
-              {/* Action Buttons with 1-Tap Quick Contact */}
-              <div className="flex items-center gap-1 pt-1 border-t border-border/40">
+              {/* Action Buttons with 1-Tap Quick Contact & Directions */}
+              <div className="grid grid-cols-3 gap-1 pt-1 border-t border-border/40">
                 <button
                   onClick={() => {
                     onShowOnMap(currentDisplayAd.id);
                     setSnapState('collapsed');
                   }}
-                  className="flex-1 flex items-center justify-center gap-0.5 py-1 px-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-[10px] font-bold rounded active:scale-95 transition-all cursor-pointer"
+                  className="flex items-center justify-center gap-0.5 py-1 px-1 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-[9px] font-bold rounded active:scale-95 transition-all cursor-pointer"
                 >
                   <Navigation className="w-2.5 h-2.5 text-emerald-400" /> Na mapie
                 </button>
 
                 <a
+                  href={getDirectionsUrl(currentDisplayAd)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-0.5 py-1 px-1 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-bold rounded active:scale-95 transition-all cursor-pointer shadow-xs"
+                >
+                  <MapPin className="w-2.5 h-2.5" /> Trasa
+                </a>
+
+                <a
                   href={getQuickContactLink(currentDisplayAd)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-0.5 py-1 px-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold rounded active:scale-95 transition-all cursor-pointer shadow-xs"
+                  className="flex items-center justify-center gap-0.5 py-1 px-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-bold rounded active:scale-95 transition-all cursor-pointer shadow-xs"
                 >
-                  <MessageSquare className="w-2.5 h-2.5" /> Szybka odp.
+                  <MessageSquare className="w-2.5 h-2.5" /> Kontakt
                 </a>
-
-                <OlxLinkActions
-                  ad={currentDisplayAd}
-                  variant="default"
-                  size="sm"
-                  className="flex-1 text-[10px] py-0.5 h-6"
-                />
               </div>
             </div>
           )}

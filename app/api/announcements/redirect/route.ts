@@ -47,7 +47,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.redirect(healed.url, { status: 307 });
   } catch (e) {
     console.warn('Real-time redirect fallback:', (e as Error).message);
-    const resolvedFallback = resolveOlxLink({ title, id, source_url: rawUrl, source_portal: portal });
+    const resolvedFallback = resolveOlxLink({ title, id: id ?? undefined, source_url: rawUrl ?? undefined, source_portal: portal ?? undefined });
     return NextResponse.redirect(resolvedFallback.url, { status: 307 });
   }
 }

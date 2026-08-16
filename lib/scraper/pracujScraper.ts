@@ -3,48 +3,13 @@
  * Extracts real-time construction job postings from Pracuj.pl in Szczecin.
  */
 
-import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, JobCategory } from './types';
+import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, SalaryRange } from './types';
 import { ensureAbsoluteUrl, removePolishDiacritics } from '@/lib/utils';
 import { extractJsonLd } from '@/functions/src/scraper/extractor';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
+import { getRandomUserAgent, hashId, cleanText, inferCategory } from './network';
 
 const PRACUJ_BASE = 'https://www.pracuj.pl';
-
-const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-];
-
-function getRandomUserAgent(): string {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-}
-
-function hashId(input: string): string {
-  let h = 0;
-  for (let i = 0; i < input.length; i++) {
-    h = (h << 5) - h + input.charCodeAt(i);
-    h &= h;
-  }
-  return `pracuj_${Math.abs(h).toString(36)}`;
-}
-
-function inferCategory(title: string, desc: string): JobCategory {
-  const t = `${title} ${desc}`.toLowerCase();
-  if (/elektryk|hydraulik|instalac|klimatyz|gaz\b|sanitarn|wod-kan|fotowolta|pomp[ay] ciepła|c\.?o\.?\b/.test(t)) {
-    return 'instalacje';
-  }
-  if (/malarz|glazur|płytk|gładz|regips|tynkar|posadzk|wykończ|tapet|panele|podłog/.test(t)) {
-    return 'wykończenia';
-  }
-  return 'budowa';
-}
-
-function cleanText(raw: string): string {
-  return raw
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 /** Interface matching Pracuj.pl __NEXT_DATA__ or REST payload structure */
 interface PracujApiOffer {
@@ -64,6 +29,9 @@ interface PracujApiOffer {
   employmentTypes?: string[] | string;
   lastPublicated?: string;
   datePublished?: string;
+  description?: string;
+  shortDescription?: string;
+  plainDescription?: string;
 }
 
 function parsePracujRawOffer(item: PracujApiOffer, queryFallback: string): ScrapedAd | null {
@@ -87,11 +55,14 @@ function parsePracujRawOffer(item: PracujApiOffer, queryFallback: string): Scrap
     : item.employmentTypes || 'Umowa o pracę';
   const publishedAt = item.lastPublicated || item.datePublished || new Date().toISOString();
 
-  const description = cleanText(`${title} - Praca w ${company ? company + ', ' : ''}${locationText}.`).slice(0, 300);
+  const rawDesc = item.description || item.shortDescription || item.plainDescription || '';
+  const description = rawDesc
+    ? cleanText(rawDesc).slice(0, 400)
+    : cleanText(`${title} - Praca w ${company ? company + ', ' : ''}${locationText}.`).slice(0, 300);
   const phone = extractPhoneNumber(`${title} ${description}`);
 
   return {
-    id: hashId(sourceUrl || title + locationText),
+    id: hashId(sourceUrl || title + locationText, 'pracuj'),
     title,
     description,
     source_url: sourceUrl,
@@ -140,10 +111,41 @@ async function fetchPracujKeyword(query: string): Promise<ScrapedAd[]> {
         const rawUrl = item.url || searchUrl;
         const sourceUrl = ensureAbsoluteUrl(rawUrl, 'pracuj') || rawUrl;
         const locationText = item.location ? `Szczecin, ${item.location}` : 'Szczecin';
-        const priceStr = item.price ? `${item.price} zł` : null;
+        let priceStr: string | null = null;
+        let salaryRange: SalaryRange | null = null;
+
+        if (item.price != null) {
+          if (typeof item.price === 'object' && item.price !== null) {
+            const p = item.price as Record<string, unknown>;
+            const minVal = Number(p.minValue ?? p.value ?? 0);
+            const maxVal = Number(p.maxValue ?? minVal);
+            const curr = String(p.currency || 'PLN');
+            const unitText = String(p.unitText || 'MONTH').toUpperCase();
+            const salaryType = unitText.includes('HOUR') ? 'hourly' : 'monthly';
+            priceStr = minVal !== maxVal
+              ? `${minVal}–${maxVal} ${curr === 'PLN' ? 'zł' : curr}/${salaryType === 'hourly' ? 'h' : 'mies.'}`
+              : `${minVal} ${curr === 'PLN' ? 'zł' : curr}/${salaryType === 'hourly' ? 'h' : 'mies.'}`;
+            salaryRange = {
+              min: minVal || null,
+              max: maxVal || null,
+              currency: (curr === 'EUR' ? 'EUR' : 'PLN') as 'PLN' | 'EUR',
+              type: salaryType as 'hourly' | 'monthly',
+              isGross: true,
+              raw: priceStr,
+            };
+          } else {
+            priceStr = `${item.price} zł`;
+          }
+        }
+
+        const ldCompany = (() => {
+          const ho = (item as Record<string, unknown>).hiringOrganization;
+          if (ho && typeof ho === 'object') return String((ho as Record<string, unknown>).name || '') || null;
+          return null;
+        })();
 
         adsFromJsonLd.push({
-          id: hashId(sourceUrl || title),
+          id: hashId(sourceUrl || title, 'pracuj'),
           title,
           description: cleanText(item.description || title).slice(0, 300),
           source_url: sourceUrl,
@@ -153,9 +155,10 @@ async function fetchPracujKeyword(query: string): Promise<ScrapedAd[]> {
           latitude: null,
           longitude: null,
           price: priceStr,
+          salary_range: salaryRange,
           scraped_at: new Date().toISOString(),
           published_at: item.datePublished || null,
-          company: null,
+          company: ldCompany,
           employment_type: 'Umowa o pracę',
         });
       }
@@ -206,7 +209,7 @@ async function fetchPracujKeyword(query: string): Promise<ScrapedAd[]> {
         if (!seenUrls.has(fullUrl) && linkText.length >= 5) {
           seenUrls.add(fullUrl);
           adsFromRegex.push({
-            id: hashId(fullUrl),
+            id: hashId(fullUrl, 'pracuj'),
             title: linkText,
             description: `Praca na stanowisku ${linkText} w Szczecinie. Zobacz szczegóły w serwisie Pracuj.pl.`,
             source_url: fullUrl,

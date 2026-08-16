@@ -32,7 +32,9 @@ export function calculateBackoffDelay(
   baseDelayMs: number,
   multiplier: number
 ): number {
-  return baseDelayMs * Math.pow(multiplier, attempt);
+  const base = baseDelayMs * Math.pow(multiplier, attempt);
+  const jitter = Math.random() * base * 0.3; // ±30% jitter to prevent thundering herd
+  return Math.floor(base + jitter);
 }
 
 /**

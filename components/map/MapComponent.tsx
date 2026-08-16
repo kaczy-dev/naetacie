@@ -15,6 +15,30 @@ const DEFAULT_ZOOM = 10;
 // CartoDB Voyager GL vector style (Free & GPU accelerated)
 const CARTO_GL_STYLE = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
 
+// Esri World Imagery (High-Resolution Satellite Tiles for inspecting construction sites)
+const ESRI_SATELLITE_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {
+    'esri-satellite': {
+      type: 'raster',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      attribution: 'Tiles &copy; Esri World Imagery',
+    },
+  },
+  layers: [
+    {
+      id: 'esri-satellite-layer',
+      type: 'raster',
+      source: 'esri-satellite',
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
+
 export interface MapComponentProps {
   announcements: MaskedAnnouncement[];
   onMarkerClick?: (id: string) => void;
@@ -30,6 +54,7 @@ export default function MapComponent({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [mapMoved, setMapMoved] = useState(false);
+  const [isSatellite, setIsSatellite] = useState(false);
 
   const geocodedAnnouncements = filterGeocodedAnnouncements(announcements);
 
@@ -160,11 +185,30 @@ export default function MapComponent({
     });
   }, [geocodedAnnouncements, onMarkerClick]);
 
+  const toggleSatelliteMode = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const nextSat = !isSatellite;
+    setIsSatellite(nextSat);
+    map.setStyle(nextSat ? ESRI_SATELLITE_STYLE : CARTO_GL_STYLE);
+  };
+
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
       {onSearchArea && (
         <SearchAreaButton visible={mapMoved} onClick={handleSearchAreaClick} />
       )}
+      
+      {/* Satellite / Standard Map Layer Toggle */}
+      <button
+        type="button"
+        onClick={toggleSatelliteMode}
+        className="absolute top-3 left-3 z-10 px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-100 text-xs font-bold rounded-xl border border-slate-700 shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all cursor-pointer"
+        title="Przełącz widok satelitarny budów"
+      >
+        <span>{isSatellite ? '🗺️ Mapa Dzielnic' : '🛰️ Widok Satelitarny'}</span>
+      </button>
+
       <div
         ref={mapContainerRef}
         style={{ height: '100%', width: '100%', borderRadius: 'inherit' }}

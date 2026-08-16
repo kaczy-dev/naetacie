@@ -21,7 +21,7 @@ export interface DisplayAnnouncement {
   price: string | number | null;
   phone: string | null;
   scraped_at: Date;
-  published_at: Date | null;
+  published_at?: Date | null;
   company?: string | null;
   employment_type?: string | null;
   posted_days_ago?: number | null;
