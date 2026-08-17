@@ -6,6 +6,8 @@ import {
   buildOlxSearchFallback,
   buildOlxMobileDeepLink,
   resolveOlxLink,
+  getOlxCanonicalUrl,
+  verifyOlxOfferLive,
 } from '@/lib/olx/olxLinkResolver';
 
 describe('OLX Link Resolver Suite', () => {
@@ -140,4 +142,17 @@ describe('OLX Link Resolver Suite', () => {
       expect(res.type).toBe('category_search_fallback');
     });
   });
+
+  describe('getOlxCanonicalUrl & verifyOlxOfferLive', () => {
+    it('getOlxCanonicalUrl formats clean canonical URL with -ID', () => {
+      expect(getOlxCanonicalUrl('108H31')).toBe('https://www.olx.pl/d/oferta/-ID108H31.html');
+      expect(getOlxCanonicalUrl('ID998877')).toBe('https://www.olx.pl/d/oferta/-ID998877.html');
+    });
+
+    it('verifyOlxOfferLive returns boolean for invalid or mock ID without throwing', async () => {
+      const isLive = await verifyOlxOfferLive('invalid_non_existent_12345', 100);
+      expect(typeof isLive).toBe('boolean');
+    });
+  });
 });
+

@@ -7,7 +7,8 @@
  */
 
 import { ensureAbsoluteUrl, getAnnouncementExternalUrl } from '@/lib/utils';
-import { resolveOlxLink } from '@/lib/olx/olxLinkResolver';
+import { resolveOlxLink, verifyOlxOfferLive, buildOlxSearchFallback } from '@/lib/olx/olxLinkResolver';
+import { adminFirestore } from '@/lib/firebase/admin';
 
 export interface HealedLinkResult {
   url: string;
@@ -16,21 +17,59 @@ export interface HealedLinkResult {
 }
 
 /**
+ * Asynchronously soft-marks an announcement as inactive in Firestore if found dead on OLX.
+ */
+function markAnnouncementInactive(id?: string): void {
+  if (!id) return;
+  try {
+    adminFirestore.collection('announcements').doc(id).update({
+      is_active: false,
+      availability_status: 'expired',
+      verified_at: new Date(),
+    }).catch(() => {});
+  } catch {
+    /* ignore background Firestore update errors */
+  }
+}
+
+export interface HealOptions {
+  checkLiveStatus?: boolean;
+  timeoutMs?: number;
+}
+
+/**
  * Heals an announcement link in real-time or background verification.
  * Guarantees 100% working, active links for the "Otwórz" button.
  */
-export async function healAnnouncementLink(ad: {
-  source_url?: string | null;
-  source_portal?: string | null;
-  title?: string | null;
-  id?: string;
-}): Promise<HealedLinkResult> {
+export async function healAnnouncementLink(
+  ad: {
+    source_url?: string | null;
+    source_portal?: string | null;
+    title?: string | null;
+    id?: string;
+  },
+  options?: HealOptions
+): Promise<HealedLinkResult> {
   const portal = (ad.source_portal || 'olx').toLowerCase();
 
   // 1. Direct offer URL priority for OLX or default portal
   if (portal === 'olx' || (!ad.source_portal && (!ad.source_url || ad.source_url.includes('olx')))) {
     const resolved = resolveOlxLink(ad);
     if (resolved.isDirectOffer && resolved.url) {
+      // Real-time verification if nativeId is available and checkLiveStatus is requested
+      if (options?.checkLiveStatus && resolved.nativeId) {
+        const isLive = await verifyOlxOfferLive(resolved.nativeId, options.timeoutMs);
+        if (!isLive) {
+          markAnnouncementInactive(ad.id);
+          const fallbackUrl = buildOlxSearchFallback(ad.title);
+          return {
+            url: fallbackUrl,
+            isDirectOffer: false,
+            status: 'healed_search',
+          };
+        }
+      }
+
       return {
         url: resolved.url,
         isDirectOffer: true,
@@ -65,3 +104,4 @@ export async function healAnnouncementLink(ad: {
     status: 'healed_search',
   };
 }
+

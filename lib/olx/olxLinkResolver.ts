@@ -187,6 +187,59 @@ export function buildOlxAndroidIntent(urlOrId?: string | null): string | null {
 }
 
 /**
+ * Returns canonical OLX URL for a given native ID
+ */
+export function getOlxCanonicalUrl(nativeId: string): string {
+  const cleanId = nativeId.trim().replace(/^ID/i, '');
+  return `https://www.olx.pl/d/oferta/-ID${cleanId}.html`;
+}
+
+const olxLinkStatusCache = new Map<string, { active: boolean; timestamp: number }>();
+const LINK_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache
+
+/**
+ * Verifies via light OLX API v1 probe if a native OLX offer is currently live/active.
+ * Uses 15-minute in-memory cache to prevent unnecessary network overhead.
+ */
+export async function verifyOlxOfferLive(nativeId: string, timeoutMs = 400): Promise<boolean> {
+  if (!nativeId || typeof nativeId !== 'string') return false;
+  const cleanId = nativeId.trim().replace(/^ID/i, '');
+  if (!cleanId) return false;
+
+  const cached = olxLinkStatusCache.get(cleanId);
+  if (cached && Date.now() - cached.timestamp < LINK_CACHE_TTL_MS) {
+    return cached.active;
+  }
+
+  try {
+    const res = await fetch(`https://www.olx.pl/api/v1/offers/${cleanId}/`, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+      },
+      signal: typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(timeoutMs) : undefined,
+    });
+
+    if (res.status === 404) {
+      olxLinkStatusCache.set(cleanId, { active: false, timestamp: Date.now() });
+      return false;
+    }
+
+    if (res.ok) {
+      const json = (await res.json()) as { data?: { status?: string } };
+      const isActive = json?.data?.status === 'active';
+      olxLinkStatusCache.set(cleanId, { active: isActive, timestamp: Date.now() });
+      return isActive;
+    }
+  } catch {
+    /* On timeout or network fetch error, gracefully default to assuming offer is active */
+  }
+
+  return true;
+}
+
+/**
  * Master Enterprise OLX Resolver function.
  * Resolves an announcement into a guaranteed working OLX live offer link.
  */
@@ -218,7 +271,7 @@ export function resolveOlxLink(ad?: OlxAdMinimal | null): OlxResolvedLink {
   // 2. ID-based reconstruction
   const nativeId = extractOlxNativeId(ad.id);
   if (nativeId) {
-    const reconstructedUrl = `https://www.olx.pl/d/oferta/ogloszenie-ID${nativeId}.html`;
+    const reconstructedUrl = getOlxCanonicalUrl(nativeId);
     return {
       url: reconstructedUrl,
       isDirectOffer: true,
@@ -255,3 +308,4 @@ export function resolveOlxDeviceLink(ad?: OlxAdMinimal | null, userAgent?: strin
 
   return resolved.url;
 }
+

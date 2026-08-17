@@ -37,12 +37,15 @@ export async function GET(request: Request): Promise<NextResponse> {
       }
     }
 
-    const healed = await healAnnouncementLink({
-      source_url: rawUrl,
-      source_portal: portal,
-      title,
-      id: id || undefined,
-    });
+    const healed = await healAnnouncementLink(
+      {
+        source_url: rawUrl,
+        source_portal: portal,
+        title,
+        id: id || undefined,
+      },
+      { checkLiveStatus: true }
+    );
 
     return NextResponse.redirect(healed.url, { status: 307 });
   } catch (e) {
