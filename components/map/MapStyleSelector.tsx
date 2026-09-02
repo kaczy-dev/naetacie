@@ -2,7 +2,13 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-export type MapStyleType = 'emerald' | 'light' | 'dark' | 'satellite';
+export type MapStyleType =
+  | 'emerald'
+  | 'light'
+  | 'dark'
+  | 'satellite'
+  | 'mapbox-standard'
+  | 'mapbox-satellite';
 
 export interface MapStyleOption {
   id: MapStyleType;
@@ -10,6 +16,9 @@ export interface MapStyleOption {
   icon: string;
   styleUrl: string;
 }
+
+const mapboxToken =
+  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_MAPBOX_TOKEN) || '';
 
 export const MAP_STYLE_OPTIONS: MapStyleOption[] = [
   {
@@ -29,6 +38,22 @@ export const MAP_STYLE_OPTIONS: MapStyleOption[] = [
     label: 'Ciemny',
     icon: '🌙',
     styleUrl: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  },
+  {
+    id: 'mapbox-standard',
+    label: 'Mapbox Standard 3D',
+    icon: '🏢',
+    styleUrl: mapboxToken
+      ? 'mapbox://styles/mapbox/standard'
+      : 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  },
+  {
+    id: 'mapbox-satellite',
+    label: 'Satelita HD Mapbox',
+    icon: '🛰️',
+    styleUrl: mapboxToken
+      ? 'mapbox://styles/mapbox/satellite-streets-v12'
+      : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   },
 ];
 

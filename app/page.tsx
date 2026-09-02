@@ -2105,6 +2105,12 @@ export default function HomePage() {
         isOpen={proTierModalOpen}
         onClose={() => setProTierModalOpen(false)}
       />
+
+      {/* ⚙️ Pełne Ustawienia Aplikacji Modal */}
+      <AppSettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </>
   );
 }

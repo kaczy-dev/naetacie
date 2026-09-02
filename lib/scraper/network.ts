@@ -168,7 +168,7 @@ export function decodeHtmlEntities(text: string): string {
 }
 
 /**
- * Strips HTML tags, decodes all entities, and normalizes whitespace.
+ * Strips HTML tags, style/script blocks, CSS rules, decodes all entities, and normalizes whitespace.
  */
 export function cleanHtml(raw: string): string {
   if (!raw) return '';
@@ -181,14 +181,16 @@ export function cleanHtml(raw: string): string {
       .replace(/<li[^>]*>/gi, ' • ')
       .replace(/<\/li>/gi, ' ')
       .replace(/<[^>]+>/g, '')
-      .replace(/\.css-[a-zA-Z0-9_-]+\{[^}]*\}/gi, '')
+      .replace(/\.css-[a-zA-Z0-9_-]+[^{]*\{[^}]*\}/gi, ' ')
+      .replace(/\{[^}]*display:[^}]*\}/gi, ' ')
+      .replace(/\{[^}]*margin:[^}]*\}/gi, ' ')
   )
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 /**
- * Light-weight text cleaner: strips HTML tags, style/script blocks, decodes entities, and normalizes whitespace.
+ * Light-weight text cleaner: strips HTML tags, style/script blocks, CSS rules, decodes entities, and normalizes whitespace.
  */
 export function cleanText(raw: string): string {
   if (!raw) return '';
@@ -197,7 +199,8 @@ export function cleanText(raw: string): string {
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<[^>]+>/g, ' ')
-      .replace(/\.css-[a-zA-Z0-9_-]+\{[^}]*\}/gi, '')
+      .replace(/\.css-[a-zA-Z0-9_-]+[^{]*\{[^}]*\}/gi, ' ')
+      .replace(/\{[^}]*display:[^}]*\}/gi, ' ')
   )
     .replace(/\s+/g, ' ')
     .trim();

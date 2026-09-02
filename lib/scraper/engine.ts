@@ -16,8 +16,8 @@ import { scrapePracuj } from './pracujScraper';
 import { scrapeIndeed } from './indeedScraper';
 import { scrapeJooble } from './joobleScraper';
 import { scrapeGoWork } from './goworkScraper';
-import { scrapeOferteo } from './oferteoScraper';
-import { scrapeFixly } from './fixlyScraper';
+import { scrapeOferteoWithFirecrawl } from './firecrawl/firecrawlScraper';
+import { scrapeFixlyWithFirecrawl } from './firecrawl/firecrawlScraper';
 import { deduplicateCrossPortalAds, MergedScrapedAd } from '@/lib/deduplication/crossPortalDeduplicator';
 import { extractJobTraits, ExtractedJobTraits } from '@/lib/ai/freeJobExtractor';
 import { evaluateMarketSalary, MarketEvaluation } from '@/lib/stats/marketBenchmarks';
@@ -159,8 +159,8 @@ const SCRAPER_REGISTRY: Record<
   indeed: scrapeIndeed,
   jooble: scrapeJooble,
   gowork: scrapeGoWork,
-  oferteo: scrapeOferteo,
-  fixly: scrapeFixly,
+  oferteo: scrapeOferteoWithFirecrawl,
+  fixly: scrapeFixlyWithFirecrawl,
 };
 
 /**

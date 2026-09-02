@@ -3,19 +3,46 @@
  * Supports OLX, Pracuj.pl, Indeed, Jooble, GoWork, Oferteo, and Fixly.
  */
 
-export type SourcePortal = 'olx' | 'pracuj' | 'indeed' | 'jooble' | 'gowork' | 'oferteo' | 'fixly';
+export type SourcePortal =
+  | 'olx'
+  | 'pracuj'
+  | 'indeed'
+  | 'jooble'
+  | 'gowork'
+  | 'oferteo'
+  | 'fixly'
+  | 'bip_szczecin'
+  | 'facebook_group';
 export type JobCategory = 'budowa' | 'instalacje' | 'wykończenia';
+
+export type ConstructionUnit =
+  | 'monthly'
+  | 'hourly'
+  | 'daily'
+  | 'project'
+  | 'piecework'
+  | 'm2'
+  | 'mb'
+  | 'point';
+
+export type TaxRateMode = 'netto' | 'brutto' | 'b2b_netto' | 'na_reke';
+
+export type EmployerClassification = 'direct_investor' | 'contractor' | 'agency';
 
 /**
  * Structured salary range for precise filtering, sorting, and market analysis.
+ * Enhanced for construction industry units (m², mb, punkt, dniówka, netto/brutto).
  */
 export interface SalaryRange {
   min: number | null;
   max: number | null;
   currency: 'PLN' | 'EUR' | 'USD' | 'GBP';
-  type: 'monthly' | 'hourly' | 'daily' | 'project' | 'piecework';
+  type: ConstructionUnit;
   isGross: boolean;
   raw: string;
+  unitLabel?: string; // e.g. 'zł/m²', 'zł/mb', 'zł/punkt', 'zł/dzień'
+  rateMode?: TaxRateMode;
+  estimatedMonthlyEquivalent?: number | null;
   normalizedMonthlyMin?: number | null;
   normalizedMonthlyMax?: number | null;
 }
@@ -38,6 +65,7 @@ export interface ScrapedAd {
   scraped_at: string;
   published_at: string | null;
   company: string | null;
+  employer_type?: EmployerClassification | null;
   employment_type: string | null;
   experience_level?: string | null;
   work_schedule?: string | null;

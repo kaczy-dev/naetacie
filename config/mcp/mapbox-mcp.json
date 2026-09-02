@@ -1,0 +1,31 @@
+{
+  "name": "mapbox",
+  "version": "1.0.0",
+  "description": "Mapbox MCP Server configuration for geospatial geocoding, isochrones, and directions",
+  "mcpServers": {
+    "mapbox": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-mapbox"],
+      "env": {
+        "MAPBOX_ACCESS_TOKEN": "${NEXT_PUBLIC_MAPBOX_TOKEN}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "mapbox_geocode",
+      "description": "Forward and reverse geocode addresses in Szczecin & Poland",
+      "endpoint": "/api/geo/geocode"
+    },
+    {
+      "name": "mapbox_isochrone",
+      "description": "Calculate travel-time isochrone polygons (15/30/45 min) taking traffic into account",
+      "endpoint": "/api/geo/isochrone"
+    },
+    {
+      "name": "mapbox_suppliers",
+      "description": "Locate construction stores (Castorama, Leroy Merlin, hurtownie) around job sites",
+      "module": "@/lib/geo/mapboxClient"
+    }
+  ]
+}

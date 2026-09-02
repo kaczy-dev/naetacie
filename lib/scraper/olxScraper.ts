@@ -369,7 +369,8 @@ export async function fetchOlxFromHtmlState(url: string): Promise<ScrapedAd[]> {
       const innerHtml = cm[2];
       const cleanInner = cleanHtml(innerHtml);
       const nativeId = extractOlxNativeId(href);
-      if (cleanInner.length > 5 && isConstruction(cleanInner, '')) {
+      // Extract clean title: skip if starts with CSS noise or contains raw braces
+      if (cleanInner.length > 5 && !cleanInner.startsWith('.css') && !cleanInner.includes('{') && isConstruction(cleanInner, '')) {
         const canonical = ensureAbsoluteUrl(href, 'olx');
         if (canonical) {
           domAds.push({

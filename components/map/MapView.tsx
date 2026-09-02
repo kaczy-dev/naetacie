@@ -44,12 +44,21 @@ const FLY_TO_ZOOM = 15;
 const MIN_ZOOM = 8;
 const MAX_ZOOM = 19;
 
-/** Vector style JSON configurations from CartoDB CDN */
+const mapboxToken =
+  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_MAPBOX_TOKEN) || '';
+
+/** Vector style JSON configurations from CartoDB CDN and Mapbox */
 const MAP_STYLES: Record<MapStyleType, string> = {
   emerald: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
   light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
   satellite: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  'mapbox-standard': mapboxToken
+    ? 'mapbox://styles/mapbox/standard'
+    : 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  'mapbox-satellite': mapboxToken
+    ? 'mapbox://styles/mapbox/satellite-streets-v12'
+    : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
 };
 
 /** Raster tile fallback when vector style fails to load */

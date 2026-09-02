@@ -149,10 +149,14 @@ export async function GET(request: Request): Promise<NextResponse> {
       })
       .map((doc) => {
         const data = doc.data();
+        const rawTitle = (data.title || '').trim();
+        const cleanTitle = rawTitle.startsWith('.css') || rawTitle.includes('{')
+          ? 'Praca budowlana / wykończeniowa w Szczecinie'
+          : rawTitle;
         return {
           deduplication_key: doc.id,
-          title: data.title,
-          description: data.description,
+          title: cleanTitle,
+          description: (data.description || '').replace(/\.css-[a-zA-Z0-9_-]+[^{]*\{[^}]*\}/gi, ' ').trim(),
           source_url: data.source_url,
           source_portal: data.source_portal,
           category: data.category,
