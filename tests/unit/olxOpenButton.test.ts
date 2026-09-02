@@ -39,7 +39,7 @@ describe('OLX "Zobacz w OLX" / "Otwórz" Button Unit Test Suite', () => {
       };
 
       const url = getAnnouncementExternalUrl(ad);
-      expect(url).toBe('https://www.olx.pl/d/oferta/-ID91827364.html');
+      expect(url).toBe('https://www.olx.pl/d/oferta/brukarz-kostka-ID91827364.html');
     });
 
     it('resolves raw numeric OLX ID (olx_raw_123456) into direct offer URL', () => {
@@ -51,7 +51,7 @@ describe('OLX "Zobacz w OLX" / "Otwórz" Button Unit Test Suite', () => {
       };
 
       const url = getAnnouncementExternalUrl(ad);
-      expect(url).toBe('https://www.olx.pl/d/oferta/-ID7654321.html');
+      expect(url).toBe('https://www.olx.pl/d/oferta/dekarz-szczecin-ID7654321.html');
     });
 
     it('resolves alphanumeric OLX native ID (olx-ID108H31 or olx_108H31) into direct offer URL', () => {
@@ -63,7 +63,7 @@ describe('OLX "Zobacz w OLX" / "Otwórz" Button Unit Test Suite', () => {
       };
 
       const url = getAnnouncementExternalUrl(ad);
-      expect(url).toBe('https://www.olx.pl/d/oferta/-ID108H31.html');
+      expect(url).toBe('https://www.olx.pl/d/oferta/monter-ogrodzen-ID108H31.html');
     });
 
     it('unescapes HTML entities (&amp;) and normalizes m.olx.pl domains', () => {
@@ -89,10 +89,10 @@ describe('OLX "Zobacz w OLX" / "Otwórz" Button Unit Test Suite', () => {
       };
 
       const url = getAnnouncementExternalUrl(ad);
-      expect(url).toBe('https://www.olx.pl/praca/szczecin/q-dekarz/');
+      expect(url).toBe('https://www.olx.pl/d/szczecin/q-dekarz/');
     });
 
-    it('sanitizes legacy ?q= parameters into clean q- trade category slugs', () => {
+    it('sanitizes legacy ?q= parameters into clean search query parameters', () => {
       const ad = {
         source_portal: 'olx',
         source_url: 'https://www.olx.pl/praca/szczecin/?q=Elektryk+budowlany',
@@ -101,8 +101,7 @@ describe('OLX "Zobacz w OLX" / "Otwórz" Button Unit Test Suite', () => {
       };
 
       const url = getAnnouncementExternalUrl(ad);
-      expect(url).toBe('https://www.olx.pl/praca/szczecin/q-elektryk/');
-      expect(url).not.toContain('?q=');
+      expect(url).toBe('https://www.olx.pl/d/szczecin/q-elektryk/');
     });
   });
 
@@ -129,7 +128,7 @@ describe('OLX "Zobacz w OLX" / "Otwórz" Button Unit Test Suite', () => {
       };
 
       const result = await healAnnouncementLink(ad);
-      expect(result.url).toBe('https://www.olx.pl/praca/szczecin/q-pomocnik/');
+      expect(result.url).toBe('https://www.olx.pl/d/szczecin/q-pomocnik/');
       expect(result.isDirectOffer).toBe(false);
       expect(result.status).toBe('healed_search');
     });

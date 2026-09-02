@@ -1,32 +1,34 @@
 /**
  * Indeed Poland Job Posting Scraper Service.
  * Extracts construction job postings from Indeed Poland for the Szczecin area.
+ * Uses RSS feeds + direct HTML JSON-LD schema extraction.
  */
 
 import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, SalaryRange } from './types';
 import { ensureAbsoluteUrl } from '@/lib/utils';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
-import { getRandomUserAgent, hashId, cleanText, inferCategory } from './network';
+import { extractJsonLdJobs } from './universalExtractor';
+import { getRandomUserAgent, hashId, cleanText, inferCategory, fetchWithStealthRetry } from './network';
 
 const INDEED_BASE = 'https://pl.indeed.com';
 
 /**
- * Extracts salary information from Indeed RSS description text.
- * Handles formats like: "od 5 000 do 7 000 PLN", "5000-7000 zł", "30 zł/h"
+ * Extracts salary information from Indeed text.
+ * Handles formats like: "od 5 000 do 7 000 PLN", "5000-7000 zł", "30 zł/h", "35 - 55 zł / godz."
  */
 function extractSalaryFromText(text: string): { price: string; salaryRange: SalaryRange } | null {
-  // Range format: "5 000 – 7 000 zł" or "5000-7000 PLN" or "od 5000 do 7000"
   const rangeMatch = text.match(/(\d[\d\s]*(?:,\d+)?)\s*(?:–|-|do)\s*(\d[\d\s]*(?:,\d+)?)\s*(?:zł|PLN|brutto|netto)/i);
   if (rangeMatch) {
     const min = parseFloat(rangeMatch[1].replace(/\s/g, '').replace(',', '.'));
     const max = parseFloat(rangeMatch[2].replace(/\s/g, '').replace(',', '.'));
     if (Number.isFinite(min) && Number.isFinite(max)) {
-      const isHourly = /\/\s*h|za godzin|hourly/i.test(text);
+      const isHourly = /\/\s*h|za\s+godzin|godz|hourly/i.test(text);
       const raw = rangeMatch[0].trim();
       return {
         price: raw,
         salaryRange: {
-          min, max,
+          min,
+          max,
           currency: 'PLN',
           type: isHourly ? 'hourly' : 'monthly',
           isGross: !/netto/i.test(text),
@@ -36,17 +38,17 @@ function extractSalaryFromText(text: string): { price: string; salaryRange: Sala
     }
   }
 
-  // Single value format: "5000 zł"
   const singleMatch = text.match(/(\d[\d\s]*(?:,\d+)?)\s*(?:zł|PLN)/i);
   if (singleMatch) {
     const val = parseFloat(singleMatch[1].replace(/\s/g, '').replace(',', '.'));
     if (Number.isFinite(val) && val > 0) {
-      const isHourly = /\/\s*h|za godzin|hourly/i.test(text);
+      const isHourly = /\/\s*h|za\s+godzin|godz|hourly/i.test(text);
       const raw = singleMatch[0].trim();
       return {
         price: raw,
         salaryRange: {
-          min: val, max: val,
+          min: val,
+          max: val,
           currency: 'PLN',
           type: isHourly ? 'hourly' : 'monthly',
           isGross: true,
@@ -83,7 +85,6 @@ function parseIndeedRssItem(itemXml: string): ScrapedAd | null {
   }
 
   const phone = extractPhoneNumber(`${title} ${description}`);
-
   const salaryInfo = extractSalaryFromText(`${title} ${description}`);
 
   return {
@@ -111,24 +112,51 @@ async function fetchIndeedKeyword(query: string): Promise<ScrapedAd[]> {
   const rssUrl = `${INDEED_BASE}/rss?q=${encodedQuery}&l=Szczecin`;
 
   try {
-    const res = await fetch(rssUrl, {
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        Accept: 'application/rss+xml, application/xml, text/xml, */*',
-      },
-      signal: AbortSignal.timeout(6000),
+    const res = await fetchWithStealthRetry(rssUrl, {
+      referer: INDEED_BASE,
+      timeoutMs: 6000,
+      retries: 2,
     });
 
     if (!res.ok) return [];
 
-    const xml = await res.text();
-    const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
-    let match: RegExpExecArray | null;
+    const xmlOrHtml = await res.text();
     const ads: ScrapedAd[] = [];
 
-    while ((match = itemRegex.exec(xml)) !== null) {
+    // 1. Try RSS item extraction
+    const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+    let match: RegExpExecArray | null;
+
+    while ((match = itemRegex.exec(xmlOrHtml)) !== null) {
       const parsed = parseIndeedRssItem(match[1]);
       if (parsed) ads.push(parsed);
+    }
+
+    if (ads.length > 0) return ads;
+
+    // 2. Fallback: Try JSON-LD if Indeed returned HTML instead of pure XML RSS
+    const jsonLdJobs = extractJsonLdJobs(xmlOrHtml);
+    for (const item of jsonLdJobs) {
+      if (item.title) {
+        ads.push({
+          id: hashId(item.url || item.title, 'indeed'),
+          title: item.title,
+          description: item.description.slice(0, 350),
+          source_url: item.url || rssUrl,
+          source_portal: 'indeed',
+          category: inferCategory(item.title, item.description),
+          location_text: item.location ? `Szczecin, ${item.location}` : 'Szczecin',
+          latitude: null,
+          longitude: null,
+          price: item.price,
+          salary_range: item.salaryRange,
+          phone: extractPhoneNumber(`${item.title} ${item.description}`),
+          scraped_at: new Date().toISOString(),
+          published_at: item.datePublished || null,
+          company: item.company,
+          employment_type: item.employmentType || 'Umowa o pracę',
+        });
+      }
     }
 
     return ads;
@@ -146,7 +174,7 @@ export async function scrapeIndeed(options: PortalScraperOptions = {}): Promise<
     return results.slice(0, limit);
   }
 
-  const tradesToSearch = SEARCH_TRADES.slice(0, 5);
+  const tradesToSearch = SEARCH_TRADES.slice(0, 6);
   const tasks = tradesToSearch.map((t) => fetchIndeedKeyword(t));
 
   const results = await Promise.allSettled(tasks);

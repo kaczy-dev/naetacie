@@ -13,6 +13,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { SEED_DATA } from '@/lib/data/announcements';
 
+import type { ExtractedJobTraits } from '@/lib/ai/freeJobExtractor';
+
 export interface RealtimeAnnouncement {
   id: string;
   title: string;
@@ -30,6 +32,7 @@ export interface RealtimeAnnouncement {
   company?: string | null;
   employment_type?: string | null;
   posted_days_ago?: number | null;
+  traits?: ExtractedJobTraits;
 }
 
 interface UseRealtimeAnnouncementsResult {
@@ -100,6 +103,9 @@ export function useRealtimeAnnouncements(
             contact_info: (item.contact_info as string) || null,
             scraped_at: new Date(item.scraped_at as string),
             published_at: item.published_at ? new Date(item.published_at as string) : null,
+            company: (item.company as string) || null,
+            employment_type: (item.employment_type as string) || null,
+            traits: item.traits as ExtractedJobTraits | undefined,
           }));
           setAnnouncements(apiData);
           setIsLive(true);

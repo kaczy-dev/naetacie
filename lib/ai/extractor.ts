@@ -24,7 +24,7 @@ const PATTERNS: Array<{
   { regex: /badania\s+wysokoś/i, id: 'heights', label: 'Praca na wysokości', category: 'license', icon: '🧗' },
   { regex: /min\.?\s*\d+\s*lat|doświadczenie/i, id: 'experience', label: 'Wymagane doświadczenie', category: 'experience', icon: '⭐' },
   { regex: /własne\s+narzędzia|własny\s+sprzęt/i, id: 'tools', label: 'Własne narzędzia', category: 'tools', icon: '🧰' },
-  { regex: /własny\s+bus|auto\s+służbowe|samochód\s+służbowy/i, id: 'vehicle', label: 'Samochód służbowy / bus', category: 'tools', icon: '🚐' },
+  { regex: /własn[ye]\s+(?:auto|bus|samochód)|auto\s+służbowe|samochód\s+służbowy|\bbus\b/i, id: 'vehicle', label: 'Samochód służbowy / bus', category: 'tools', icon: '🚐' },
   { regex: /b2b|faktura\s+vat/i, id: 'b2b', label: 'Możliwość B2B', category: 'condition', icon: '📄' },
   { regex: /umowa\s+o\s+pracę|uop\b/i, id: 'uop', label: 'Umowa o Pracę', category: 'condition', icon: '📜' },
   { regex: /zakwaterowanie|darmowy\s+nocleg/i, id: 'housing', label: 'Zapewnione zakwaterowanie', category: 'perk', icon: '🏠' },

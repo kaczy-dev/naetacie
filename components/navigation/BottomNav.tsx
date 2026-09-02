@@ -1,18 +1,10 @@
 'use client';
 
 import React from 'react';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
-import {
-  tabIndicatorTransition,
-  TAB_ICON_SCALE_ACTIVE,
-  TAB_ICON_SCALE_INACTIVE,
-  buttonTapAnimation,
-} from '@/lib/animations/microInteractions';
+import { motion, useReducedMotion } from 'framer-motion';
+import { List, Map as MapIcon, Heart, Settings } from 'lucide-react';
+import { triggerHaptic } from '@/lib/utils';
 
-/**
- * Height of the bottom navigation bar in pixels.
- * Export for parent layout components to reserve bottom spacing.
- */
 export const BOTTOM_NAV_HEIGHT = 64;
 
 export type TabId = 'list' | 'map' | 'favorites' | 'settings';
@@ -25,256 +17,80 @@ export interface BottomNavProps {
 interface TabConfig {
   id: TabId;
   label: string;
-}
-
-function FavoritesIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill={active ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    </svg>
-  );
-}
-
-function SettingsIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill={active ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
+  icon: React.ElementType;
 }
 
 const TABS: TabConfig[] = [
-  { id: 'list', label: 'Lista' },
-  { id: 'map', label: 'Mapa' },
-  { id: 'favorites', label: 'Ulubione' },
-  { id: 'settings', label: 'Ustawienia' },
+  { id: 'list', label: 'Oferty', icon: List },
+  { id: 'map', label: 'Mapa 3D', icon: MapIcon },
+  { id: 'favorites', label: 'Ulubione', icon: Heart },
+  { id: 'settings', label: 'Opcje', icon: Settings },
 ];
 
-const TAB_ICONS: Record<TabId, (active: boolean) => React.ReactNode> = {
-  list: (active) => <ListIcon active={active} />,
-  map: (active) => <MapIcon active={active} />,
-  favorites: (active) => <FavoritesIcon active={active} />,
-  settings: (active) => <SettingsIcon active={active} />,
-};
-
-function MapIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill={active ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-      <line x1="8" y1="2" x2="8" y2="18" />
-      <line x1="16" y1="6" x2="16" y2="22" />
-    </svg>
-  );
-}
-
-function ListIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill={active ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <line x1="8" y1="6" x2="21" y2="6" />
-      <line x1="8" y1="12" x2="21" y2="12" />
-      <line x1="8" y1="18" x2="21" y2="18" />
-      <line x1="3" y1="6" x2="3.01" y2="6" />
-      <line x1="3" y1="12" x2="3.01" y2="12" />
-      <line x1="3" y1="18" x2="3.01" y2="18" />
-    </svg>
-  );
-}
-
-function NotificationsIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill={active ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    </svg>
-  );
-}
-
-function ProfileIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill={active ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-
-
-
-const navStyle: React.CSSProperties = {
-  position: 'fixed',
-  bottom: 0,
-  left: 0,
-  right: 0,
-  height: `${BOTTOM_NAV_HEIGHT}px`,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-around',
-  backgroundColor: '#ffffff',
-  borderTop: '1px solid #e5e7eb',
-  boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.06)',
-  zIndex: 1000,
-  paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-};
-
-const tabBaseStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  minWidth: '44px',
-  minHeight: '44px',
-  padding: '6px 12px',
-  border: 'none',
-  background: 'transparent',
-  cursor: 'pointer',
-  fontSize: '11px',
-  lineHeight: '1.2',
-  WebkitTapHighlightColor: 'transparent',
-  touchAction: 'manipulation',
-  transition: 'color 250ms ease',
-};
-
-const iconContainerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: '24px',
-  height: '24px',
-  marginBottom: '2px',
-};
-
-/**
- * Bottom navigation bar for mobile-first layout.
- * Fixed at the bottom of the viewport with 4 tabs.
- * Touch targets are at least 44x44 CSS pixels.
- * Active tab is visually distinguished with color and font weight.
- * Entrance animation: slides up from below viewport on mount.
- * Respects prefers-reduced-motion for accessibility.
- */
 export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const prefersReducedMotion = useReducedMotion();
 
-  // Slide-up entrance animation for the bottom nav bar
-  const navVariants: Variants = {
-    hidden: { y: BOTTOM_NAV_HEIGHT + 20 },
-    visible: {
-      y: 0,
-      transition: {
-        type: 'spring',
-        stiffness: 300,
-        damping: 25,
-        mass: 0.8,
-      },
-    },
+  const handleTabClick = (id: TabId) => {
+    triggerHaptic(12);
+    onTabChange(id);
   };
 
   return (
-    <motion.nav
-      style={navStyle}
+    <nav
       role="navigation"
       aria-label="Main navigation"
-      initial={prefersReducedMotion ? 'visible' : 'hidden'}
-      animate="visible"
-      variants={navVariants}
+      className="fixed bottom-0 left-0 right-0 z-50 h-16 bg-card/85 backdrop-blur-2xl border-t border-border/80 shadow-2xl flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom,0px)]"
     >
       {TABS.map((tab) => {
         const isActive = activeTab === tab.id;
-
-        const tabStyle: React.CSSProperties = {
-          ...tabBaseStyle,
-          color: isActive ? '#2563eb' : '#6b7280',
-          fontWeight: isActive ? 600 : 400,
-        };
+        const Icon = tab.icon;
 
         return (
-          <motion.button
+          <button
             key={tab.id}
             type="button"
-            style={tabStyle}
-            onClick={() => onTabChange(tab.id)}
+            onClick={() => handleTabClick(tab.id)}
             aria-current={isActive ? 'page' : undefined}
             aria-label={tab.label}
-            whileTap={prefersReducedMotion ? undefined : buttonTapAnimation}
+            className={`relative flex flex-col items-center justify-center min-w-[56px] min-h-[48px] px-3 py-1.5 rounded-2xl transition-all cursor-pointer select-none touch-manipulation active:scale-95 ${
+              isActive ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground font-medium'
+            }`}
           >
-            <motion.span
-              style={iconContainerStyle}
+            {/* Active Pill Indicator */}
+            {isActive && (
+              <motion.div
+                layoutId="bottomNavActivePill"
+                className="absolute inset-0 bg-primary/10 rounded-2xl border border-primary/20 shadow-xs"
+                transition={
+                  prefersReducedMotion
+                    ? { duration: 0 }
+                    : { type: 'spring', stiffness: 450, damping: 32 }
+                }
+              />
+            )}
+
+            <motion.div
               animate={
                 prefersReducedMotion
-                  ? { scale: 1, color: isActive ? '#2563eb' : '#6b7280' }
-                  : {
-                      scale: isActive ? TAB_ICON_SCALE_ACTIVE : TAB_ICON_SCALE_INACTIVE,
-                      color: isActive ? '#2563eb' : '#6b7280',
-                    }
+                  ? {}
+                  : { scale: isActive ? 1.15 : 1, y: isActive ? -1 : 0 }
               }
-              transition={prefersReducedMotion ? { duration: 0 } : tabIndicatorTransition}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className="relative z-10"
             >
-              {TAB_ICONS[tab.id](isActive)}
-            </motion.span>
-            <span>{tab.label}</span>
-          </motion.button>
+              <Icon
+                className={`w-5 h-5 transition-colors ${
+                  isActive ? 'text-primary fill-primary/15' : 'text-muted-foreground'
+                }`}
+              />
+            </motion.div>
+
+            <span className="relative z-10 text-[10.5px] leading-tight tracking-tight mt-0.5">
+              {tab.label}
+            </span>
+          </button>
         );
       })}
-    </motion.nav>
+    </nav>
   );
 }

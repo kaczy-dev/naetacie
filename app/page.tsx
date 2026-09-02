@@ -16,7 +16,7 @@ import {
   Search, Heart, ExternalLink, SlidersHorizontal, Map as MapIcon,
   Target, Briefcase, Share2, Check, Mic, WifiOff, Download,
   ChevronDown, ChevronUp, List, Phone, Copy, Wrench, ShieldCheck,
-  FileEdit, Calculator,
+  FileEdit, Calculator, MessageSquare, Crown,
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -41,6 +41,10 @@ import { MarketStats } from '@/components/list/MarketStats';
 import { OlxLinkActions } from '@/components/olx/OlxLinkActions';
 import CollapsibleAnnouncementList from '@/components/list/CollapsibleAnnouncementList';
 import { computeMarketOverview } from '@/lib/stats/market';
+import { SpotlightCard } from '@/components/ui/SpotlightCard';
+import { playUiSound, playSalaryChime } from '@/lib/motion/soundEngine';
+import { fireConfetti } from '@/lib/motion/confettiEngine';
+import { SPRING_PRESETS } from '@/lib/motion/springs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -48,6 +52,7 @@ import { Input } from '@/components/ui/input';
 import { cn, triggerHaptic, exportApplicationsToCSV, ensureAbsoluteUrl, getAnnouncementExternalUrl } from '@/lib/utils';
 import { ALL_CATEGORY_KEYS, normalizeCategory, type CategoryKey } from '@/lib/data/categories';
 import { searchAnnouncements, tokenize, isSzczecinAnnouncement } from '@/lib/search/engine';
+import { parseNaturalLanguageQuery } from '@/lib/search/naturalLanguageQuery';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import type { MatchResult } from '@/lib/matching/types';
 
@@ -59,6 +64,18 @@ import { SalaryNetModal } from '@/components/salary/SalaryNetModal';
 import { calculateDistanceKm } from '@/lib/geo/distance';
 import { JobComparisonModal } from '@/components/list/JobComparisonModal';
 import { ApplicationTimelineModal } from '@/components/list/ApplicationTimelineModal';
+import { MarketBentoGrid } from '@/components/list/MarketBentoGrid';
+import { FloatingDock } from '@/components/navigation/FloatingDock';
+import { AnnouncementSlideOver } from '@/components/list/AnnouncementSlideOver';
+import { MobileViewSwitcher } from '@/components/navigation/MobileViewSwitcher';
+import { AnnouncementMobileDrawer } from '@/components/list/AnnouncementMobileDrawer';
+import { KeyboardShortcutsModal } from '@/components/navigation/KeyboardShortcutsModal';
+import { useDesktopShortcuts } from '@/lib/hooks/useDesktopShortcuts';
+import { CompareShelfDock } from '@/components/list/CompareShelfDock';
+import { CompactTableView } from '@/components/list/CompactTableView';
+import { DesktopFilterSidebar } from '@/components/layout/DesktopFilterSidebar';
+import { DynamicIsland } from '@/components/ui/DynamicIsland';
+import { AmbientSolarGlow } from '@/components/theme/AmbientSolarGlow';
 import ConstructionSalaryModal from '@/components/calculator/ConstructionSalaryModal';
 import { KinematicQuickView } from '@/components/list/KinematicQuickView';
 import { MarketPulseBar } from '@/components/list/MarketPulseBar';
@@ -76,6 +93,17 @@ import { QuickFilterBar } from '@/components/ui/QuickFilterBar';
 import { QuickActionHub } from '@/components/ui/QuickActionHub';
 import { AppSettingsModal } from '@/components/settings/AppSettingsModal';
 import { generateApplicationMessageDraft } from '@/lib/contact/draftGenerator';
+import { ProTierModal } from '@/components/billing/ProTierModal';
+import { BoostAdBadge } from '@/components/billing/BoostAdBadge';
+import { UrgentBadge } from '@/components/announcements/UrgentBadge';
+import { detectJobUrgency } from '@/lib/urgent/urgentJobDetector';
+import { EmployerTrustBadge } from '@/components/safety/EmployerTrustBadge';
+import { evaluateEmployerTrust } from '@/lib/safety/employerTrustEvaluator';
+import { VoiceSummaryButton } from '@/components/voice/VoiceSummaryButton';
+import { TradeBidEstimatorModal } from '@/components/announcements/TradeBidEstimatorModal';
+import { PitchGeneratorModal } from '@/components/contact/PitchGeneratorModal';
+import { AdaptiveMobileTopBar } from '@/components/navigation/AdaptiveMobileTopBar';
+import { DesktopCommandCenter } from '@/components/layout/DesktopCommandCenter';
 
 type SortOption = 'match' | 'newest' | 'oldest' | 'price-asc' | 'price-desc';
 
@@ -210,6 +238,10 @@ function AnnouncementCard({
   useEffect(() => { setNoteInput(userNote); }, [userNote]);
 
   const netBreakdown = typeof ad.price === 'number' ? calculateNetSalary(ad.price) : null;
+  const urgency = useMemo(() => detectJobUrgency(ad.title, ad.description), [ad.title, ad.description]);
+  const trust = useMemo(() => evaluateEmployerTrust(ad), [ad]);
+  const [tradeBidModalOpen, setTradeBidModalOpen] = useState(false);
+  const [pitchModalOpen, setPitchModalOpen] = useState(false);
 
   const handleSwipeEnd = (_: unknown, info: PanInfo) => {
     triggerHaptic(12);
@@ -246,9 +278,9 @@ function AnnouncementCard({
         onDragEnd={handleSwipeEnd}
         layout
       >
-        <Card
+        <SpotlightCard
           className={cn(
-            'group cursor-pointer transition-all duration-300 overflow-hidden wow-glass-card rounded-2xl',
+            'cursor-pointer transition-all duration-300 overflow-hidden wow-glass-card rounded-2xl',
             isSelected 
               ? 'bg-gradient-to-r from-primary/15 via-card to-card border-primary ring-2 ring-primary/20 shadow-xl' 
               : 'hover:border-emerald-500/50 hover:shadow-emerald-500/10 hover:shadow-xl'
@@ -279,6 +311,15 @@ function AnnouncementCard({
                       >
                         {ad.source_portal}
                       </span>
+                      {ad.is_cross_posted && ad.available_portals && ad.available_portals.length > 1 && (
+                        <span 
+                          className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1 shadow-2xs"
+                          title={`Zlecenie opublikowane na: ${ad.available_portals.join(', ')}`}
+                        >
+                          🌐 Multi-portal ({ad.available_portals.length})
+                        </span>
+                      )}
+                      {urgency.isUrgent && <UrgentBadge urgency={urgency} />}
                       {ad.employment_type && (
                         <span className="text-[9px] font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded-md border border-border/40">
                           {ad.employment_type}
@@ -287,6 +328,12 @@ function AnnouncementCard({
                     </div>
 
                     <div className="flex items-center gap-1">
+                      <VoiceSummaryButton
+                        title={ad.title}
+                        location={ad.location_text}
+                        price={ad.price ? (typeof ad.price === 'number' ? `${ad.price} zł` : ad.price) : null}
+                        description={ad.description}
+                      />
                       {ad.phone && (
                         <a
                           href={`tel:${ad.phone.replace(/\s+/g, '')}`}
@@ -370,12 +417,15 @@ function AnnouncementCard({
                   </div>
                 )}
 
-                {/* Middle line: Company details */}
-                {ad.company && (
-                  <p className="text-xs font-semibold text-foreground/70 flex items-center gap-1.5">
-                    🏢 {ad.company}
-                  </p>
-                )}
+                {/* Middle line: Company details & Trust Score */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  {ad.company && (
+                    <p className="text-xs font-semibold text-foreground/70 flex items-center gap-1.5">
+                      🏢 {ad.company}
+                    </p>
+                  )}
+                  <EmployerTrustBadge trust={trust} />
+                </div>
 
                 {/* Bottom line: Location, time, price */}
                 <div className="flex items-center justify-between gap-4 pt-1 flex-wrap border-t border-border/30">
@@ -633,106 +683,145 @@ function AnnouncementCard({
                     </div>
                   </div>
 
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-border/30">
-                    <OlxLinkActions ad={ad} variant="default" size="sm" className="flex-1 text-xs" />
-                    {hasLocation && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); onShowOnMap(); }}
-                        className="gap-1.5 text-xs font-semibold shadow-sm cursor-pointer"
-                      >
-                        <MapIcon className="w-4 h-4 text-primary" /> Na mapie
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); onOpenAiInterview?.(); }}
-                      className="gap-1 text-xs font-semibold text-primary border-primary/30 bg-primary/5 hover:bg-primary/10 cursor-pointer"
-                      title="Trenuj rozmowę kwalifikacyjną z AI"
-                    >
-                      🤖 Trening AI
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); onOpenSalaryBenchmark?.(); }}
-                      className="gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 cursor-pointer"
-                      title="Porównaj stawkę z rynkiem"
-                    >
-                      📊 Stawki
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); onOpenCalculator?.(); }}
-                      className="gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 cursor-pointer"
-                      title="Zaawansowany kalkulator zarobków budowlanych"
-                    >
-                      🧮 Kalkulator
-                    </Button>
-                    {ad.phone && (() => {
-                      const msgDraft = generateApplicationMessageDraft(ad.phone, ad.title, ad.source_portal);
-                      return msgDraft ? (
+                  {/* Action buttons - Responsive 2-tier Grid */}
+                  <div className="space-y-2 pt-2.5 border-t border-border/40">
+                    {/* Tier 1: Primary Direct Engagement Actions */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <OlxLinkActions ad={ad} variant="default" size="sm" className="w-full text-xs font-bold py-2 shadow-sm" />
+                      {ad.phone && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.open(msgDraft.smsUrl, '_blank');
+                            triggerHaptic(12);
+                            setPitchModalOpen(true);
                           }}
-                          className="gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 cursor-pointer"
-                          title="Wyślij SMS z aplikacji"
+                          className="w-full gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/15 cursor-pointer shadow-xs"
+                          title="Otwórz generator zgłoszenia SMS / WhatsApp"
                         >
-                          💬 Wyślij SMS
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Zgłoś SMS / WhatsApp</span>
                         </Button>
-                      ) : null;
-                    })()}
-                        {onQuickView && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); onQuickView(); }}
-                            className="gap-1 text-xs font-semibold shadow-sm cursor-pointer"
-                          >
-                            👁️ Podgląd
-                          </Button>
-                        )}
+                      )}
+                      {hasLocation && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerHaptic(10);
+                            onShowOnMap();
+                          }}
+                          className="w-full gap-1.5 text-xs font-bold shadow-xs cursor-pointer"
+                        >
+                          <MapIcon className="w-3.5 h-3.5 text-primary" />
+                          <span>Pokaż na mapie</span>
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Tier 2: AI Tools, Benchmarks & Transit */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic(10);
+                          setTradeBidModalOpen(true);
+                        }}
+                        className="gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer"
+                        title="Szybka wycena zlecenia / Oferta robocizny"
+                      >
+                        🧮 Wycena zlecenia
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic(10);
+                          onOpenAiInterview?.();
+                        }}
+                        className="gap-1 text-xs font-bold text-primary border-primary/30 bg-primary/5 hover:bg-primary/10 cursor-pointer"
+                        title="Trenuj rozmowę kwalifikacyjną z AI"
+                      >
+                        🤖 Trening AI
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic(10);
+                          onOpenSalaryBenchmark?.();
+                        }}
+                        className="gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 cursor-pointer"
+                        title="Porównaj stawkę z rynkiem"
+                      >
+                        📊 Stawki Szczecin
+                      </Button>
+
+                      {hasLocation && (
                         <a
                           href={`https://www.google.com/maps/dir/?api=1&destination=${ad.latitude},${ad.longitude}&travelmode=transit`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerHaptic(10);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer shadow-2xs"
                         >
                           🚌 Dojazd ZDiTM
                         </a>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        share({ 
-                          title: ad.title, 
-                          text: `${ad.title} w ${ad.location_text}`, 
-                          url: ad.source_url || window.location.href 
-                        });
-                      }}
-                      className="gap-1.5 text-xs cursor-pointer hover:bg-accent"
-                      title="Udostępnij ofertę"
-                    >
-                      {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
-                    </Button>
+                      )}
+
+                      {onQuickView && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerHaptic(10);
+                            onQuickView();
+                          }}
+                          className="gap-1 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                          👁️ Szybki podgląd
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </CardContent>
-      </Card>
+      </SpotlightCard>
       </motion.div>
+
+      {/* Trade Bid Estimator Modal */}
+      <TradeBidEstimatorModal
+        isOpen={tradeBidModalOpen}
+        onClose={() => setTradeBidModalOpen(false)}
+        title={ad.title}
+        description={ad.description}
+      />
+
+      {/* 1-Click Polish Contractor Pitch Generator Modal */}
+      <PitchGeneratorModal
+        isOpen={pitchModalOpen}
+        onClose={() => setPitchModalOpen(false)}
+        phone={ad.phone}
+        title={ad.title}
+        location={ad.location_text}
+        sourcePortal={ad.source_portal}
+        defaultPrice={typeof ad.price === 'number' ? ad.price : null}
+      />
     </motion.div>
   );
 }
@@ -784,6 +873,12 @@ export default function HomePage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<TabId>('list');
+  const [isSplitView, setIsSplitView] = useState(false);
+  const [slideOverAd, setSlideOverAd] = useState<DisplayAnnouncement | null>(null);
+  const [viewDensity, setViewDensity] = useState<'cards' | 'table'>('cards');
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+  const [minSalary, setMinSalary] = useState<number>(0);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [guestPrompt, setGuestPrompt] = useState<string | null>(null);
 
@@ -826,6 +921,7 @@ export default function HomePage() {
   const [filterPortal, setFilterPortal] = useState<string>('all');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
   const [activeCategories, setActiveCategories] = useState<Set<CategoryKey>>(
     () => new Set(ALL_CATEGORY_KEYS)
   );
@@ -851,9 +947,11 @@ export default function HomePage() {
   const [employerPortalOpen, setEmployerPortalOpen] = useState(false);
   const [reviewModalCompany, setReviewModalCompany] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [proTierModalOpen, setProTierModalOpen] = useState(false);
 
   // --- Map <-> List selection sync ---
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredAnnouncementId, setHoveredAnnouncementId] = useState<string | null>(null);
   const [flyToken, setFlyToken] = useState(0);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -876,6 +974,7 @@ export default function HomePage() {
       company: a.company || null,
       employment_type: a.employment_type || null,
       posted_days_ago: a.posted_days_ago ?? null,
+      traits: a.traits,
     }));
 
     const fromScraper: DisplayAnnouncement[] = scrapedAds.map((a) => ({
@@ -889,9 +988,13 @@ export default function HomePage() {
       latitude: a.latitude,
       longitude: a.longitude,
       price: a.price,
-      phone: null,
+      phone: a.phone || null,
       scraped_at: new Date(a.scraped_at),
       published_at: a.published_at ? new Date(a.published_at) : null,
+      company: a.company || null,
+      employment_type: a.employment_type || null,
+      posted_days_ago: a.posted_days_ago ?? null,
+      traits: a.traits,
     }));
 
     const seen = new Set<string>();
@@ -940,6 +1043,22 @@ export default function HomePage() {
       result = result.filter((a) => getStatus(a.id) !== null);
     }
 
+    if (selectedDistrict) {
+      const distLower = selectedDistrict.toLowerCase();
+      result = result.filter(
+        (a) =>
+          (a.location_text || '').toLowerCase().includes(distLower) ||
+          (a.description || '').toLowerCase().includes(distLower)
+      );
+    }
+
+    if (minSalary > 0) {
+      result = result.filter((a) => {
+        const num = extractNumPrice(a.price);
+        return num ? num >= minSalary : false;
+      });
+    }
+
     if (commuteRadiusKm > 0) {
       const centerLat = 53.4285;
       const centerLon = 14.5528;
@@ -977,7 +1096,78 @@ export default function HomePage() {
     }
 
     return result;
-  }, [allAnnouncements, searchQuery, filterPortal, showFavoritesOnly, showTrackedOnly, sortBy, isFavorite, getStatus, matchMap, prefsActive]);
+  }, [allAnnouncements, searchQuery, filterPortal, showFavoritesOnly, showTrackedOnly, selectedDistrict, minSalary, commuteRadiusKm, sortBy, isFavorite, getStatus, matchMap, prefsActive]);
+
+  const comparedAdsList = useMemo(() => {
+    return allAnnouncements.filter((a) => comparedAdIds.has(a.id));
+  }, [allAnnouncements, comparedAdIds]);
+
+  // Desktop shortcuts listener
+  useDesktopShortcuts(
+    {
+      onNextOffer: () => {
+        const list = filteredAds;
+        if (list.length === 0) return;
+        const idx = list.findIndex((a) => a.id === selectedId);
+        const next = idx < list.length - 1 ? list[idx + 1] : list[0];
+        if (next) {
+          setSelectedId(next.id);
+          playUiSound('pop');
+        }
+      },
+      onPrevOffer: () => {
+        const list = filteredAds;
+        if (list.length === 0) return;
+        const idx = list.findIndex((a) => a.id === selectedId);
+        const prev = idx > 0 ? list[idx - 1] : list[list.length - 1];
+        if (prev) {
+          setSelectedId(prev.id);
+          playUiSound('pop');
+        }
+      },
+      onToggleFavorite: () => {
+        if (selectedId) {
+          toggleFavorite(selectedId);
+          playUiSound('favorite');
+          showToast('info', isFavorite(selectedId) ? 'Usunięto z ulubionych' : 'Dodano do ulubionych ❤️');
+        }
+      },
+      onOpenPitch: () => {
+        const target = filteredAds.find((a) => a.id === selectedId) || filteredAds[0];
+        if (target) {
+          setSlideOverAd(target);
+          playUiSound('sparkle');
+        }
+      },
+      onToggleCompare: () => {
+        if (selectedId) {
+          setComparedAdIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(selectedId)) next.delete(selectedId);
+            else next.add(selectedId);
+            return next;
+          });
+          playUiSound('pop');
+        }
+      },
+      onToggleSplitView: () => {
+        setIsSplitView((v) => !v);
+        playUiSound('toggle');
+      },
+      onOpenEstimator: () => {
+        setConstructionCalcModalAd({ title: 'Wycena robocizny', price: 6000 } as unknown as DisplayAnnouncement);
+        playUiSound('pop');
+      },
+      onOpenShortcutsModal: () => {
+        setShortcutsModalOpen(true);
+        playUiSound('whoosh');
+      },
+      onFocusSearch: () => {
+        searchInputRef.current?.focus();
+      },
+    },
+    activeTab === 'list'
+  );
 
   // Save to cache
   useEffect(() => {
@@ -1032,116 +1222,230 @@ export default function HomePage() {
   });
 
   function renderContent() {
-    switch (activeTab) {
-      case 'map': {
-        return (
-          <div className="w-full h-[calc(100dvh-120px)] md:h-[100dvh] relative overflow-hidden">
-            <MapViewDynamic
-              ads={filteredAds.filter(isSzczecinAnnouncement)}
+    if (activeTab === 'favorites') {
+      const favoriteAds = allAnnouncements.filter((a) => isFavorite(a.id));
+      return (
+        <FavoritesView
+          favoriteAds={favoriteAds}
+          onToggleFavorite={toggleFavorite}
+          onShowOnMap={(id) => {
+            setActiveTab('map');
+            setSelectedId(id);
+            setFlyToken((t) => t + 1);
+          }}
+          onQuickView={(ad) => setQuickViewAd(ad)}
+          onOpenAiInterview={(ad) => setInterviewModalAd(ad)}
+          onOpenSalaryBenchmark={(ad) => setBenchmarkModalAd(ad)}
+          onOpenCvGenerator={() => setCvGeneratorOpen(true)}
+          onGoToBrowse={() => setActiveTab('list')}
+        />
+      );
+    }
+
+    if (activeTab === 'settings') {
+      return <SettingsDashboard />;
+    }
+
+    const listAds = filteredAds.filter((a) => activeCategories.has(normalizeCategory(a.category)));
+    const isMapActive = activeTab === 'map';
+    const isListActive = activeTab === 'list';
+
+    return (
+      <div className="w-full">
+        {/* 🗺️ Enterprise WebGL Map Container (Persisted in GPU memory for zero-lag tab switching) */}
+        <div className={cn('w-full h-[calc(100dvh-128px)] md:h-[calc(100dvh-56px)] relative overflow-hidden', isMapActive && !isSplitView ? 'block' : 'hidden')}>
+          <MapViewDynamic
+            ads={filteredAds.filter(isSzczecinAnnouncement)}
+            totalCount={allAnnouncements.length}
+            activeCategories={activeCategories}
+            onCategoryChange={setActiveCategories}
+            isFavorite={isFavorite}
+            onToggleFavorite={toggleFavorite}
+            selectedId={selectedId}
+            flyToken={flyToken}
+            onMarkerClick={handleMarkerClick}
+            onShowInList={handleShowInList}
+            onSearchArea={(_bounds: { south: number; west: number; north: number; east: number }) => {
+              setSearchQuery('');
+            }}
+            homeLat={preferences.homeLat}
+            homeLng={preferences.homeLng}
+            maxDistanceKm={preferences.maxDistanceKm}
+          />
+        </div>
+
+        {/* 📋 Interactive List & Split View Container */}
+        <div className={cn(isListActive || isSplitView ? 'block' : 'hidden')}>
+          <div className={cn('mx-auto space-y-2', isSplitView ? 'max-w-[1780px] flex flex-col lg:flex-row gap-4 items-start px-2 sm:px-4' : 'max-w-3xl')}>
+            {/* 🖥️ Desktop Command Center Left Sidebar: Advanced Pro Filters */}
+            {isSplitView && (
+              <div className="hidden xl:block">
+                <DesktopFilterSidebar
+                  selectedDistrict={selectedDistrict}
+                  onSelectDistrict={setSelectedDistrict}
+                  selectedPortal={filterPortal}
+                  onSelectPortal={setFilterPortal}
+                  minSalary={minSalary}
+                  onMinSalaryChange={setMinSalary}
+                  commuteKm={commuteRadiusKm}
+                  onCommuteKmChange={setCommuteRadiusKm}
+                  onResetFilters={() => {
+                    setSelectedDistrict(null);
+                    setFilterPortal('all');
+                    setMinSalary(0);
+                    setCommuteRadiusKm(0);
+                    setSearchQuery('');
+                  }}
+                />
+              </div>
+            )}
+
+            <div className={cn('space-y-2', isSplitView ? 'w-full lg:flex-1' : 'w-full')}>
+
+            {/* 🍱 Dynamic Market Bento Grid Overview */}
+            <MarketBentoGrid
+              ads={listAds}
               totalCount={allAnnouncements.length}
-              activeCategories={activeCategories}
-              onCategoryChange={setActiveCategories}
-              isFavorite={isFavorite}
-              onToggleFavorite={toggleFavorite}
-              selectedId={selectedId}
-              flyToken={flyToken}
-              onMarkerClick={handleMarkerClick}
-              onShowInList={handleShowInList}
-              onSearchArea={(_bounds: { south: number; west: number; north: number; east: number }) => {
-                setSearchQuery('');
+              onFilterUrgent={() => {
+                setSearchQuery('pilne');
+                setActiveQuickFilter('urgent');
               }}
-              homeLat={preferences.homeLat}
-              homeLng={preferences.homeLng}
-              maxDistanceKm={preferences.maxDistanceKm}
-            />
-          </div>
-        );
-      }
-
-      case 'list': {
-        // The list additionally respects the map's category filter chips,
-        // so toggling a category on the map also narrows the list.
-        const listAds = filteredAds.filter((a) => activeCategories.has(normalizeCategory(a.category)));
-
-        return (
-          <div className="max-w-3xl mx-auto space-y-2">
-            {/* QOL Quick Filter Bar */}
-            <QuickFilterBar
-              onSearchChange={(q) => setSearchQuery(q)}
-              totalOffersCount={filteredAds.length}
-              onRefresh={() => {
-                scrapeNow();
-                showToast('info', 'Odświeżanie najnowszych ofert ze Szczecina...');
-              }}
-              onFilterToggle={(filterId) => {
-                if (filterId === 'high_pay') setSortBy('price-desc');
-                else if (filterId === 'today') setSearchQuery('dzisiaj');
-                else if (filterId === 'finishing') setActiveCategories(new Set(['wykończenia']));
-                else if (filterId === 'installations') setActiveCategories(new Set(['instalacje']));
-                else if (filterId === 'near_me') setSearchQuery('Szczecin');
+              onFilterHighPay={() => {
+                setSortBy('price-desc');
+                setActiveQuickFilter('high_pay');
               }}
             />
 
-            {/* Search + Filters Header */}
-            <div className="sticky top-12 md:top-0 z-10 glass border-b border-border/50 px-4 py-3 space-y-3">
-              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                <div className="relative min-w-[220px] flex-1 shrink-0">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            {/* 🎛️ Unified Master Search & Tools Header */}
+            <div className="sticky top-12 md:top-0 z-20 glass border border-border/50 px-3.5 py-3 space-y-2.5 rounded-2xl shadow-md bg-background/90 backdrop-blur-xl">
+              {/* Row 1: Search Input + Quick Action Buttons */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     ref={searchInputRef}
                     type="text"
-                    placeholder={isListening ? 'Słucham...' : 'Szukaj ogłoszeń... (naciśnij /)'}
+                    placeholder={isListening ? 'Słucham...' : 'Szukaj ogłoszeń: murarz, elektryk, B2B... (naciśnij /)'}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className={cn('pl-9 pr-16 h-9 transition-all', isListening && 'border-primary ring-2 ring-primary/20 animate-pulse')}
+                    className={cn(
+                      'pl-9 pr-18 h-10 rounded-xl bg-background/85 border-border/70 text-sm font-medium transition-all shadow-inner placeholder:text-muted-foreground/60',
+                      isListening && 'border-primary ring-2 ring-primary/30 animate-pulse'
+                    )}
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     <button
                       onClick={handleVoiceSearch}
                       className={cn(
-                        'p-1.5 rounded-md transition-all active:scale-90',
-                        isListening ? 'text-red-500 bg-red-50 dark:bg-red-950/60 animate-bounce' : 'text-muted-foreground hover:text-foreground'
+                        'p-1.5 rounded-lg transition-all active:scale-90 cursor-pointer',
+                        isListening
+                          ? 'text-red-500 bg-red-50 dark:bg-red-950/60 animate-bounce'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                       )}
-                      title="Wyszukaj głosem"
+                      title="Wyszukaj głosem (PL)"
                       aria-label="Wyszukaj głosem"
                     >
-                      <Mic className="w-3.5 h-3.5" />
+                      <Mic className="w-4 h-4 text-primary" />
                     </button>
                     {searchQuery && (
-                      <button onClick={() => setSearchQuery('')} className="p-1 text-muted-foreground hover:text-foreground">
-                        <X className="w-3.5 h-3.5" />
+                      <button
+                        onClick={() => {
+                          setSearchQuery('');
+                          setActiveQuickFilter(null);
+                        }}
+                        className="p-1 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Wyczyść wyszukiwanie"
+                      >
+                        <X className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </div>
 
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={cn(
+                    'h-10 px-3 rounded-xl gap-1.5 font-bold cursor-pointer transition-all',
+                    showFilters ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent'
+                  )}
+                  title="Zaawansowane filtry i sortowanie"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Filtry</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => scrapeNow(undefined, 40)}
+                  disabled={scrapeLoading}
+                  className="h-10 px-3 rounded-xl gap-1 font-bold cursor-pointer"
+                  title="Odśwież najnowsze ogłoszenia"
+                >
+                  {scrapeLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                  ) : (
+                    <RefreshCw className="w-3.5 h-3.5 text-primary" />
+                  )}
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={() => setProTierModalOpen(true)}
+                  className="h-10 px-3 rounded-xl gap-1.5 font-black bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 hover:brightness-110 shadow-sm cursor-pointer"
+                >
+                  <Crown className="w-3.5 h-3.5 fill-zinc-950" />
+                  <span className="hidden sm:inline">PRO</span>
+                </Button>
+              </div>
+
+              {/* Row 2: Quick Filter Chips Rack */}
+              <QuickFilterBar
+                activeFilterId={activeQuickFilter}
+                totalOffersCount={filteredAds.length}
+                onRefresh={() => {
+                  scrapeNow();
+                  showToast('info', 'Odświeżanie najnowszych ofert ze Szczecina...');
+                }}
+                onFilterToggle={(filterId) => {
+                  if (activeQuickFilter === filterId) {
+                    setActiveQuickFilter(null);
+                    setSearchQuery('');
+                    setSortBy('match');
+                    setActiveCategories(new Set(ALL_CATEGORY_KEYS));
+                    return;
+                  }
+                  setActiveQuickFilter(filterId);
+                  if (filterId === 'urgent') setSearchQuery('pilne');
+                  else if (filterId === 'mega_projects') setSearchQuery('budowa');
+                  else if (filterId === 'high_pay') setSortBy('price-desc');
+                  else if (filterId === 'today') setSearchQuery('dzisiaj');
+                  else if (filterId === 'finishing') setActiveCategories(new Set(['wykończenia']));
+                  else if (filterId === 'installations') setActiveCategories(new Set(['instalacje']));
+                  else if (filterId === 'near_me') setSearchQuery('Szczecin');
+                }}
+              />
+
+              {/* Row 3: Desktop tools horizontal chip rack */}
+              <div className="hidden md:flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 pt-1 border-t border-border/40">
                 <RecentSearchChips currentQuery={searchQuery} onSelectQuery={setSearchQuery} />
+
                 <Button
-                  variant={pushNotifications.permission === 'granted' ? 'default' : 'outline'}
+                  variant="outline"
                   size="sm"
-                  onClick={async () => {
-                    const granted = await pushNotifications.requestPermission();
-                    if (granted) {
-                      showToast('success', 'Powiadomienia PWA zostały włączone!');
-                      pushNotifications.sendNotification('NaEtacie', { body: 'Powiadomienia o ogłoszeniach są aktywne!' });
-                    } else {
-                      showToast('error', 'Włącz powiadomienia w ustawieniach przeglądarki.');
-                    }
+                  onClick={() => {
+                    triggerHaptic(12);
+                    setProTierModalOpen(true);
                   }}
-                  className="gap-1 text-xs"
-                  title="Powiadomienia Push PWA"
+                  className="h-8 px-2.5 rounded-lg text-xs font-extrabold gap-1.5 shrink-0 text-amber-500 dark:text-amber-400 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 cursor-pointer shadow-xs"
+                  title="Pakiety Majster PRO, Wyróżnienia 3D i Płatności BLIK"
                 >
-                  🔔 {pushNotifications.permission === 'granted' ? 'Aktywne' : 'Powiadomienia'}
+                  <Crown className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                  <span>Majster PRO</span>
                 </Button>
-                <Button
-                  variant={prefsActive ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPrefsPanelOpen(true)}
-                  className="gap-1"
-                  title="Dopasowanie ofert"
-                >
-                  <Target className="w-3.5 h-3.5" />
-                </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -1149,59 +1453,62 @@ export default function HomePage() {
                     setSalaryCalcGross(6000);
                     setSalaryModalOpen(true);
                   }}
-                  className="gap-1 text-xs"
-                  title="Kalkulator wynagrodzeń Netto/Brutto"
+                  className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1 shrink-0 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 cursor-pointer"
+                  title="Kalkulator wynagrodzeń Netto / Brutto"
                 >
                   💰 Netto
                 </Button>
-                <select
-                  value={commuteRadiusKm}
-                  onChange={(e) => {
-                    triggerHaptic(10);
-                    setCommuteRadiusKm(Number(e.target.value));
-                  }}
-                  className="h-9 px-2.5 rounded-lg border border-input bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
-                  title="Filtruj według promienia dojazdu z Szczecina"
-                >
-                  <option value={0}>📍 Dojazd: Wszędzie</option>
-                  <option value={5}>📍 Dojazd: max 5 km</option>
-                  <option value={10}>📍 Dojazd: max 10 km</option>
-                  <option value={15}>📍 Dojazd: max 15 km</option>
-                  <option value={25}>📍 Dojazd: max 25 km</option>
-                  <option value={50}>📍 Dojazd: max 50 km</option>
-                </select>
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCompareModalOpen(true)}
-                  className="gap-1 text-xs relative font-bold"
-                  title="Porównywarka ofert"
+                  className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1 shrink-0 text-blue-600 dark:text-blue-400 bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/10 cursor-pointer"
+                  title="Porównywarka ofert obok siebie"
                 >
                   ⚖️ Porównaj
                   {comparedAdIds.size > 0 && (
-                    <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold inline-flex items-center justify-center -mr-1">
+                    <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] font-bold inline-flex items-center justify-center -mr-0.5">
                       {comparedAdIds.size}
                     </span>
                   )}
                 </Button>
+
+                <Button
+                  variant={isSplitView ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    triggerHaptic(10);
+                    playUiSound('toggle');
+                    setIsSplitView(!isSplitView);
+                  }}
+                  className="hidden lg:inline-flex h-8 px-2.5 rounded-lg text-xs font-bold gap-1 shrink-0 cursor-pointer"
+                  title="Przełącz widok podzielony (Lista + Mapa obok siebie)"
+                >
+                  <MapIcon className="w-3.5 h-3.5" />
+                  <span>{isSplitView ? 'Pełna lista' : 'Split-View'}</span>
+                </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCvGeneratorOpen(true)}
-                  className="gap-1 text-xs cursor-pointer font-semibold"
+                  className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1 shrink-0 cursor-pointer"
                   title="Generator CV Budowlanego w PDF"
                 >
                   📄 CV
                 </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setEmployerPortalOpen(true)}
-                  className="gap-1 text-xs text-primary border-primary/30 bg-primary/5 hover:bg-primary/10 cursor-pointer font-bold"
+                  className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1 shrink-0 text-primary border-primary/30 bg-primary/5 hover:bg-primary/10 cursor-pointer"
                   title="Panel Pracodawcy i Ogłoszenia B2B"
                 >
                   🏢 Panel B2B
                 </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -1215,207 +1522,306 @@ export default function HomePage() {
                     });
                     showToast('success', `Wygenerowano plik CSV (${target.length} ofert)`);
                   }}
-                  className="gap-1 text-xs"
+                  className="h-8 px-2.5 rounded-lg text-xs font-semibold gap-1 shrink-0 cursor-pointer"
                   title="Pobierz swoje aplikacje i zapisane oferty do pliku CSV"
                 >
-                  <Download className="w-3.5 h-3.5" /> CSV
+                  <Download className="w-3 h-3" /> CSV
                 </Button>
+
+                <Button
+                  variant={viewDensity === 'table' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    triggerHaptic(10);
+                    playUiSound('toggle');
+                    setViewDensity((v) => (v === 'cards' ? 'table' : 'cards'));
+                  }}
+                  className="hidden md:inline-flex h-8 px-2.5 rounded-lg text-xs font-bold gap-1 shrink-0 cursor-pointer"
+                  title="Przełącz widok: Karty Bento ⟷ Kompaktowa Tabela Pro"
+                >
+                  <span>{viewDensity === 'table' ? '🗂️ Tabela' : '🪞 Karty'}</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    triggerHaptic(10);
+                    playUiSound('whoosh');
+                    setShortcutsModalOpen(true);
+                  }}
+                  className="hidden lg:inline-flex h-8 px-2 rounded-lg text-xs font-bold gap-1 shrink-0 cursor-pointer"
+                  title="Skróty Klawiszowe Desktop Pro (?)"
+                >
+                  ⌨️ ?
+                </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCommandPaletteOpen(true)}
-                  className="gap-1 text-xs"
-                  title="Paleta Komend (Ctrl+K)"
+                  className="h-8 px-2 rounded-lg text-xs font-mono font-bold gap-1 shrink-0"
+                  title="Paleta Komend (⌘K / Ctrl+K)"
                 >
-                  ⌨️ Ctrl+K
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className={cn('gap-1', showFilters && 'bg-accent')}>
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => scrapeNow(undefined, 40)} disabled={scrapeLoading} className="gap-1" title="Odśwież oferty">
-                  {scrapeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  ⌘K
                 </Button>
               </div>
 
               {/* One-tap popular trade searches */}
               <QuickSearchChips value={searchQuery} onChange={setSearchQuery} />
-              
-              {/* Market Pulse Bar */}
-              <MarketPulseBar ads={listAds} totalCount={allAnnouncements.length} />
 
+              {/* Market Pulse Bar - Desktop & Tablet */}
+              <div className="hidden md:block">
+                <MarketPulseBar ads={listAds} totalCount={allAnnouncements.length} />
+              </div>
+
+              {/* Expandable Advanced Filters Accordion */}
               <AnimatePresence>
                 {showFilters && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="flex flex-wrap items-center gap-2 overflow-hidden"
+                    transition={{ duration: 0.2 }}
+                    className="pt-2 border-t border-border/40 grid grid-cols-2 sm:grid-cols-4 gap-2 overflow-hidden"
                   >
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as SortOption)}
-                      className="h-8 px-2 text-xs rounded-md border border-input bg-background"
-                    >
-                      <option value="match">Dopasowanie</option>
-                      <option value="newest">Najnowsze</option>
-                      <option value="oldest">Najstarsze</option>
-                      <option value="price-asc">Płaca ↑</option>
-                      <option value="price-desc">Płaca ↓</option>
-                    </select>
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">
+                        Sortowanie
+                      </label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as SortOption)}
+                        className="w-full h-8 px-2 text-xs font-semibold rounded-lg border border-input bg-background cursor-pointer"
+                      >
+                        <option value="match">Dopasowanie</option>
+                        <option value="newest">Najnowsze</option>
+                        <option value="oldest">Najstarsze</option>
+                        <option value="price-asc">Płaca rosnąco</option>
+                        <option value="price-desc">Płaca malejąco</option>
+                      </select>
+                    </div>
 
-                    <select
-                      value={filterPortal}
-                      onChange={(e) => setFilterPortal(e.target.value)}
-                      className="h-8 px-2 text-xs rounded-md border border-input bg-background cursor-pointer"
-                    >
-                      <option value="all">Wszystkie portale (OLX, Pracuj, Indeed...)</option>
-                      <option value="olx">OLX</option>
-                      <option value="pracuj">Pracuj.pl</option>
-                      <option value="indeed">Indeed</option>
-                      <option value="oferteo">Oferteo</option>
-                      <option value="fixly">Fixly</option>
-                    </select>
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">
+                        Portal źródłowy
+                      </label>
+                      <select
+                        value={filterPortal}
+                        onChange={(e) => setFilterPortal(e.target.value)}
+                        className="w-full h-8 px-2 text-xs font-semibold rounded-lg border border-input bg-background cursor-pointer"
+                      >
+                        <option value="all">Wszystkie portale</option>
+                        <option value="olx">OLX</option>
+                        <option value="pracuj">Pracuj.pl</option>
+                        <option value="indeed">Indeed</option>
+                        <option value="oferteo">Oferteo</option>
+                        <option value="fixly">Fixly</option>
+                      </select>
+                    </div>
 
-                    <Button
-                      variant={showFavoritesOnly ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                      className="h-8 text-xs gap-1"
-                    >
-                      <Heart className={cn('w-3 h-3', showFavoritesOnly && 'fill-current')} />
-                      Ulubione ({favoriteCount})
-                    </Button>
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">
+                        Promień dojazdu
+                      </label>
+                      <select
+                        value={commuteRadiusKm}
+                        onChange={(e) => {
+                          triggerHaptic(10);
+                          setCommuteRadiusKm(Number(e.target.value));
+                        }}
+                        className="w-full h-8 px-2 text-xs font-semibold rounded-lg border border-input bg-background cursor-pointer"
+                      >
+                        <option value={0}>Wszędzie</option>
+                        <option value={5}>max 5 km</option>
+                        <option value={10}>max 10 km</option>
+                        <option value={15}>max 15 km</option>
+                        <option value={25}>max 25 km</option>
+                        <option value={50}>max 50 km</option>
+                      </select>
+                    </div>
 
-                    <Button
-                      variant={showTrackedOnly ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setShowTrackedOnly(!showTrackedOnly)}
-                      className="h-8 text-xs gap-1"
-                    >
-                      <Briefcase className="w-3 h-3" />
-                      Śledzone ({trackedCount})
-                    </Button>
+                    <div className="flex items-end gap-1.5">
+                      <Button
+                        variant={showFavoritesOnly ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                        className="h-8 flex-1 text-xs font-bold gap-1"
+                      >
+                        <Heart className={cn('w-3 h-3', showFavoritesOnly && 'fill-current')} />
+                        Ulubione ({favoriteCount})
+                      </Button>
+
+                      <Button
+                        variant={showTrackedOnly ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setShowTrackedOnly(!showTrackedOnly)}
+                        className="h-8 flex-1 text-xs font-bold gap-1"
+                      >
+                        <Briefcase className="w-3 h-3" />
+                        Śledzone ({trackedCount})
+                      </Button>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              {/* Status footer line */}
+              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground pt-0.5">
                 <span>
-                  {listAds.length} {listAds.length === 1 ? 'wynik' : 'wyników'}
-                  {isSearching && <span className="ml-1 text-primary">· wyszukiwanie</span>}
-                  {isLive && <span className="ml-1 text-emerald-500">● Na żywo</span>}
+                  Znaleziono <strong className="text-foreground">{listAds.length}</strong> {listAds.length === 1 ? 'ofertę' : 'ofert'}
+                  {isSearching && <span className="ml-1 text-primary font-bold">· fraza: &quot;{searchQuery}&quot;</span>}
+                  {isLive && <span className="ml-1 text-emerald-500 font-bold">● Na żywo</span>}
                 </span>
-                {lastScrapedAt && <span>Scraping: {formatTimeAgo(lastScrapedAt)}</span>}
+                {lastScrapedAt && <span>Odświeżono: {formatTimeAgo(lastScrapedAt)}</span>}
               </div>
             </div>
 
-            {/* Market insights — only when not actively searching/filtering to favorites */}
+            {/* Market insights — only on desktop / tablet to keep mobile viewport laser-focused on jobs */}
             {!isSearching && !showFavoritesOnly && !showTrackedOnly && (
-              <MarketStats overview={marketOverview} />
+              <div className="hidden md:block">
+                <MarketStats overview={marketOverview} />
+              </div>
             )}
 
-            {/* Prominent Collapsible List Component */}
-            <CollapsibleAnnouncementList
-              items={listAds}
-              isLoading={scrapeLoading && allAnnouncements.length === 0}
-              onRefresh={async () => {
-                triggerHaptic(15);
-                await scrapeNow(undefined, 40);
-              }}
-              emptyState={
-                <div className="p-8 text-center bg-card/40 rounded-2xl mx-4 my-2 border border-border/50">
-                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-                    <MapPin className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-muted-foreground text-sm">
-                      {searchQuery ? 'Brak wyników dla tego wyszukiwania' : showFavoritesOnly ? 'Brak ulubionych ogłoszeń' : 'Brak ogłoszeń'}
-                    </p>
-                    {!searchQuery && !showFavoritesOnly && (
-                      <Button variant="outline" className="mt-4" onClick={() => scrapeNow(undefined, 40)} disabled={scrapeLoading}>
-                        {scrapeLoading ? 'Scrapuję...' : 'Pobierz ogłoszenia'}
-                      </Button>
-                    )}
-                  </motion.div>
-                </div>
-              }
-              renderItem={(ad, i) => (
-                <div
-                  key={ad.id}
-                  ref={(el) => {
-                    if (el) cardRefs.current.set(ad.id, el);
-                    else cardRefs.current.delete(ad.id);
-                  }}
-                >
-                  <AnnouncementCard
-                    ad={ad}
-                    index={i}
-                    isFavorite={isFavorite(ad.id)}
-                    isSelected={ad.id === selectedId}
-                    match={prefsActive ? matchMap.get(ad.id) ?? null : null}
-                    status={getStatus(ad.id)}
-                    onToggleFavorite={() => {
-                      const wasFav = isFavorite(ad.id);
-                      toggleFavorite(ad.id);
-                      showToast('success', wasFav ? 'Usunięto z ulubionych' : 'Dodano do ulubionych ❤️');
+            {/* View Density Mode Rendering (Karty Bento vs Tabela Pro) */}
+            {viewDensity === 'table' ? (
+              <CompactTableView
+                ads={listAds}
+                selectedId={selectedId}
+                onSelectAd={(id) => {
+                  setSelectedId(id);
+                  if (isSplitView) handleShowOnMap(id);
+                }}
+                isFavorite={isFavorite}
+                onToggleFavorite={toggleFavorite}
+                isCompared={(id) => comparedAdIds.has(id)}
+                onToggleCompare={(id) => {
+                  setComparedAdIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(id)) next.delete(id);
+                    else {
+                      if (next.size >= 3) {
+                        showToast('error', 'Możesz porównywać maksymalnie 3 oferty jednocześnie!');
+                        return prev;
+                      }
+                      next.add(id);
+                    }
+                    return next;
+                  });
+                }}
+                onOpenPitch={(ad) => setSlideOverAd(ad)}
+                onQuickView={(ad) => {
+                  triggerHaptic(10);
+                  playSalaryChime(ad.price);
+                  setSlideOverAd(ad);
+                }}
+              />
+            ) : (
+              <CollapsibleAnnouncementList
+                items={listAds}
+                isLoading={scrapeLoading && allAnnouncements.length === 0}
+                onRefresh={async () => {
+                  triggerHaptic(15);
+                  await scrapeNow(undefined, 40);
+                }}
+                emptyState={
+                  <div className="p-8 text-center bg-card/40 rounded-2xl mx-4 my-2 border border-border/50">
+                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+                      <MapPin className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-muted-foreground text-sm">
+                        {searchQuery ? 'Brak wyników dla tego wyszukiwania' : showFavoritesOnly ? 'Brak ulubionych ogłoszeń' : 'Brak ogłoszeń'}
+                      </p>
+                      {!searchQuery && !showFavoritesOnly && (
+                        <Button variant="outline" className="mt-4" onClick={() => scrapeNow(undefined, 40)} disabled={scrapeLoading}>
+                          {scrapeLoading ? 'Scrapuję...' : 'Pobierz ogłoszenia'}
+                        </Button>
+                      )}
+                    </motion.div>
+                  </div>
+                }
+                renderItem={(ad, i) => (
+                  <div
+                    key={ad.id}
+                    ref={(el) => {
+                      if (el) cardRefs.current.set(ad.id, el);
+                      else cardRefs.current.delete(ad.id);
                     }}
-                    onShowOnMap={() => handleShowOnMap(ad.id)}
-                    onSetStatus={(s) => {
-                      setStatus(ad.id, s);
-                      showToast('info', `Status: ${STATUS_META[s].label}`);
-                    }}
-                    onQuickView={() => setQuickViewAd(ad)}
-                    onOpenAiInterview={() => setInterviewModalAd(ad)}
-                    onOpenSalaryBenchmark={() => setBenchmarkModalAd(ad)}
-                    onOpenTimeline={() => setTimelineAd(ad)}
-                    onOpenCalculator={() => setConstructionCalcModalAd(ad)}
-                    isCompared={comparedAdIds.has(ad.id)}
-                    onToggleCompare={() => {
-                      setComparedAdIds((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(ad.id)) {
-                          next.delete(ad.id);
-                        } else {
-                          if (next.size >= 3) {
-                            showToast('error', 'Możesz porównywać maksymalnie 3 oferty jednocześnie!');
-                            return prev;
+                  >
+                    <AnnouncementCard
+                      ad={ad}
+                      index={i}
+                      isFavorite={isFavorite(ad.id)}
+                      isSelected={ad.id === selectedId}
+                      match={prefsActive ? matchMap.get(ad.id) ?? null : null}
+                      status={getStatus(ad.id)}
+                      onToggleFavorite={() => {
+                        const wasFav = isFavorite(ad.id);
+                        toggleFavorite(ad.id);
+                        showToast('success', wasFav ? 'Usunięto z ulubionych' : 'Dodano do ulubionych ❤️');
+                      }}
+                      onShowOnMap={() => handleShowOnMap(ad.id)}
+                      onSetStatus={(s) => {
+                        setStatus(ad.id, s);
+                        showToast('info', `Status: ${STATUS_META[s].label}`);
+                      }}
+                      onQuickView={() => {
+                        triggerHaptic(10);
+                        playSalaryChime(ad.price);
+                        setSlideOverAd(ad);
+                      }}
+                      onOpenAiInterview={() => setInterviewModalAd(ad)}
+                      onOpenSalaryBenchmark={() => setBenchmarkModalAd(ad)}
+                      onOpenTimeline={() => setTimelineAd(ad)}
+                      onOpenCalculator={() => setConstructionCalcModalAd(ad)}
+                      isCompared={comparedAdIds.has(ad.id)}
+                      onToggleCompare={() => {
+                        setComparedAdIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(ad.id)) {
+                            next.delete(ad.id);
+                          } else {
+                            if (next.size >= 3) {
+                              showToast('error', 'Możesz porównywać maksymalnie 3 oferty jednocześnie!');
+                              return prev;
+                            }
+                            next.add(ad.id);
                           }
-                          next.add(ad.id);
-                        }
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-              )}
-            />
+                          return next;
+                        });
+                      }}
+                    />
+                  </div>
+                )}
+              />
+            )}
+            </div>
+
+            {/* 🖥️ Split-View Right Pane: Real-time 3D Map (WebGL GPU Accelerated) */}
+            {isSplitView && (
+              <div className="hidden lg:block lg:w-[45%] xl:w-[48%] h-[calc(100vh-120px)] sticky top-16 rounded-3xl overflow-hidden border border-border/80 shadow-2xl">
+                <MapViewDynamic
+                  ads={filteredAds.filter(isSzczecinAnnouncement)}
+                  totalCount={allAnnouncements.length}
+                  activeCategories={activeCategories}
+                  onCategoryChange={setActiveCategories}
+                  isFavorite={isFavorite}
+                  onToggleFavorite={toggleFavorite}
+                  selectedId={selectedId}
+                  flyToken={flyToken}
+                  onMarkerClick={handleMarkerClick}
+                  onShowInList={handleShowInList}
+                  onSearchArea={(_bounds) => setSearchQuery('')}
+                  homeLat={preferences.homeLat}
+                  homeLng={preferences.homeLng}
+                  maxDistanceKm={preferences.maxDistanceKm}
+                />
+              </div>
+            )}
           </div>
-        );
-      }
-
-      case 'favorites': {
-        const favoriteAds = allAnnouncements.filter((a) => isFavorite(a.id));
-        return (
-          <FavoritesView
-            favoriteAds={favoriteAds}
-            onToggleFavorite={toggleFavorite}
-            onShowOnMap={(id) => {
-              setActiveTab('map');
-              setSelectedId(id);
-              setFlyToken((t) => t + 1);
-            }}
-            onQuickView={(ad) => setQuickViewAd(ad)}
-            onOpenAiInterview={(ad) => setInterviewModalAd(ad)}
-            onOpenSalaryBenchmark={(ad) => setBenchmarkModalAd(ad)}
-            onOpenCvGenerator={() => setCvGeneratorOpen(true)}
-            onGoToBrowse={() => setActiveTab('list')}
-          />
-        );
-      }
-
-      case 'settings':
-        return <SettingsDashboard />;
-      default:
-        return null;
-    }
+        </div>
+      </div>
+    );
   }
 
   // Hero landing for first-time guests (rendered AFTER all hooks)
@@ -1432,6 +1838,21 @@ export default function HomePage() {
     <>
       <ServiceWorkerRegistration />
       <PwaInstallPrompt />
+      {/* 🌅 Real-Time Ambient Solar Glow (Szczecin live solar mesh) */}
+      <AmbientSolarGlow />
+
+      {/* 🏝️ Mobile-First Adaptive Dynamic Island (Top Status Capsule) */}
+      <DynamicIsland
+        isListening={isListening}
+        isScraping={scrapeLoading}
+        comparedCount={comparedAdIds.size}
+        totalOffersCount={filteredAds.length}
+        avgSalaryPln={7850}
+        onOpenCompare={() => setCompareModalOpen(true)}
+        onStopListening={() => setIsListening(false)}
+        onRefresh={() => scrapeNow(undefined, 40)}
+      />
+
       <JobPreferencesPanel
         open={prefsPanelOpen}
         preferences={preferences}
@@ -1445,6 +1866,11 @@ export default function HomePage() {
         isLive={isLive}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        onOpenEstimator={() => setConstructionCalcModalAd(allAnnouncements[0] || null)}
+        onOpenAiInterview={() => setInterviewModalAd(allAnnouncements[0] || null)}
+        onOpenSalaryBenchmark={() => setBenchmarkModalAd(allAnnouncements[0] || null)}
+        onOpenCvGenerator={() => setCvGeneratorOpen(true)}
+        onOpenEmployerPortal={() => setEmployerPortalOpen(true)}
       >
         {!isOnline && (
           <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400 px-4 py-2 text-xs font-bold flex items-center justify-center gap-2">
@@ -1620,6 +2046,65 @@ export default function HomePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 🌟 Floating Glass Quick Actions Dock */}
+      <FloatingDock
+        onOpenEstimator={() => setConstructionCalcModalAd({ title: 'Wycena robocizny', price: 6000 } as unknown as DisplayAnnouncement)}
+        onOpenAiInterview={() => setInterviewModalAd({ title: 'Rozmowa kwalifikacyjna' } as unknown as DisplayAnnouncement)}
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        onToggleSplitView={() => setIsSplitView(!isSplitView)}
+        isSplitView={isSplitView}
+      />
+
+
+
+      {/* 📱 Mobile: Drag Bottom Sheet with Snap Points */}
+      <AnnouncementMobileDrawer
+        announcement={slideOverAd}
+        isOpen={!!slideOverAd}
+        onClose={() => setSlideOverAd(null)}
+        onShowOnMap={() => {
+          if (slideOverAd) handleShowOnMap(slideOverAd.id);
+        }}
+      />
+
+      {/* 📑 Desktop & Tablet: Slide-Over Inspector Drawer */}
+      <div className="hidden md:block">
+        <AnnouncementSlideOver
+          announcement={slideOverAd}
+          isOpen={!!slideOverAd}
+          onClose={() => setSlideOverAd(null)}
+          onShowOnMap={() => {
+            if (slideOverAd) handleShowOnMap(slideOverAd.id);
+          }}
+        />
+      </div>
+
+      {/* ⚖️ Desktop: Floating Compare Shelf Dock */}
+      <CompareShelfDock
+        comparedAds={comparedAdsList}
+        onRemoveAd={(id) => {
+          setComparedAdIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        }}
+        onClearAll={() => setComparedAdIds(new Set())}
+        onOpenCompareModal={() => setCompareModalOpen(true)}
+      />
+
+      {/* ⌨️ Desktop Pro: Keyboard Shortcuts Cheat Sheet Modal */}
+      <KeyboardShortcutsModal
+        isOpen={shortcutsModalOpen}
+        onClose={() => setShortcutsModalOpen(false)}
+      />
+
+      {/* 👑 B2B Monetization & Instant BLIK Payments Modal */}
+      <ProTierModal
+        isOpen={proTierModalOpen}
+        onClose={() => setProTierModalOpen(false)}
+      />
     </>
   );
 }

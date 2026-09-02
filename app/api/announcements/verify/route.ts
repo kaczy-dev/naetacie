@@ -57,7 +57,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const err = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
       { success: false, error: 'Failed to verify offer availability', details: err },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }

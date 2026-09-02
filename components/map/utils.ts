@@ -10,8 +10,16 @@ import { MaskedAnnouncement } from '@/lib/types/announcement';
 export function filterGeocodedAnnouncements(
   announcements: MaskedAnnouncement[]
 ): MaskedAnnouncement[] {
+  if (!Array.isArray(announcements)) return [];
   return announcements.filter(
-    (a) => a.latitude !== null && a.longitude !== null
+    (a) =>
+      a &&
+      a.latitude !== null &&
+      a.latitude !== undefined &&
+      !isNaN(a.latitude) &&
+      a.longitude !== null &&
+      a.longitude !== undefined &&
+      !isNaN(a.longitude)
   );
 }
 
@@ -20,7 +28,7 @@ export function filterGeocodedAnnouncements(
  * Returns "Cena niepodana" if price is null.
  */
 export function formatPrice(price: number | null): string {
-  if (price === null) {
+  if (price === null || price === undefined || isNaN(price)) {
     return 'Cena niepodana';
   }
   return `${price.toLocaleString('pl-PL')} PLN`;
@@ -28,17 +36,23 @@ export function formatPrice(price: number | null): string {
 
 /**
  * Checks whether a 2D point [lat, lng] is inside a polygon defined by an array of vertex coordinates [[lng, lat]].
- * Uses the classic Ray-casting algorithm.
+ * Uses the classic Ray-casting algorithm with complete null-safety.
  */
 export function isPointInPolygon(
-  point: [number, number],
-  vs: Array<[number, number]>
+  point: [number, number] | null | undefined,
+  vs: Array<[number, number]> | null | undefined
 ): boolean {
-  const [x, y] = point; // lat, lng
+  if (!point || !vs || vs.length < 3) return false;
+  const [x, y] = point;
+  if (x === null || x === undefined || isNaN(x) || y === null || y === undefined || isNaN(y)) {
+    return false;
+  }
+
   let inside = false;
   for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-    const xi = vs[i][1], yi = vs[i][0]; // lat, lng
-    const xj = vs[j][1], yj = vs[j][0]; // lat, lng
+    if (!vs[i] || !vs[j]) continue;
+    const xi = vs[i][1], yi = vs[i][0];
+    const xj = vs[j][1], yj = vs[j][0];
 
     const intersect =
       yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;

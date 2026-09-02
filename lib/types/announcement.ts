@@ -1,13 +1,14 @@
 /**
  * Source portal identifiers for scraped advertisements.
  */
-export type SourcePortal = 'olx' | 'oferteo' | 'fixly';
+export type SourcePortal = 'olx' | 'oferteo' | 'fixly' | 'pracuj' | 'indeed' | 'gowork' | 'jooble';
 
 /**
  * Full announcement record stored in Firestore.
  * The document ID is the deduplication_key.
  */
 export interface Announcement {
+  id?: string;
   deduplication_key: string;
   title: string;
   description: string;
@@ -21,6 +22,10 @@ export interface Announcement {
   contact_info: string | null;
   scraped_at: Date;
   published_at: Date | null;
+  company?: string | null;
+  employment_type?: string | null;
+  posted_days_ago?: number | null;
+  traits?: import('@/lib/ai/freeJobExtractor').ExtractedJobTraits;
 }
 
 /**
@@ -30,6 +35,7 @@ export interface Announcement {
  * For premium tier: all fields are present.
  */
 export interface MaskedAnnouncement {
+  id?: string;
   deduplication_key: string;
   title: string;
   description: string;
@@ -43,6 +49,10 @@ export interface MaskedAnnouncement {
   published_at: Date | null;
   source_url?: string;
   contact_info?: string | null;
+  company?: string | null;
+  employment_type?: string | null;
+  posted_days_ago?: number | null;
+  traits?: import('@/lib/ai/freeJobExtractor').ExtractedJobTraits;
 }
 
 /**
@@ -59,4 +69,5 @@ export interface ScrapedAd {
   price: number | null;
   contactInfo: string | null;
   publishedAt: Date | null;
+  company?: string | null;
 }

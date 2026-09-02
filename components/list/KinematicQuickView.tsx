@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, MapPin, ExternalLink, Heart, Navigation,
-  Phone, Sparkles, FileText
+  Phone, Sparkles, FileText, Calculator
 } from 'lucide-react';
 import { ensureAbsoluteUrl, getAnnouncementExternalUrl } from '@/lib/utils';
 import type { DisplayAnnouncement } from '@/lib/types/display';
@@ -14,6 +14,12 @@ import { extractRequirements } from '@/lib/ai/extractor';
 import { estimateSalary } from '@/lib/ai/salaryEstimator';
 import { CoverLetterModal } from '@/components/ai/CoverLetterModal';
 import { Button } from '@/components/ui/button';
+import { detectJobUrgency } from '@/lib/urgent/urgentJobDetector';
+import { evaluateEmployerTrust } from '@/lib/safety/employerTrustEvaluator';
+import { UrgentBadge } from '@/components/announcements/UrgentBadge';
+import { EmployerTrustBadge } from '@/components/safety/EmployerTrustBadge';
+import { VoiceSummaryButton } from '@/components/voice/VoiceSummaryButton';
+import { TradeBidEstimatorModal } from '@/components/announcements/TradeBidEstimatorModal';
 
 export interface KinematicQuickViewProps {
   ad: DisplayAnnouncement | null;
@@ -33,6 +39,7 @@ export function KinematicQuickView({
   onShowOnMap,
 }: KinematicQuickViewProps) {
   const [coverLetterOpen, setCoverLetterOpen] = useState(false);
+  const [estimatorOpen, setEstimatorOpen] = useState(false);
 
   if (!isOpen || !ad) return null;
 
@@ -41,6 +48,13 @@ export function KinematicQuickView({
   const aiEstimate = typeof ad.price !== 'number' ? estimateSalary(ad.category, ad.title, ad.description) : null;
   const reqs = extractRequirements(ad.title, ad.description);
   const safeUrl = getAnnouncementExternalUrl(ad);
+  const urgency = detectJobUrgency(ad.title, ad.description);
+  const trustReport = evaluateEmployerTrust({
+    company: ad.company,
+    phone: ad.phone,
+    sourcePortal: ad.source_portal,
+    descriptionLength: ad.description.length,
+  });
 
   return (
     <>
@@ -59,13 +73,14 @@ export function KinematicQuickView({
           >
             {/* Header Bar */}
             <div className="sticky top-0 z-20 glass border-b border-border/50 px-6 py-4 flex items-center justify-between bg-card/90 backdrop-blur-xl">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1.5">
                   <span>{cat?.icon}</span> {cat?.label}
                 </span>
                 <span className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-0.5 rounded-md border border-border">
                   {ad.source_portal}
                 </span>
+                <UrgentBadge urgency={urgency} />
               </div>
 
               <div className="flex items-center gap-2">
@@ -87,7 +102,20 @@ export function KinematicQuickView({
             </div>
 
             {/* Main Body */}
-            <div className="p-6 space-y-6 flex-1">
+            <div className="p-6 space-y-5 flex-1">
+              {/* Trust & Audio Assistant Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-muted/40 border border-border/60">
+                <EmployerTrustBadge report={trustReport} />
+                <VoiceSummaryButton
+                  data={{
+                    title: ad.title,
+                    location: ad.location_text,
+                    price: ad.price,
+                    phone: ad.phone,
+                  }}
+                />
+              </div>
+
               {/* Title & Salary */}
               <div className="space-y-3">
                 <h2 className="text-xl md:text-2xl font-black text-foreground leading-snug">
@@ -103,6 +131,27 @@ export function KinematicQuickView({
                   <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-4 py-1.5 rounded-xl border border-emerald-500/30 shadow-sm">
                     {typeof ad.price === 'number' ? `${ad.price.toLocaleString('pl-PL')} zł/mies. brutto` : 'Cena do uzgodnienia'}
                   </div>
+                </div>
+              </div>
+
+              {/* 1-Tap Trade Bid Estimator */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/25 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Calculator className="w-4 h-4 text-primary" /> Kalkulator Wyceny Robocizny (Szczecin 2026)
+                    </span>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Wylicz stawkę rynkową i wygeneruj gotową ofertę SMS/WhatsApp
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setEstimatorOpen(true)}
+                    className="text-xs font-bold bg-primary text-primary-foreground shadow-xs cursor-pointer"
+                  >
+                    Otwórz kalkulator
+                  </Button>
                 </div>
               </div>
 
@@ -141,23 +190,6 @@ export function KinematicQuickView({
                     <div>Umowa Zlecenie: <strong>~{netBreakdown.uzNet.toLocaleString('pl-PL')} zł</strong></div>
                     <div>UZ Student (&lt;26): <strong>{netBreakdown.uzStudentNet.toLocaleString('pl-PL')} zł</strong></div>
                   </div>
-                </div>
-              )}
-
-              {/* AI Salary Estimator for Unlisted Price */}
-              {aiEstimate && (
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-primary" /> Estymator Stawek Rynkowych (AI)
-                    </span>
-                    <span className="text-xs font-black text-primary">
-                      {aiEstimate.minGross.toLocaleString('pl-PL')} – {aiEstimate.maxGross.toLocaleString('pl-PL')} zł brutto
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Szacowane netto na rękę: <strong>~{aiEstimate.estimatedNet.toLocaleString('pl-PL')} zł</strong> ({aiEstimate.reasons[0]})
-                  </p>
                 </div>
               )}
 
@@ -230,6 +262,14 @@ export function KinematicQuickView({
         ad={ad}
         isOpen={coverLetterOpen}
         onClose={() => setCoverLetterOpen(false)}
+      />
+
+      <TradeBidEstimatorModal
+        isOpen={estimatorOpen}
+        onClose={() => setEstimatorOpen(false)}
+        title={ad.title}
+        description={ad.description}
+        phone={ad.phone}
       />
     </>
   );

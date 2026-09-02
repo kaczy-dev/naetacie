@@ -5,9 +5,9 @@
 
 import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, SalaryRange } from './types';
 import { ensureAbsoluteUrl, removePolishDiacritics } from '@/lib/utils';
-import { extractJsonLd } from '@/functions/src/scraper/extractor';
+import { extractJsonLdJobs, parseStructuredSalary } from './universalExtractor';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
-import { getRandomUserAgent, hashId, cleanText, inferCategory } from './network';
+import { getRandomUserAgent, hashId, cleanText, inferCategory, fetchWithStealthRetry } from './network';
 
 const PRACUJ_BASE = 'https://www.pracuj.pl';
 
@@ -88,13 +88,10 @@ async function fetchPracujKeyword(query: string): Promise<ScrapedAd[]> {
   const searchUrl = `${PRACUJ_BASE}/praca/${cleanKw};kw/szczecin;wp`;
 
   try {
-    const res = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'pl-PL,pl;q=0.9,en-US;q=0.8',
-      },
-      signal: AbortSignal.timeout(6000),
+    const res = await fetchWithStealthRetry(searchUrl, {
+      referer: `${PRACUJ_BASE}/praca/szczecin;wp`,
+      timeoutMs: 7000,
+      retries: 2,
     });
 
     if (!res.ok) return [];
@@ -102,64 +99,35 @@ async function fetchPracujKeyword(query: string): Promise<ScrapedAd[]> {
     const html = await res.text();
 
     // 1. Try extracting structured JSON-LD JobPosting data
-    const jsonLdItems = extractJsonLd(html);
+    const jsonLdJobs = extractJsonLdJobs(html);
     const adsFromJsonLd: ScrapedAd[] = [];
 
-    for (const item of jsonLdItems) {
+    for (const item of jsonLdJobs) {
       if (item.title) {
         const title = item.title.trim();
         const rawUrl = item.url || searchUrl;
         const sourceUrl = ensureAbsoluteUrl(rawUrl, 'pracuj') || rawUrl;
         const locationText = item.location ? `Szczecin, ${item.location}` : 'Szczecin';
-        let priceStr: string | null = null;
-        let salaryRange: SalaryRange | null = null;
-
-        if (item.price != null) {
-          if (typeof item.price === 'object' && item.price !== null) {
-            const p = item.price as Record<string, unknown>;
-            const minVal = Number(p.minValue ?? p.value ?? 0);
-            const maxVal = Number(p.maxValue ?? minVal);
-            const curr = String(p.currency || 'PLN');
-            const unitText = String(p.unitText || 'MONTH').toUpperCase();
-            const salaryType = unitText.includes('HOUR') ? 'hourly' : 'monthly';
-            priceStr = minVal !== maxVal
-              ? `${minVal}–${maxVal} ${curr === 'PLN' ? 'zł' : curr}/${salaryType === 'hourly' ? 'h' : 'mies.'}`
-              : `${minVal} ${curr === 'PLN' ? 'zł' : curr}/${salaryType === 'hourly' ? 'h' : 'mies.'}`;
-            salaryRange = {
-              min: minVal || null,
-              max: maxVal || null,
-              currency: (curr === 'EUR' ? 'EUR' : 'PLN') as 'PLN' | 'EUR',
-              type: salaryType as 'hourly' | 'monthly',
-              isGross: true,
-              raw: priceStr,
-            };
-          } else {
-            priceStr = `${item.price} zł`;
-          }
-        }
-
-        const ldCompany = (() => {
-          const ho = (item as Record<string, unknown>).hiringOrganization;
-          if (ho && typeof ho === 'object') return String((ho as Record<string, unknown>).name || '') || null;
-          return null;
-        })();
+        const description = cleanText(item.description || title).slice(0, 400);
+        const phone = extractPhoneNumber(`${title} ${description}`);
 
         adsFromJsonLd.push({
           id: hashId(sourceUrl || title, 'pracuj'),
           title,
-          description: cleanText(item.description || title).slice(0, 300),
+          description,
           source_url: sourceUrl,
           source_portal: 'pracuj',
           category: inferCategory(title, item.description || ''),
           location_text: locationText,
           latitude: null,
           longitude: null,
-          price: priceStr,
-          salary_range: salaryRange,
+          price: item.price,
+          salary_range: item.salaryRange,
+          phone,
           scraped_at: new Date().toISOString(),
           published_at: item.datePublished || null,
-          company: ldCompany,
-          employment_type: 'Umowa o pracę',
+          company: item.company,
+          employment_type: item.employmentType || 'Umowa o pracę',
         });
       }
     }
@@ -208,6 +176,7 @@ async function fetchPracujKeyword(query: string): Promise<ScrapedAd[]> {
         const fullUrl = `${PRACUJ_BASE}${path}`;
         if (!seenUrls.has(fullUrl) && linkText.length >= 5) {
           seenUrls.add(fullUrl);
+          const phone = extractPhoneNumber(linkText);
           adsFromRegex.push({
             id: hashId(fullUrl, 'pracuj'),
             title: linkText,
@@ -219,6 +188,7 @@ async function fetchPracujKeyword(query: string): Promise<ScrapedAd[]> {
             latitude: null,
             longitude: null,
             price: null,
+            phone,
             scraped_at: new Date().toISOString(),
             published_at: new Date().toISOString(),
             company: null,
@@ -244,7 +214,7 @@ export async function scrapePracuj(options: PortalScraperOptions = {}): Promise<
   }
 
   // Multi-query trade sweep
-  const tradesToSearch = SEARCH_TRADES.slice(0, 5);
+  const tradesToSearch = SEARCH_TRADES.slice(0, 6);
   const tasks = tradesToSearch.map((t) => fetchPracujKeyword(t));
 
   const results = await Promise.allSettled(tasks);

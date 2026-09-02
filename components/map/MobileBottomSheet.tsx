@@ -9,19 +9,23 @@ import {
   Navigation,
   Sparkles,
   Building2,
-  List,
-  Map as MapIcon,
   ChevronDown,
   CheckCircle2,
   GripHorizontal,
   MessageSquare,
-  BadgePercent,
-  Car,
+  Phone,
+  ExternalLink,
+  ShieldCheck,
+  Home,
+  Award,
+  Wrench,
 } from 'lucide-react';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { normalizeCategory, CATEGORIES } from '@/lib/data/categories';
-import { triggerHaptic } from '@/lib/utils';
-import { OlxLinkActions } from '@/components/olx/OlxLinkActions';
+import { triggerHaptic, getAnnouncementExternalUrl } from '@/lib/utils';
+import { generateApplicationMessageDraft } from '@/lib/contact/draftGenerator';
+import { EmployerTrustBadge } from '@/components/safety/EmployerTrustBadge';
+import { evaluateEmployerTrust } from '@/lib/safety/employerTrustEvaluator';
 
 export interface MobileBottomSheetProps {
   ads: DisplayAnnouncement[];
@@ -43,12 +47,10 @@ export interface MobileBottomSheetProps {
 
 export type SheetSnapState = 'collapsed' | 'medium' | 'expanded';
 
-// Ultra-compact 1/3 reduced snap heights for mobile view:
-// medium: 16vh, expanded: 32vh, collapsed: 30px
 const SNAP_HEIGHTS: Record<SheetSnapState, string> = {
-  collapsed: '30px',
-  medium: '16vh',
-  expanded: '32vh',
+  collapsed: '54px',
+  medium: '44vh',
+  expanded: '76vh',
 };
 
 export function MobileBottomSheet({
@@ -60,8 +62,6 @@ export function MobileBottomSheet({
   onToggleFavorite,
   onShowOnMap,
   onSnapStateChange,
-  ui,
-  isDark,
 }: MobileBottomSheetProps) {
   const [snapState, setSnapState] = useState<SheetSnapState>('medium');
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -87,13 +87,11 @@ export function MobileBottomSheet({
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const { offset, velocity } = info;
 
-    if (velocity.y < -180 || offset.y < -40) {
-      // Swiped UP
+    if (velocity.y < -180 || offset.y < -35) {
       triggerHaptic(12);
       if (snapState === 'collapsed') updateSnapState('medium');
       else if (snapState === 'medium') updateSnapState('expanded');
-    } else if (velocity.y > 180 || offset.y > 40) {
-      // Swiped DOWN
+    } else if (velocity.y > 180 || offset.y > 35) {
       triggerHaptic(12);
       if (snapState === 'expanded') updateSnapState('medium');
       else if (snapState === 'medium') updateSnapState('collapsed');
@@ -110,14 +108,26 @@ export function MobileBottomSheet({
   };
 
   const getQuickContactLink = (ad: DisplayAnnouncement) => {
-    const text = encodeURIComponent(
-      `Dzień dobry! Piszę w sprawie ogłoszenia "${ad.title}" z portalu NaEtacie. Czy oferta jest nadal aktualna?`
+    const draft = generateApplicationMessageDraft({
+      phone: ad.phone,
+      title: ad.title,
+      location: ad.location_text,
+      sourcePortal: ad.source_portal,
+      tone: 'quick',
+    });
+
+    if (draft) {
+      return draft.whatsAppUrl || draft.smsUrl;
+    }
+
+    const fallbackText = encodeURIComponent(
+      `Dzień dobry! Piszę w sprawie ogłoszenia "${ad.title}" ze Szczecina na portalu NaEtacie. Czy oferta jest nadal aktualna?`
     );
     if (ad.phone) {
       const cleanPhone = ad.phone.replace(/\D/g, '');
-      return `https://wa.me/48${cleanPhone}?text=${text}`;
+      return `https://wa.me/48${cleanPhone}?text=${fallbackText}`;
     }
-    return `sms:?body=${text}`;
+    return `sms:?body=${fallbackText}`;
   };
 
   const getDirectionsUrl = (ad: DisplayAnnouncement) => {
@@ -127,237 +137,252 @@ export function MobileBottomSheet({
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ad.location_text || 'Szczecin')}`;
   };
 
+  const phoneDigits = currentDisplayAd?.phone ? currentDisplayAd.phone.replace(/\D/g, '') : null;
+  const externalUrl = currentDisplayAd ? getAnnouncementExternalUrl(currentDisplayAd) : '#';
+
   return (
-    <>
-      {/* Floating Action Toggle Button - 1/3 smaller icons & typography */}
-      <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-40">
-        <button
-          onClick={() => setSnapState((prev) => (prev === 'expanded' ? 'medium' : 'expanded'))}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-900 dark:bg-slate-100 text-slate-100 dark:text-slate-900 font-extrabold text-[10px] shadow-2xl backdrop-blur-xl active:scale-95 transition-all border border-slate-700/60 cursor-pointer"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-          {snapState === 'expanded' ? (
-            <>
-              <MapIcon className="w-3 h-3 text-emerald-400 dark:text-emerald-600" />
-              <span>Pełna mapa</span>
-            </>
-          ) : (
-            <>
-              <List className="w-3 h-3 text-emerald-400 dark:text-emerald-600" />
-              <span>Zwijana lista ({ads.length})</span>
-              <ChevronUp className="w-2.5 h-2.5 opacity-70" />
-            </>
-          )}
-        </button>
+    <motion.div
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={0.2}
+      onDragEnd={handleDragEnd}
+      className="fixed bottom-[58px] left-0 right-0 md:left-auto md:right-8 md:bottom-4 md:w-[420px] z-30 flex flex-col rounded-t-3xl md:rounded-3xl shadow-2xl border border-emerald-500/20 backdrop-blur-2xl transition-all duration-300 touch-none bg-slate-950/95 text-slate-100 ring-1 ring-white/10"
+      style={{
+        height: SNAP_HEIGHTS[snapState],
+      }}
+      animate={{ height: SNAP_HEIGHTS[snapState] }}
+      transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+    >
+      {/* ── Tactile Grip Header (Drag Handle) ── */}
+      <div
+        className="w-full flex flex-col items-center pt-2.5 pb-2 cursor-grab active:cursor-grabbing touch-none select-none shrink-0 group border-b border-white/10 bg-slate-900/50"
+        onClick={toggleSnap}
+      >
+        <div className="flex items-center justify-center w-14 h-1.5 rounded-full bg-slate-700 group-hover:bg-emerald-400 group-active:scale-110 transition-all mb-2">
+          <GripHorizontal className="w-3.5 h-3.5 text-slate-400 opacity-60" />
+        </div>
+        <div className="flex items-center justify-between w-full px-4 text-xs font-bold text-slate-300">
+          <span className="flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
+            <span>Szczecin & Okolice:</span>
+            <span className="text-emerald-400 font-mono font-black bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+              {ads.length} ofert
+            </span>
+          </span>
+          <div className="flex items-center gap-1 text-emerald-400 font-extrabold text-xs">
+            <span>{snapState === 'collapsed' ? 'Rozwiń' : snapState === 'expanded' ? 'Zwiń' : 'Pełna lista'}</span>
+            {snapState === 'expanded' ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronUp className="w-4 h-4" />
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Drag & Drop Main Sheet Container */}
-      <motion.div
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0.2}
-        onDragEnd={handleDragEnd}
-        className="fixed bottom-0 left-0 right-0 md:left-auto md:right-8 md:bottom-3 md:w-[380px] z-30 flex flex-col rounded-t-2xl md:rounded-2xl shadow-2xl border border-border/80 backdrop-blur-2xl transition-all duration-300 pb-safe touch-none"
-        style={{
-          height: SNAP_HEIGHTS[snapState],
-          background: isDark ? 'rgba(15, 23, 42, 0.97)' : 'rgba(255, 255, 255, 0.98)',
-          color: ui.text,
-        }}
-        animate={{ height: SNAP_HEIGHTS[snapState] }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-      >
-        {/* Drag-and-drop Header Handle */}
-        <motion.div
-          className="w-full flex flex-col items-center pt-1.5 pb-1 cursor-grab active:cursor-grabbing touch-none select-none shrink-0 group"
-          onClick={toggleSnap}
-        >
-          <div className="flex items-center justify-center gap-1 w-10 h-1 rounded-full bg-muted-foreground/40 mb-1 transition-all group-hover:bg-primary group-active:scale-110">
-            <GripHorizontal className="w-2.5 h-2.5 text-muted-foreground opacity-60" />
-          </div>
-          <div className="flex items-center justify-between w-full px-3 text-[10px] font-semibold text-muted-foreground">
-            <span className="flex items-center gap-1 text-foreground font-bold">
-              <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" />
-              Obszar: <span className="text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-500/10 px-1.5 py-0.2 rounded-full border border-emerald-500/20">{ads.length}</span>
-            </span>
-            <div className="flex items-center gap-0.5 text-muted-foreground font-bold">
-              <span className="text-[9px] text-primary">
-                {snapState === 'collapsed' ? 'Rozwiń' : snapState === 'expanded' ? 'Zwiń' : 'Rozwiń'}
-              </span>
-              {snapState === 'expanded' ? (
-                <ChevronDown className="w-3 h-3 text-primary" />
-              ) : (
-                <ChevronUp className="w-3 h-3 text-primary animate-bounce" />
-              )}
+      {/* ── Scrollable Content Area ── */}
+      <div className="flex-1 overflow-y-auto px-3 pb-10 pt-2 space-y-2 overscroll-contain touch-pan-y custom-scrollbar">
+        {/* MEDIUM & COLLAPSED: High-Contrast Active Offer Card */}
+        {snapState !== 'expanded' && currentDisplayAd && (
+          <div className="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-3.5 space-y-3 shadow-xl backdrop-blur-md">
+            {/* Badges & Favorite */}
+            <div className="flex items-center justify-between gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  {CATEGORIES[normalizeCategory(currentDisplayAd.category)]?.icon}{' '}
+                  {CATEGORIES[normalizeCategory(currentDisplayAd.category)]?.label || currentDisplayAd.category}
+                </span>
+
+                <EmployerTrustBadge trust={evaluateEmployerTrust(currentDisplayAd)} />
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerHaptic(15);
+                  onToggleFavorite(currentDisplayAd.id);
+                }}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-red-400 transition-transform active:scale-90 cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center"
+                aria-label="Dodaj do ulubionych"
+              >
+                <Heart
+                  className={`w-5 h-5 ${
+                    isFavorite(currentDisplayAd.id)
+                      ? 'fill-red-500 text-red-500'
+                      : 'text-slate-400 hover:text-red-400'
+                  }`}
+                />
+              </button>
             </div>
-          </div>
-        </motion.div>
 
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto px-2 pb-14 pt-0.5 space-y-1.5 overscroll-contain touch-pan-y">
-          {/* COLLAPSED & MEDIUM STATE: ULTRA COMPACT SINGLE AD PREVIEW */}
-          {snapState !== 'expanded' && currentDisplayAd && (
-            <div className="bg-card/90 border border-border/70 rounded-lg p-2 space-y-1.5 shadow-xs backdrop-blur-md">
-              {/* Header Info + Badges */}
-              <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-1 flex-wrap min-w-0">
-                  <span className="text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.2 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-0.5">
-                    {CATEGORIES[normalizeCategory(currentDisplayAd.category)]?.icon}{' '}
-                    {CATEGORIES[normalizeCategory(currentDisplayAd.category)]?.label || currentDisplayAd.category}
-                  </span>
-
-                  <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded border border-emerald-500/20 flex items-center gap-0.5">
-                    <BadgePercent className="w-2.5 h-2.5" /> Powyżej średniej +18%
-                  </span>
-
-                  <span className="text-[8px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1 py-0.2 rounded flex items-center gap-0.5">
-                    <Car className="w-2.5 h-2.5" /> ~14 min auta
-                  </span>
-                </div>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleFavorite(currentDisplayAd.id);
-                  }}
-                  className="p-0.5 rounded-full hover:bg-accent text-red-500 transition-transform active:scale-90 cursor-pointer"
-                  aria-label="Dodaj do ulubionych"
-                >
-                  <Heart
-                    className={`w-3.5 h-3.5 ${
-                      isFavorite(currentDisplayAd.id)
-                        ? 'fill-red-500 text-red-500'
-                        : 'text-muted-foreground/70 hover:text-red-500'
-                    }`}
-                  />
-                </button>
+            {/* Title & Stawka */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <h4 className="font-heading font-extrabold text-sm sm:text-base text-slate-100 line-clamp-2 leading-snug">
+                  {currentDisplayAd.title}
+                </h4>
+                {currentDisplayAd.company && (
+                  <p className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mt-1">
+                    <Building2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    {currentDisplayAd.company}
+                  </p>
+                )}
+                <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                  <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  {currentDisplayAd.location_text || 'Szczecin'}
+                </p>
               </div>
 
-              {/* Title & Price */}
-              <div className="flex items-start justify-between gap-1.5">
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-heading font-bold text-[11px] text-foreground truncate leading-tight">
-                    {currentDisplayAd.title}
-                  </h4>
-                  {currentDisplayAd.company && (
-                    <p className="text-[10px] font-medium text-muted-foreground truncate flex items-center gap-0.5 mt-0.5">
-                      <Building2 className="w-2.5 h-2.5 text-muted-foreground/70 shrink-0" />
-                      {currentDisplayAd.company}
-                    </p>
-                  )}
-                </div>
-
-                <div className="text-right shrink-0">
-                  <span className="inline-block text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
-                    {typeof currentDisplayAd.price === 'number'
-                      ? `${currentDisplayAd.price.toLocaleString('pl-PL')} zł`
-                      : currentDisplayAd.price || 'Cena do uzg.'}
-                  </span>
-                </div>
+              <div className="text-right shrink-0">
+                <span className="inline-block text-sm sm:text-base font-black font-mono text-emerald-300 bg-emerald-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/40 shadow-sm">
+                  {typeof currentDisplayAd.price === 'number'
+                    ? `${currentDisplayAd.price.toLocaleString('pl-PL')} zł`
+                    : currentDisplayAd.price || 'Stawka do uzg.'}
+                </span>
               </div>
+            </div>
 
-              {/* Action Buttons with 1-Tap Quick Contact & Directions */}
-              <div className="grid grid-cols-3 gap-1 pt-1 border-t border-border/40">
-                <button
-                  onClick={() => {
-                    onShowOnMap(currentDisplayAd.id);
-                    setSnapState('collapsed');
-                  }}
-                  className="flex items-center justify-center gap-0.5 py-1 px-1 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-[9px] font-bold rounded active:scale-95 transition-all cursor-pointer"
-                >
-                  <Navigation className="w-2.5 h-2.5 text-emerald-400" /> Na mapie
-                </button>
+            {/* Traits Badges (SEP, Benefits, Housing, Transport) */}
+            {currentDisplayAd.traits && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {currentDisplayAd.traits.accommodation_provided && (
+                  <span className="text-[10px] font-bold text-sky-300 bg-sky-950/80 border border-sky-500/30 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <Home className="w-3 h-3" /> Darmowe zakwaterowanie
+                  </span>
+                )}
+                {currentDisplayAd.traits.transport_provided && (
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <Wrench className="w-3 h-3" /> Zapewniony dojazd
+                  </span>
+                )}
+                {currentDisplayAd.traits.certifications && currentDisplayAd.traits.certifications.length > 0 && (
+                  <span className="text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-500/30 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <Award className="w-3 h-3" /> {currentDisplayAd.traits.certifications.slice(0, 2).join(', ')}
+                  </span>
+                )}
+              </div>
+            )}
 
+            {/* ── 1-Tap Thumb Zone Action Buttons (Min 48px Height) ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+              {phoneDigits ? (
                 <a
-                  href={getDirectionsUrl(currentDisplayAd)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-0.5 py-1 px-1 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-bold rounded active:scale-95 transition-all cursor-pointer shadow-xs"
+                  href={`tel:+48${phoneDigits}`}
+                  onClick={() => triggerHaptic(20)}
+                  className="sm:col-span-1 min-h-[48px] py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer border border-emerald-400/40"
+                  title="Zadzwoń do majstra"
                 >
-                  <MapPin className="w-2.5 h-2.5" /> Trasa
+                  <Phone className="w-4 h-4 animate-bounce" />
+                  <span>Zadzwoń</span>
                 </a>
-
+              ) : (
                 <a
                   href={getQuickContactLink(currentDisplayAd)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-0.5 py-1 px-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-bold rounded active:scale-95 transition-all cursor-pointer shadow-xs"
+                  onClick={() => triggerHaptic(15)}
+                  className="sm:col-span-1 min-h-[48px] py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer border border-emerald-400/40"
                 >
-                  <MessageSquare className="w-2.5 h-2.5" /> Kontakt
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Napisz SMS</span>
                 </a>
-              </div>
+              )}
+
+              <a
+                href={getDirectionsUrl(currentDisplayAd)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => triggerHaptic(15)}
+                className="min-h-[48px] py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer border border-blue-400/40"
+              >
+                <Navigation className="w-4 h-4" />
+                <span>Trasa GPS</span>
+              </a>
+
+              <a
+                href={externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => triggerHaptic(15)}
+                className="min-h-[48px] py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-900/40 flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer border border-amber-300"
+              >
+                <span>Otwórz ofertę</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* EXPANDED STATE: COMPACT FULL LIST */}
-          {snapState === 'expanded' && (
-            <div className="space-y-1 pt-0.5">
-              {ads.map((ad) => {
-                const isSelected = ad.id === selectedId;
-                const cat = CATEGORIES[normalizeCategory(ad.category)];
+        {/* EXPANDED: Full Scrollable Offer List */}
+        {snapState === 'expanded' && (
+          <div className="space-y-2 pt-1">
+            {ads.map((ad) => {
+              const isSelected = ad.id === selectedId;
+              const cat = CATEGORIES[normalizeCategory(ad.category)];
 
-                return (
-                  <div
-                    key={ad.id}
-                    ref={(el) => {
-                      if (el) cardRefs.current.set(ad.id, el);
-                      else cardRefs.current.delete(ad.id);
-                    }}
-                    onClick={() => {
-                      onSelectAd(ad.id);
-                      onShowOnMap(ad.id);
-                      updateSnapState('medium');
-                    }}
-                    className={`p-2 rounded-lg border transition-all cursor-pointer space-y-0.5 ${
-                      isSelected
-                        ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40'
-                        : 'border-border/60 bg-card/80 hover:bg-card active:scale-[0.99]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-0.5">
-                          <span>{cat?.icon}</span>
-                          <span>{cat?.label || ad.category}</span>
-                        </span>
-                        {isSelected && (
-                          <span className="text-[8px] font-extrabold text-primary bg-primary/20 px-1 rounded flex items-center gap-0.5">
-                            <CheckCircle2 className="w-2.5 h-2.5" /> Wybrana
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded">
-                        {typeof ad.price === 'number'
-                          ? `${ad.price.toLocaleString('pl-PL')} zł`
-                          : ad.price || 'Zapytaj'}
+              return (
+                <div
+                  key={ad.id}
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(ad.id, el);
+                    else cardRefs.current.delete(ad.id);
+                  }}
+                  onClick={() => {
+                    triggerHaptic(12);
+                    onSelectAd(ad.id);
+                    onShowOnMap(ad.id);
+                    updateSnapState('medium');
+                  }}
+                  className={`p-3 rounded-2xl border transition-all cursor-pointer space-y-1.5 min-h-[64px] ${
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-500/15 shadow-xl ring-1 ring-emerald-500/60'
+                      : 'border-slate-800 bg-slate-900/80 hover:bg-slate-800/90 active:scale-[0.99]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                        <span>{cat?.icon}</span>
+                        <span>{cat?.label || ad.category}</span>
                       </span>
-                    </div>
-
-                    <h5 className="text-[11px] font-bold text-foreground truncate">{ad.title}</h5>
-
-                    <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-                      <div className="flex items-center gap-0.5 truncate">
-                        <MapPin className="w-2.5 h-2.5 text-primary shrink-0" />
-                        <span className="truncate max-w-[140px]">{ad.location_text}</span>
-                      </div>
-                      {ad.company && (
-                        <span className="truncate max-w-[100px] font-medium text-muted-foreground/80">
-                          {ad.company}
+                      {isSelected && (
+                        <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Wybrana
                         </span>
                       )}
                     </div>
+                    <span className="text-xs font-black font-mono text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded-lg border border-emerald-500/30">
+                      {typeof ad.price === 'number'
+                        ? `${ad.price.toLocaleString('pl-PL')} zł`
+                        : ad.price || 'Do uzg.'}
+                    </span>
                   </div>
-                );
-              })}
 
-              {ads.length === 0 && (
-                <div className="text-center py-4 text-muted-foreground text-[10px]">
-                  Brak ofert w wybranym obszarze.
+                  <h5 className="text-xs sm:text-sm font-bold text-slate-100 truncate">{ad.title}</h5>
+
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <div className="flex items-center gap-1 truncate">
+                      <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate max-w-[160px]">{ad.location_text || 'Szczecin'}</span>
+                    </div>
+                    {ad.company && (
+                      <span className="truncate max-w-[130px] font-semibold text-slate-300">
+                        {ad.company}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </motion.div>
-    </>
+              );
+            })}
+
+            {ads.length === 0 && (
+              <div className="text-center py-8 text-slate-400 text-xs font-medium">
+                Brak ofert w wybranym obszarze mapy Szczecina.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }

@@ -249,10 +249,17 @@ function ControlButton({
       aria-label={ariaLabel}
       className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
       style={{
-        position: 'absolute', top: `${top}px`, right: '10px', zIndex: 10,
-        background: ui.surface, border: `1px solid ${ui.border}`,
-        boxShadow: ui.shadow, cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'absolute',
+        top: `calc(${top}px + 44px)`,
+        right: '10px',
+        zIndex: 10,
+        background: ui.surface,
+        border: `1px solid ${ui.border}`,
+        boxShadow: ui.shadow,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         color: ui.text,
       }}
       onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.92)'; }}
@@ -351,10 +358,10 @@ function CategoryFilter({
 
   return (
     <div
-      className="no-scrollbar max-w-[calc(100%-16px)] md:max-w-[calc(100%-52px)]"
+      className="hidden md:flex no-scrollbar"
       style={{
-        position: 'absolute', top: `${top}px`, left: '10px', right: '10px', zIndex: 20,
-        display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px',
+        position: 'absolute', top: `${top}px`, left: '10px', right: '110px', zIndex: 20,
+        gap: '4px', overflowX: 'auto', paddingBottom: '2px',
       }}
     >
       <button
@@ -756,6 +763,10 @@ export default function MapView({
   const [showTransitStops, setShowTransitStops] = useState(false);
   const [showPogonHub, setShowPogonHub] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
+  const [isMapMenuOpen, setIsMapMenuOpen] = useState(false);
+  const [showIsochroneModal, setShowIsochroneModal] = useState(false);
+  const [showGeoAlertModal, setShowGeoAlertModal] = useState(false);
+  const [isLassoDrawing, setIsLassoDrawing] = useState(false);
 
   const handleNearMeClick = useCallback(() => {
     triggerHaptic(12);
@@ -1728,179 +1739,296 @@ export default function MapView({
         </div>
       )}
 
-      {/* Basic Navigation Controls */}
-      <ControlButton onClick={handleLocateClick} title="Moja lokalizacja" ariaLabel="Pokaż moją lokalizację" top={10} ui={ui}>
-        {locating ? '⏳' : '📍'}
-      </ControlButton>
-
-      <ControlButton onClick={() => mapRef.current?.flyTo({ center: SZCZECIN, zoom: DEFAULT_ZOOM, duration: prefersReducedMotion ? 0 : undefined })} title="Powrót do Szczecina" ariaLabel="Wycentruj na Szczecin" top={48} ui={ui}>
-        🏠
-      </ControlButton>
-
-      {/* 3D View Tilt Toggle Button */}
-      <ControlButton
-        onClick={() => {
-          const map = mapRef.current;
-          if (!map) return;
-          const is3d = map.getPitch() > 10;
-          map.easeTo({
-            pitch: is3d ? 0 : 55,
-            bearing: is3d ? 0 : -18,
-            duration: prefersReducedMotion ? 0 : 800
-          });
-        }}
-        title="Przełącz widok 3D z budynkami"
-        ariaLabel="Przełącz perspektywę trójwymiarową"
-        top={86}
-        ui={ui}
-      >
-        🧊
-      </ControlButton>
-
-      {/* Advanced Map Tools Drawer */}
-      <div className="hidden md:block" style={{ position: 'absolute', top: '124px', right: '10px', zIndex: 10 }}>
-        <button
-          onClick={() => setShowDistrictAnalytics(!showDistrictAnalytics)}
-          title="Statystyki dzielnic"
-          aria-label="Pokaż statystyki dzielnicowe"
-          className="w-8 h-8 text-xs md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
-          style={{
-            background: ui.surface, border: `1px solid ${ui.border}`,
-            boxShadow: ui.shadow, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: ui.text,
-          }}
-        >
-          {showDistrictAnalytics ? '📊' : '📈'}
-        </button>
-      </div>
-
-      {/* District Salary Heatmap Overlay Toggle */}
-      <div className="hidden md:block" style={{ position: 'absolute', top: '200px', right: '10px', zIndex: 10 }}>
+      {/* 🧭 Master Enlarged Collapsible Map Menu (Lewa Strona) */}
+      <div className="absolute top-14 left-3 z-20 flex flex-col items-start gap-1.5 pointer-events-auto">
+        {/* Main Trigger Toggle Pill */}
         <button
           onClick={() => {
-            triggerHaptic(10);
-            setShowSalaryHeatmap(!showSalaryHeatmap);
+            triggerHaptic(15);
+            setIsMapMenuOpen(!isMapMenuOpen);
           }}
-          title={showSalaryHeatmap ? 'Ukryj zarobki dzielnic' : 'Pokaż zarobki dzielnic'}
-          aria-label="Przełącz zarobki dzielnicowe"
-          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
-          style={{
-            background: showSalaryHeatmap ? '#10b981' : ui.surface,
-            color: showSalaryHeatmap ? '#ffffff' : ui.text,
-            border: `1px solid ${showSalaryHeatmap ? '#10b981' : ui.border}`,
-            boxShadow: ui.shadow, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-zinc-950/90 hover:bg-zinc-900/95 border border-white/10 hover:border-emerald-500/40 shadow-2xl shadow-black/60 backdrop-blur-2xl text-xs font-black text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer group"
+          title="Zwiń / Rozwiń menu narzędzi mapy"
         >
-          💰
+          <span className="text-base group-hover:scale-110 transition-transform">🗺️</span>
+          <span className="font-black tracking-wide text-zinc-100">Narzędzia i Warstwy</span>
+          <span className="px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-[10px] text-emerald-400 font-mono font-bold">
+            {geocodedAds.length}
+          </span>
+          <span className="text-zinc-400 text-[11px] font-bold group-hover:text-emerald-400 transition-colors">{isMapMenuOpen ? '▲' : '▼'}</span>
         </button>
-      </div>
 
-      {/* Praca Blisko Mnie (5km Auto-Zoom) Button */}
-      <div className="hidden md:block" style={{ position: 'absolute', top: '238px', right: '10px', zIndex: 10 }}>
-        <button
-          onClick={handleNearMeClick}
-          title="Praca blisko mnie (5km)"
-          aria-label="Pokaż oferty blisko mnie"
-          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
-          style={{
-            background: ui.surface, border: `1px solid ${ui.border}`,
-            boxShadow: ui.shadow, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: ui.text,
-          }}
-        >
-          🎯
-        </button>
-      </div>
+        {/* Expanded Vertical Menu (Reduced by 1/3, Glass Design 3.0) */}
+        {isMapMenuOpen && (
+          <div className="p-2 rounded-2xl bg-zinc-950/95 backdrop-blur-2xl border border-white/10 shadow-2xl space-y-1.5 w-[92px] sm:w-[98px] h-[58vh] max-h-[58vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col custom-scrollbar">
+            <div className="text-[8px] font-black uppercase text-zinc-400 px-1 tracking-wider border-b border-white/5 pb-1 flex justify-between items-center shrink-0">
+              <span>Warstwy</span>
+              <span className="text-emerald-400 font-mono text-[9px] font-black">{geocodedAds.length}</span>
+            </div>
 
-      {/* Zen Mode Fullscreen Map Toggle */}
-      <div className="hidden md:block" style={{ position: 'absolute', top: '276px', right: '10px', zIndex: 10 }}>
-        <button
-          onClick={() => {
-            triggerHaptic(10);
-            setIsZenMode(!isZenMode);
-          }}
-          title={isZenMode ? 'Wyjdź z trybu Zen' : 'Pełny ekran mapy (Zen Mode)'}
-          aria-label="Przełącz tryb Zen"
-          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
-          style={{
-            background: isZenMode ? '#2563eb' : ui.surface,
-            color: isZenMode ? '#ffffff' : ui.text,
-            border: `1px solid ${isZenMode ? '#2563eb' : ui.border}`,
-            boxShadow: ui.shadow, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          {isZenMode ? '✕' : '🔍'}
-        </button>
-      </div>
+            <div className="flex flex-col justify-between flex-1 gap-1.5 py-0.5">
+              {/* Moja Pozycja */}
+              <button
+                onClick={handleLocateClick}
+                title="Moja lokalizacja"
+                aria-label="Pokaż moją lokalizację"
+                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="text-sm leading-none">{locating ? '⏳' : '📍'}</span>
+                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">Pozycja</span>
+              </button>
 
-      {/* Construction Sites Toggle */}
-      <div className="hidden md:block" style={{ position: 'absolute', top: '315px', right: '10px', zIndex: 10 }}>
-        <button
-          onClick={() => {
-            triggerHaptic(10);
-            setShowConstructionSites(!showConstructionSites);
-          }}
-          title={showConstructionSites ? 'Ukryj duże budowy' : 'Pokaż duże inwestycje budowlane w Szczecinie'}
-          aria-label="Pokaż inwestycje budowlane"
-          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
-          style={{
-            background: showConstructionSites ? '#10b981' : ui.surface,
-            color: showConstructionSites ? '#ffffff' : ui.text,
-            border: `1px solid ${showConstructionSites ? '#10b981' : ui.border}`,
-            boxShadow: ui.shadow, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          🏗️
-        </button>
-      </div>
+              {/* Centrum Szczecina */}
+              <button
+                onClick={() => mapRef.current?.flyTo({ center: SZCZECIN, zoom: DEFAULT_ZOOM, duration: prefersReducedMotion ? 0 : undefined })}
+                title="Powrót do Szczecina"
+                aria-label="Wycentruj na Szczecin"
+                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="text-sm leading-none">🏠</span>
+                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">Centrum</span>
+              </button>
 
-      {/* ZTM Transit Hubs Toggle */}
-      <div className="hidden md:block" style={{ position: 'absolute', top: '354px', right: '10px', zIndex: 10 }}>
-        <button
-          onClick={() => {
-            triggerHaptic(10);
-            setShowTransitStops(!showTransitStops);
-          }}
-          title={showTransitStops ? 'Ukryj przystanki ZTM' : 'Pokaż węzły i przystanki ZTM Szczecin'}
-          aria-label="Pokaż przystanki ZTM"
-          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
-          style={{
-            background: showTransitStops ? '#10b981' : ui.surface,
-            color: showTransitStops ? '#ffffff' : ui.text,
-            border: `1px solid ${showTransitStops ? '#10b981' : ui.border}`,
-            boxShadow: ui.shadow, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          🚏
-        </button>
-      </div>
+              {/* 3D Tilt */}
+              <button
+                onClick={() => {
+                  const map = mapRef.current;
+                  if (!map) return;
+                  const is3d = map.getPitch() > 10;
+                  map.easeTo({
+                    pitch: is3d ? 0 : 55,
+                    bearing: is3d ? 0 : -18,
+                    duration: prefersReducedMotion ? 0 : 800
+                  });
+                }}
+                title="Widok 3D / 2D"
+                aria-label="Przełącz perspektywę trójwymiarową"
+                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="text-sm leading-none">🧊</span>
+                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">3D</span>
+              </button>
 
-      {/* Pogoń Szczecin Hub Toggle */}
-      <div className="hidden md:block" style={{ position: 'absolute', top: '393px', right: '10px', zIndex: 10 }}>
-        <button
-          onClick={() => {
-            triggerHaptic(10);
-            setShowPogonHub(!showPogonHub);
-          }}
-          title={showPogonHub ? 'Ukryj Pogoń Szczecin' : 'Pokaż Stadion i Strefy Kibica Pogoń Szczecin (Duma Pomorza)'}
-          aria-label="Pokaż Pogoń Szczecin"
-          className="w-7 h-7 text-[10px] md:w-9 md:h-9 md:text-base rounded-lg transition-transform active:scale-90 shadow-sm"
-          style={{
-            background: showPogonHub ? '#1d4ed8' : ui.surface,
-            color: showPogonHub ? '#ffffff' : ui.text,
-            border: `1px solid ${showPogonHub ? '#1d4ed8' : ui.border}`,
-            boxShadow: ui.shadow, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          ⚓
-        </button>
+              {/* Panorama Wały Chrobrego & Łasztownia */}
+              <button
+                onClick={() => {
+                  const map = mapRef.current;
+                  if (!map) return;
+                  triggerHaptic(12);
+                  map.flyTo({
+                    center: [14.565, 53.429],
+                    zoom: 15.5,
+                    pitch: 62,
+                    bearing: 135,
+                    duration: prefersReducedMotion ? 0 : 1500,
+                  });
+                }}
+                title="Panorama Wałów Chrobrego & Łasztowni"
+                aria-label="Widok z perspektywy Wałów Chrobrego"
+                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="text-sm leading-none">🌊</span>
+                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">Wały</span>
+              </button>
+
+              {/* Blisko Mnie */}
+              <button
+                onClick={handleNearMeClick}
+                title="Praca blisko mnie (5km)"
+                aria-label="Pokaż oferty blisko mnie"
+                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="text-sm leading-none">🎯</span>
+                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">5 km</span>
+              </button>
+
+              {/* Statystyki */}
+              <button
+                onClick={() => setShowDistrictAnalytics(!showDistrictAnalytics)}
+                title="Statystyki dzielnic"
+                aria-label="Pokaż statystyki dzielnicowe"
+                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                  showDistrictAnalytics
+                    ? 'bg-amber-500 text-zinc-950 border-amber-300 font-black shadow-lg shadow-amber-500/30'
+                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                }`}
+              >
+                <span className="text-sm leading-none">📊</span>
+                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showDistrictAnalytics ? 'text-zinc-950' : 'text-zinc-400'}`}>Staty</span>
+              </button>
+
+              {/* Zarobki */}
+              <button
+                onClick={() => {
+                  triggerHaptic(10);
+                  setShowSalaryHeatmap(!showSalaryHeatmap);
+                }}
+                title="Zarobki dzielnicowe"
+                aria-label="Przełącz zarobki dzielnicowe"
+                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                  showSalaryHeatmap
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-emerald-300 font-black shadow-lg shadow-emerald-500/30'
+                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                }`}
+              >
+                <span className="text-sm leading-none">💰</span>
+                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showSalaryHeatmap ? 'text-white' : 'text-zinc-400'}`}>Stawki</span>
+              </button>
+
+              {/* Duże Budowy */}
+              <button
+                onClick={() => {
+                  triggerHaptic(10);
+                  setShowConstructionSites(!showConstructionSites);
+                }}
+                title="Inwestycje i duże budowy"
+                aria-label="Pokaż inwestycje budowlane"
+                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                  showConstructionSites
+                    ? 'bg-emerald-500 text-white border-emerald-300 font-black shadow-lg shadow-emerald-500/30'
+                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                }`}
+              >
+                <span className="text-sm leading-none">🏗️</span>
+                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showConstructionSites ? 'text-white' : 'text-zinc-400'}`}>Budowy</span>
+              </button>
+
+              {/* Przystanki ZTM */}
+              <button
+                onClick={() => {
+                  triggerHaptic(10);
+                  setShowTransitStops(!showTransitStops);
+                }}
+                title="Węzły i przystanki ZTM"
+                aria-label="Pokaż przystanki ZTM"
+                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                  showTransitStops
+                    ? 'bg-blue-600 text-white border-blue-400 font-black shadow-lg shadow-blue-600/30'
+                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                }`}
+              >
+                <span className="text-sm leading-none">🚏</span>
+                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showTransitStops ? 'text-white' : 'text-zinc-400'}`}>ZTM</span>
+              </button>
+
+              {/* Pogoń Szczecin */}
+              <button
+                onClick={() => {
+                  triggerHaptic(10);
+                  setShowPogonHub(!showPogonHub);
+                }}
+                title="Pogoń Szczecin"
+                aria-label="Pokaż Pogoń Szczecin"
+                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                  showPogonHub
+                    ? 'bg-indigo-600 text-white border-indigo-400 font-black shadow-lg shadow-indigo-600/30'
+                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                }`}
+              >
+                <span className="text-sm leading-none">⚓</span>
+                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showPogonHub ? 'text-white' : 'text-zinc-400'}`}>Pogoń</span>
+              </button>
+
+              {/* Zmień motyw */}
+              <button
+                onClick={() => {
+                  const next = mapStyle === 'emerald' ? 'dark' : mapStyle === 'dark' ? 'light' : 'emerald';
+                  handleSelectStyle(next);
+                  triggerHaptic(10);
+                }}
+                title={`Zmień motyw mapy (obecny: ${mapStyle})`}
+                aria-label="Zmień motyw mapy"
+                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="text-sm leading-none">{mapStyle === 'dark' ? '🌙' : mapStyle === 'light' ? '☀️' : '🌿'}</span>
+                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">Motyw</span>
+              </button>
+
+              {/* Narysuj własny obszar (Lasso) */}
+              <button
+                onClick={() => {
+                  triggerHaptic(10);
+                  setIsLassoDrawing(!isLassoDrawing);
+                }}
+                title="Narysuj własny obszar (Lasso)"
+                aria-label="Narysuj własny obszar na mapie"
+                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                  isLassoDrawing || lassoPolygon
+                    ? 'bg-amber-500 text-zinc-950 border-amber-300 font-black shadow-lg shadow-amber-500/30'
+                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                }`}
+              >
+                <span className="text-sm leading-none">✏️</span>
+                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${isLassoDrawing || lassoPolygon ? 'text-zinc-950' : 'text-zinc-400'}`}>Obszar</span>
+              </button>
+
+              {/* Strefa czasu dojazdu (Izochrona) */}
+              <button
+                onClick={() => {
+                  triggerHaptic(10);
+                  setShowIsochroneModal(!showIsochroneModal);
+                }}
+                title="Strefa czasu dojazdu (Izochrona)"
+                aria-label="Oblicz strefę czasu dojazdu"
+                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                  showIsochroneModal || isochronePolygon
+                    ? 'bg-blue-500 text-white border-blue-300 font-black shadow-lg shadow-blue-500/30'
+                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                }`}
+              >
+                <span className="text-sm leading-none">⏱️</span>
+                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showIsochroneModal || isochronePolygon ? 'text-white' : 'text-zinc-400'}`}>Dojazd</span>
+              </button>
+
+              {/* Powiadomienia przestrzenne (Geo-Alerty) */}
+              <button
+                onClick={() => {
+                  triggerHaptic(10);
+                  setShowGeoAlertModal(!showGeoAlertModal);
+                }}
+                title="Powiadomienia przestrzenne (Geo-Alerty)"
+                aria-label="Powiadomienia przestrzenne"
+                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                  showGeoAlertModal
+                    ? 'bg-purple-600 text-white border-purple-300 font-black shadow-lg shadow-purple-600/30'
+                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                }`}
+              >
+                <span className="text-sm leading-none">🔔</span>
+                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showGeoAlertModal ? 'text-white' : 'text-zinc-400'}`}>Alert</span>
+              </button>
+
+              {/* Oświetlenie Słońca Szczecina (Sunlight Engine) */}
+              <button
+                onClick={() => {
+                  triggerHaptic(10);
+                  const map = mapRef.current;
+                  if (!map) return;
+                  const currentHour = new Date().getHours();
+                  const isNight = currentHour < 6 || currentHour >= 21;
+                  const isGolden = currentHour >= 17 && currentHour < 21;
+                  const targetMode = isNight ? 'night_cyberpunk' : isGolden ? 'golden_hour' : 'day';
+                  try {
+                    map.setLight({
+                      anchor: 'viewport',
+                      color: isNight ? '#38bdf8' : isGolden ? '#fbbf24' : '#ffffff',
+                      intensity: isNight ? 0.45 : 0.65,
+                      position: isNight ? [1.1, 0, 45] : [1.5, 240, 50],
+                    });
+                  } catch {
+                    /* non-fatal */
+                  }
+                }}
+                title="Dynamiczne Oświetlenie Słońca Szczecina"
+                aria-label="Symuluj światło i cienie w Szczecinie"
+                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="text-sm leading-none">☀️</span>
+                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">Słońce</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Construction Sites, Transit & Pogoń Overlays */}
@@ -1926,26 +2054,21 @@ export default function MapView({
       {/* Live Construction Weather Widget */}
       <MapWeatherWidget ui={ui} isDark={isDark} />
 
-      {/* Map Style Selector */}
-      <MapStyleSelector
-        currentStyle={mapStyle}
-        onSelectStyle={handleSelectStyle}
-        ui={ui}
-        top={200}
-      />
-
-      {/* Address & City Search Bar */}
-      <MapGeocoderSearch
-        onSelectLocation={handleSelectGeocoderLocation}
-        ui={ui}
-        isDark={isDark}
-      />
+      {/* 🕐 Freshness Indicator (Pod Pogodą na Górze po Prawej) */}
+      <div className="absolute top-14 right-3 z-20 hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-950/85 backdrop-blur-xl border border-zinc-800 text-[11px] font-bold text-zinc-300 shadow-lg">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="text-zinc-400">Aktualizacja:</span>
+        <span className="text-emerald-400 font-semibold">przed chwilą</span>
+      </div>
 
       {/* Custom Lasso Polygon Drawing Tool */}
       <MapLassoDraw
         map={mapRef.current}
         onPolygonChange={setLassoPolygon}
         ui={ui}
+        isDrawingActive={isLassoDrawing}
+        onToggleDrawing={() => setIsLassoDrawing(!isLassoDrawing)}
+        hideTriggerButton={true}
       />
 
       {/* Travel Time Isochrone Overlay */}
@@ -1955,6 +2078,9 @@ export default function MapView({
         homeLng={homeLng}
         onIsochroneChange={setIsochronePolygon}
         ui={ui}
+        isOpen={showIsochroneModal}
+        onClose={() => setShowIsochroneModal(false)}
+        hideTriggerButton={true}
       />
 
       {/* Spatial District Analytics Overlay */}
@@ -1967,7 +2093,13 @@ export default function MapView({
       />
 
       {/* Geo-Alerts Spatial Notifications Overlay */}
-      <MapGeoAlert map={mapRef.current} ui={ui} />
+      <MapGeoAlert
+        map={mapRef.current}
+        ui={ui}
+        isOpen={showGeoAlertModal}
+        onClose={() => setShowGeoAlertModal(false)}
+        hideTriggerButton={true}
+      />
 
       {/* Mobile Snap Bottom Sheet (Hidden when a specific job modal is active) */}
       {!selectedId && (
@@ -2012,59 +2144,6 @@ export default function MapView({
         ui={ui}
       />
 
-      {/* ⚡ Smart Quick Filters Floating Chips Bar */}
-      <div
-        className="no-scrollbar max-w-[calc(100%-16px)] md:max-w-[calc(100%-52px)]"
-        style={{
-          position: 'absolute', top: '8px', left: '10px', right: '10px', zIndex: 20,
-          display: 'flex', gap: '4px', overflowX: 'auto', padding: '3px 4px',
-          background: isDark ? 'rgba(15, 23, 42, 0.75)' : 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(16px)',
-          borderRadius: '9999px',
-          border: `1px solid ${ui.border}`,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-        }}
-      >
-        {[
-          { id: 'all', label: 'Wszystkie', icon: '🌐' },
-          { id: 'high_pay', label: '> 10k PLN', icon: '💰' },
-          { id: 'remote', label: 'Zdalnie', icon: '🏠' },
-          { id: 'recent', label: 'Nowe (24h)', icon: '⚡' },
-          { id: 'budowa', label: 'Budowa', icon: '🏗️' },
-          { id: 'instalacje', label: 'Instalacje', icon: '⚡' },
-        ].map((chip) => {
-          const isActive = quickFilter === chip.id;
-          return (
-            <button
-              key={chip.id}
-              onClick={() => {
-                triggerHaptic(10);
-                setQuickFilter(chip.id as 'all' | 'high_pay' | 'remote' | 'recent' | 'budowa' | 'instalacje');
-              }}
-              style={{
-                background: isActive
-                  ? 'linear-gradient(135deg, #2563eb 0%, #059669 100%)'
-                  : isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.8)',
-                color: isActive ? '#ffffff' : ui.text,
-                border: `1px solid ${isActive ? 'rgba(37,99,235,0.8)' : ui.border}`,
-                borderRadius: '9999px',
-                padding: '4px 10px',
-                fontSize: '10px',
-                fontWeight: isActive ? 700 : 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                boxShadow: isActive ? '0 2px 10px rgba(37,99,235,0.4)' : 'none',
-                display: 'flex', alignItems: 'center', gap: '3px',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-              }}
-            >
-              <span style={{ fontSize: '10px' }}>{chip.icon}</span>
-              <span>{chip.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* 🎯 Active Spatial Filter Region Pill */}
       {(lassoPolygon || isochronePolygon) && (
         <div style={{
@@ -2083,10 +2162,7 @@ export default function MapView({
       )}
 
       {/* Category filter bar */}
-      <CategoryFilter active={activeCategories} onChange={onCategoryChange} ui={ui} top={44} />
-
-      {/* Statistics board */}
-      <MapStats ads={geocodedAds} total={totalCount ?? ads.length} visible={geocodedAds.length} ui={ui} isDark={isDark} />
+      <CategoryFilter active={activeCategories} onChange={onCategoryChange} ui={ui} top={12} />
 
       {/* Bottom announcement cards carousel */}
       {!showHeatmap && (

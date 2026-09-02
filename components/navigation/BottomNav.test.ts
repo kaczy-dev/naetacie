@@ -15,11 +15,11 @@ describe('BottomNav constants', () => {
 
 describe('BottomNav TabId type', () => {
   it('accepts valid tab identifiers', () => {
-    const validTabs: TabId[] = ['map', 'list', 'notifications', 'profile'];
+    const validTabs: TabId[] = ['map', 'list', 'favorites', 'settings'];
     expect(validTabs).toHaveLength(4);
     expect(validTabs).toContain('map');
     expect(validTabs).toContain('list');
-    expect(validTabs).toContain('notifications');
-    expect(validTabs).toContain('profile');
+    expect(validTabs).toContain('favorites');
+    expect(validTabs).toContain('settings');
   });
 });

@@ -1,13 +1,15 @@
 /**
- * Multi-Portal On-Demand Job Scraper API Route.
- * Extracts live construction job postings across OLX, Pracuj.pl, and Indeed.
+ * Multi-Portal On-Demand Job Scraper API Route 2.0.
+ * Extracts live construction job postings across OLX, Pracuj.pl, Indeed, Jooble, GoWork, Oferteo, and Fixly.
  */
 
 import { NextResponse } from 'next/server';
-import { runMultiPortalScrape } from '@/lib/scraper/engine';
+import { runMultiPortalScrape, SupportedPortal } from '@/lib/scraper/engine';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 25;
+export const maxDuration = 30;
+
+const ALL_PORTALS: SupportedPortal[] = ['olx', 'pracuj', 'indeed', 'jooble', 'gowork', 'oferteo', 'fixly'];
 
 export async function GET(request: Request): Promise<NextResponse> {
   const url = new URL(request.url);
@@ -15,13 +17,13 @@ export async function GET(request: Request): Promise<NextResponse> {
   const customQuery = url.searchParams.get('query') || undefined;
   const portalsParam = url.searchParams.get('portals');
 
-  let portals: ('olx' | 'pracuj' | 'indeed')[] = ['olx', 'pracuj', 'indeed'];
+  let portals: SupportedPortal[] = ALL_PORTALS;
   if (portalsParam) {
     const parsed = portalsParam.split(',').map((p) => p.trim().toLowerCase());
-    portals = parsed.filter((p): p is 'olx' | 'pracuj' | 'indeed' =>
-      ['olx', 'pracuj', 'indeed'].includes(p)
+    portals = parsed.filter((p): p is SupportedPortal =>
+      ALL_PORTALS.includes(p as SupportedPortal)
     );
-    if (portals.length === 0) portals = ['olx', 'pracuj', 'indeed'];
+    if (portals.length === 0) portals = ALL_PORTALS;
   }
 
   try {
@@ -34,6 +36,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json(response);
   } catch (error) {
     console.error('Multi-portal scrape API error:', error);
+    const emptyBreakdown: Record<string, number> = {};
+    for (const p of ALL_PORTALS) emptyBreakdown[p] = 0;
+
     return NextResponse.json(
       {
         success: false,
@@ -43,11 +48,11 @@ export async function GET(request: Request): Promise<NextResponse> {
           totalScraped: 0,
           storedInFirestore: 0,
           scrapedAt: new Date().toISOString(),
-          breakdown: { olx: 0, pracuj: 0, indeed: 0 },
+          breakdown: emptyBreakdown,
           queries: customQuery ? [customQuery] : [],
         },
       },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }

@@ -4,6 +4,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion, type PanInfo } from 'framer-motion';
 import { ChevronDown, Menu, X, Sparkles } from 'lucide-react';
 import BottomNav, { BOTTOM_NAV_HEIGHT, type TabId } from './BottomNav';
+import { OfflineStatusIndicator } from '@/components/offline/OfflineStatusIndicator';
 
 export interface ResponsiveLayoutProps {
   activeTab: TabId;
@@ -169,6 +170,9 @@ export default function ResponsiveLayout({
       <div className="responsive-layout__bottom-nav md:hidden">
         <BottomNav activeTab={activeTab} onTabChange={onTabChange} />
       </div>
+
+      {/* Offline Status & PWA Network Sync Notification */}
+      <OfflineStatusIndicator />
     </div>
   );
 }

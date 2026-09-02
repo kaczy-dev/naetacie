@@ -81,13 +81,29 @@ export default function LoginPage() {
   const handleGoogleSignIn = useCallback(async () => {
     setGoogleLoading(true);
     setError(null);
-    const result = await signInWithGoogle();
-    if (result.success) {
-      router.replace('/');
-    } else if (result.error.message) {
-      setError(result.error.message);
+    try {
+      const result = await signInWithGoogle();
+      if (result.success) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('naetacie_read_only_guest');
+        }
+        router.replace('/');
+      } else if (result.error?.message) {
+        // Provide user-friendly Polish translation if needed
+        const msg = result.error.message;
+        if (msg.includes('Service temporarily unavailable')) {
+          setError('Serwer logowania Google jest chwilowo niedostępny. Spróbuj ponownie za chwilę.');
+        } else if (msg.includes('Google sign-in failed')) {
+          setError('Logowanie za pomocą konta Google nie powiodło się. Spróbuj ponownie.');
+        } else {
+          setError(msg);
+        }
+      }
+    } catch {
+      setError('Wystąpił nieoczekiwany błąd podczas logowania przez Google.');
+    } finally {
+      setGoogleLoading(false);
     }
-    setGoogleLoading(false);
   }, [signInWithGoogle, router]);
 
   const handleSubmit = useCallback(

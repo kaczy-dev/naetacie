@@ -69,6 +69,12 @@ export async function signInWithGoogle(): Promise<AuthResult<GoogleSignInResult>
   }
 
   const provider = new GoogleAuthProvider();
+  if (typeof provider.setCustomParameters === 'function') {
+    provider.setCustomParameters({ prompt: 'select_account' });
+  }
+  if (auth && 'languageCode' in auth) {
+    auth.languageCode = 'pl';
+  }
   let credential: UserCredential;
 
   try {

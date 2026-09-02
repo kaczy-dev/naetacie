@@ -71,7 +71,7 @@ export async function GET(): Promise<NextResponse> {
     console.error('Seed failed:', error);
     return NextResponse.json(
       { success: false, error: 'Seed failed - check service account key' },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }

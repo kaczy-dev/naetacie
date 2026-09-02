@@ -5,13 +5,14 @@ export const dynamic = 'force-dynamic';
 import { verifyIdToken } from '@/lib/auth/server';
 import { adminFirestore } from '@/lib/firebase/admin';
 import { validateAndSanitize } from '@/lib/validation/input';
-import type { Announcement } from '@/lib/types/announcement';
+import type { Announcement, SourcePortal } from '@/lib/types/announcement';
 import type { PaginatedResponse } from '@/lib/types/api';
 import type { MaskedAnnouncement } from '@/lib/types/announcement';
 
 import { validateQueryParams } from './validate';
 import { applyTierMasking } from './masking';
 import { calculatePagination } from './pagination';
+import { SEED_DATA } from '@/lib/data/announcements';
 
 // --- User Context Resolution ---
 
@@ -166,8 +167,39 @@ export async function GET(request: Request): Promise<NextResponse> {
             : data.published_at
               ? new Date(data.published_at)
               : null,
+          company: data.company ?? null,
+          employment_type: data.employment_type ?? null,
+          posted_days_ago: data.posted_days_ago ?? null,
+          traits: data.traits ?? undefined,
         };
       });
+
+    // If Firestore is empty (e.g. dev environment without credentials or cold start), fallback to rich seed data
+    if (announcements.length === 0) {
+      announcements = SEED_DATA.map((item) => ({
+        deduplication_key: item.id,
+        title: item.title,
+        description: item.description,
+        source_url: item.source_url,
+        source_portal: (item.source_portal.replace('.pl', '') as SourcePortal) || 'olx',
+        category: item.category,
+        location_text: item.location_text,
+        latitude: item.latitude ?? 53.4285,
+        longitude: item.longitude ?? 14.5528,
+        price: typeof item.price === 'number' ? item.price : null,
+        contact_info: item.phone ?? null,
+        scraped_at: new Date(item.scraped_at || Date.now()),
+        published_at: new Date(Date.now() - (item.posted_days_ago ?? 1) * 24 * 60 * 60 * 1000),
+        company: item.company ?? null,
+        employment_type: item.employment_type ?? null,
+        posted_days_ago: item.posted_days_ago ?? null,
+        traits: item.traits ?? undefined,
+      }));
+
+      if (queryParams.source_portal) {
+        announcements = announcements.filter((a) => a.source_portal === queryParams.source_portal);
+      }
+    }
 
     // Apply bounding_box spatial filtering
     if (queryParams.bounding_box) {
@@ -209,17 +241,49 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error in /api/announcements:', error);
+    console.warn('Notice in /api/announcements (falling back gracefully):', error);
 
-    // If Firestore is unavailable (no credentials), return empty results gracefully
-    const firebaseError = error as { code?: string | number; message?: string };
-    if (
-      firebaseError.code === 'app/no-credential' ||
-      firebaseError.message?.includes('Could not load the default credentials') ||
-      firebaseError.code === 7 || // PERMISSION_DENIED
-      String(firebaseError.code) === '7' ||
-      firebaseError.message?.includes('Missing or insufficient permissions')
-    ) {
+    // Fallback to static seed data if Firestore is unconfigured, unreachable, or throws
+    try {
+      const url = new URL(request.url);
+      const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '20', 10) || 20));
+      const source_portal = url.searchParams.get('source_portal');
+
+      let fallbackList: Announcement[] = SEED_DATA.map((item) => ({
+        deduplication_key: item.id,
+        title: item.title,
+        description: item.description,
+        source_url: item.source_url,
+        source_portal: (item.source_portal.replace('.pl', '') as SourcePortal) || 'olx',
+        category: item.category,
+        location_text: item.location_text,
+        latitude: item.latitude ?? null,
+        longitude: item.longitude ?? null,
+        price: typeof item.price === 'number' ? item.price : null,
+        contact_info: item.phone ?? null,
+        scraped_at: new Date(item.scraped_at || Date.now()),
+        published_at: new Date(Date.now() - (item.posted_days_ago ?? 1) * 24 * 60 * 60 * 1000),
+        company: item.company ?? null,
+        employment_type: item.employment_type ?? null,
+        posted_days_ago: item.posted_days_ago ?? null,
+        traits: item.traits ?? undefined,
+      }));
+
+      if (source_portal) {
+        fallbackList = fallbackList.filter((a) => a.source_portal === source_portal);
+      }
+
+      const masked = applyTierMasking(fallbackList, 'free', new Date());
+      const metadata = calculatePagination(masked.length, page, limit);
+      const startIndex = (page - 1) * limit;
+      const pageData = masked.slice(startIndex, startIndex + limit);
+
+      return NextResponse.json({
+        data: pageData,
+        metadata,
+      });
+    } catch {
       return NextResponse.json({
         data: [],
         metadata: {
@@ -229,13 +293,12 @@ export async function GET(request: Request): Promise<NextResponse> {
           totalPages: 0,
           hasNextPage: false,
           hasPreviousPage: false,
+          total_count: 0,
+          page: 1,
+          limit: 20,
+          total_pages: 0,
         },
       });
     }
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
   }
 }

@@ -26,4 +26,6 @@ export interface DisplayAnnouncement {
   employment_type?: string | null;
   posted_days_ago?: number | null;
   traits?: ExtractedJobTraits;
+  available_portals?: string[];
+  is_cross_posted?: boolean;
 }

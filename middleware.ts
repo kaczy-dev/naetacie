@@ -39,9 +39,12 @@ const securityHeaders: Record<string, string> = {
     "child-src 'self' blob:",
     "frame-ancestors 'none'",
   ].join('; '),
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(self), payment=(self)',
+  'X-XSS-Protection': '1; mode=block',
 };
 
 /**
@@ -68,51 +71,66 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 }
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const isApiRoute = pathname.startsWith('/api/');
+  try {
+    const { pathname } = request.nextUrl;
 
-  // --- 1. Rate Limiting (applied before auth verification) ---
-  if (isApiRoute) {
-    const clientIp = getClientIp(request);
-    const isAuthEndpoint = pathname.startsWith('/api/auth');
-    const config = isAuthEndpoint ? AUTH_RATE_LIMIT : GENERAL_RATE_LIMIT;
-    const rateLimitKey = isAuthEndpoint ? `auth:${clientIp}` : clientIp;
-
-    const result = checkRateLimit(rateLimitKey, config);
-
-    if (!result.allowed) {
-      const rateLimitResponse = NextResponse.json(
-        { error: 'Rate limit exceeded' },
-        { status: 429 }
-      );
-      rateLimitResponse.headers.set(
-        'Retry-After',
-        String(result.retryAfterSeconds)
-      );
-      return applySecurityHeaders(rateLimitResponse);
+    // Fast-path bypass for static files & Next internals
+    if (
+      pathname.startsWith('/_next') ||
+      pathname.startsWith('/static') ||
+      pathname.includes('.') ||
+      pathname === '/favicon.ico'
+    ) {
+      return NextResponse.next();
     }
-  }
 
-  // --- 2. Body Size Enforcement (POST/PUT/PATCH on API routes) ---
-  if (isApiRoute) {
-    const method = request.method.toUpperCase();
-    if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-      const contentLength = request.headers.get('content-length');
-      if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
-        const payloadResponse = NextResponse.json(
-          { error: 'Payload too large' },
-          { status: 413 }
+    const isApiRoute = pathname.startsWith('/api/');
+
+    // --- 1. Rate Limiting (applied before auth verification) ---
+    if (isApiRoute) {
+      const clientIp = getClientIp(request);
+      const isAuthEndpoint = pathname.startsWith('/api/auth');
+      const config = isAuthEndpoint ? AUTH_RATE_LIMIT : GENERAL_RATE_LIMIT;
+      const rateLimitKey = isAuthEndpoint ? `auth:${clientIp}` : clientIp;
+
+      const result = checkRateLimit(rateLimitKey, config);
+
+      if (!result.allowed) {
+        const rateLimitResponse = NextResponse.json(
+          { error: 'Rate limit exceeded' },
+          { status: 429 }
         );
-        return applySecurityHeaders(payloadResponse);
+        rateLimitResponse.headers.set(
+          'Retry-After',
+          String(result.retryAfterSeconds)
+        );
+        return applySecurityHeaders(rateLimitResponse);
       }
     }
-  }
 
-  // --- 3. Apply Security Headers to all responses ---
-  const response = NextResponse.next();
-  return applySecurityHeaders(response);
+    // --- 2. Body Size Enforcement (POST/PUT/PATCH on API routes) ---
+    if (isApiRoute) {
+      const method = request.method.toUpperCase();
+      if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+        const contentLength = request.headers.get('content-length');
+        if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
+          const payloadResponse = NextResponse.json(
+            { error: 'Payload too large' },
+            { status: 413 }
+          );
+          return applySecurityHeaders(payloadResponse);
+        }
+      }
+    }
+
+    // --- 3. Apply Security Headers to all responses ---
+    const response = NextResponse.next();
+    return applySecurityHeaders(response);
+  } catch {
+    return NextResponse.next();
+  }
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|ico|woff|woff2)).*)'],
 };

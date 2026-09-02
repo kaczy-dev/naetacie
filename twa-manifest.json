@@ -1,0 +1,32 @@
+{
+  "packageId": "pl.naetacie.app",
+  "host": "naetacie.pl",
+  "name": "NaEtacie — Praca Szczecin",
+  "launcherName": "NaEtacie",
+  "themeColor": "#022c22",
+  "themeColorDark": "#022c22",
+  "navigationColor": "#022c22",
+  "navigationColorDark": "#022c22",
+  "backgroundColor": "#022c22",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://naetacie.pl/icons/icon-512.png",
+  "maskableIconUrl": "https://naetacie.pl/icons/icon-512.png",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "splashScreenFadeOutDuration": 300,
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "features": {
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  }
+}

@@ -9,6 +9,7 @@ import { OlxQrModal } from './OlxQrModal';
 export interface OlxLinkActionsProps {
   ad: {
     id?: string;
+    deduplication_key?: string | null;
     title?: string | null;
     source_url?: string | null;
     source_portal?: string | null;
@@ -33,6 +34,7 @@ export function OlxLinkActions({
 
   const resolved = resolveOlxLink({
     id: ad.id,
+    deduplication_key: ad.deduplication_key,
     title: ad.title,
     source_url: ad.source_url,
     source_portal: ad.source_portal,
@@ -74,12 +76,8 @@ export function OlxLinkActions({
   };
 
   const handleOpenClick = (e: React.MouseEvent) => {
-    e.preventDefault();
     e.stopPropagation();
     triggerHaptic(15);
-    if (typeof window !== 'undefined') {
-      window.open(externalUrl, '_blank', 'noopener,noreferrer');
-    }
   };
 
   const portalRaw = (ad.source_portal || 'olx').toLowerCase();
@@ -186,7 +184,7 @@ export function OlxLinkActions({
                 )}
 
                 <a
-                  href={`https://www.olx.pl/praca/szczecin/?search%5Bq%5D=${encodeURIComponent(ad.title || 'budowlana')}`}
+                  href={`https://www.olx.pl/d/szczecin/q-${encodeURIComponent(ad.title ? ad.title.slice(0, 30).trim().replace(/\s+/g, '-') : 'praca-budowlana')}/`}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setMenuOpen(false)}

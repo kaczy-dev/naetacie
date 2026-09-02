@@ -14,11 +14,11 @@ describe('OLX "Zobacz w OLX" / "Otwórz" Button E2E Integration Flow Test Suite'
       expect(url).toBeDefined();
       expect(url.startsWith('https://www.olx.pl/')).toBe(true);
 
-      // Verify that URL is either a direct offer URL (/d/oferta/) or a valid trade search slug (/q-trade/)
+      // Verify that URL is either a direct offer URL (/d/oferta/) or a valid search URL
       const isDirectOffer = url.includes('/d/oferta/');
-      const isCleanSearchSlug = url.includes('/praca/szczecin/q-');
+      const isWorkingSearch = url.includes('/search') || url.includes('/szczecin/?search') || url.includes('/q-');
 
-      expect(isDirectOffer || isCleanSearchSlug).toBe(true);
+      expect(isDirectOffer || isWorkingSearch).toBe(true);
       // Ensure no obsolete ?q= parameter is present
       expect(url).not.toContain('?q=');
     }

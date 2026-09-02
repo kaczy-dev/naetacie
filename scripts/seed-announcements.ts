@@ -37,7 +37,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.4285,
     longitude: 14.5528,
     price: 80,
-    source_url: 'https://www.olx.pl/d/oferta/kompleksowe-remonty-mieszkan-szczecin',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-remonty/',
   },
   {
     title: 'Usługi hydrauliczne - instalacje wod-kan, CO',
@@ -48,7 +48,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.4335,
     longitude: 14.5183,
     price: 120,
-    source_url: 'https://www.olx.pl/d/oferta/uslugi-hydrauliczne-szczecin',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-hydraulik/',
   },
   {
     title: 'Elektryk - instalacje elektryczne, pomiary',
@@ -59,7 +59,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.4468,
     longitude: 14.5622,
     price: 100,
-    source_url: 'https://www.olx.pl/d/oferta/elektryk-szczecin-instalacje',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-elektryk/',
   },
   {
     title: 'Wykończenia wnętrz - malowanie, gładzie, tapety',
@@ -81,7 +81,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.5513,
     longitude: 14.5692,
     price: null,
-    source_url: 'https://www.olx.pl/d/oferta/budowa-domow-police',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/police/q-budowa-domow/',
   },
   {
     title: 'Docieplenia budynków - styropian, wełna mineralna',
@@ -92,7 +92,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.4090,
     longitude: 14.6133,
     price: 150,
-    source_url: 'https://www.olx.pl/d/oferta/docieplenia-szczecin',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-docieplenia/',
   },
   {
     title: 'Układanie płytek - łazienki, kuchnie, tarasy',
@@ -114,7 +114,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.3362,
     longitude: 15.0500,
     price: 200,
-    source_url: 'https://www.olx.pl/d/oferta/dekarz-stargard',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/stargard/q-dekarz/',
   },
   {
     title: 'Montaż okien i drzwi - PCV, aluminium, drewno',
@@ -125,7 +125,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.4539,
     longitude: 14.5281,
     price: null,
-    source_url: 'https://www.olx.pl/d/oferta/okna-drzwi-szczecin',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-okna/',
   },
   {
     title: 'Tynki maszynowe, posadzki, wylewki',
@@ -147,7 +147,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.3932,
     longitude: 14.6488,
     price: 180,
-    source_url: 'https://www.olx.pl/d/oferta/ogrodzenia-szczecin',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-ogrodzenia/',
   },
   {
     title: 'Usługi brukarskie - kostka brukowa, chodniki',
@@ -158,7 +158,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.4370,
     longitude: 14.5210,
     price: 110,
-    source_url: 'https://www.olx.pl/d/oferta/brukarz-szczecin',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-brukarz/',
   },
   {
     title: 'Klimatyzacja - montaż, serwis, naprawa',
@@ -180,7 +180,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.2538,
     longitude: 14.4889,
     price: 50,
-    source_url: 'https://www.olx.pl/d/oferta/wyburzenia-gryfino',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/gryfino/q-wyburzenia/',
   },
   {
     title: 'Podłogi - panele, deska, winyl LVT',
@@ -191,7 +191,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.4450,
     longitude: 14.5600,
     price: 45,
-    source_url: 'https://www.olx.pl/d/oferta/podlogi-panele-szczecin',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-podlogi/',
   },
   {
     title: 'Firma budowlana - generalny wykonawca',
@@ -213,7 +213,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.5480,
     longitude: 14.5730,
     price: 300,
-    source_url: 'https://www.olx.pl/d/oferta/instalacje-gazowe-police',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/police/q-gazowe/',
   },
   {
     title: 'Malowanie mieszkań - szybko, czysto, tanio',
@@ -224,7 +224,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.4295,
     longitude: 14.5540,
     price: 12,
-    source_url: 'https://www.olx.pl/d/oferta/malowanie-mieszkan-szczecin',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-malowanie/',
   },
   {
     title: 'Prace ziemne - koparki, minikoparki, transport',
@@ -235,7 +235,7 @@ const ANNOUNCEMENTS = [
     latitude: 53.5600,
     longitude: 14.8350,
     price: 180,
-    source_url: 'https://www.olx.pl/d/oferta/koparki-goleniow',
+    source_url: 'https://www.olx.pl/uslugi-firmy/budowa-remont/goleniow/q-koparka/',
   },
   {
     title: 'Regipsy, sufity podwieszane, zabudowy',

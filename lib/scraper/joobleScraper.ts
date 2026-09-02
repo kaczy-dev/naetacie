@@ -1,12 +1,12 @@
 /**
  * Jooble Poland Job Posting Scraper Service.
  * Extracts construction job postings from Jooble.org for the Szczecin area.
- * Uses Jooble's public search page with JSON-LD extraction.
+ * Uses Jooble's public search page with JSON-LD extraction and DOM fallback.
  */
 
 import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, SalaryRange } from './types';
 import { getRandomUserAgent, hashId, cleanText, inferCategory, fetchWithStealthRetry } from './network';
-import { extractJsonLd } from '@/functions/src/scraper/extractor';
+import { extractJsonLdJobs } from './universalExtractor';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
 
 const JOOBLE_BASE = 'https://pl.jooble.org';
@@ -29,11 +29,11 @@ async function fetchJoobleKeyword(query: string): Promise<ScrapedAd[]> {
 
     const html = await res.text();
 
-    // 1. Try JSON-LD extraction (JobPosting schema)
-    const jsonLdItems = extractJsonLd(html);
+    // 1. Try Universal JSON-LD extraction (JobPosting schema)
+    const jsonLdJobs = extractJsonLdJobs(html);
     const ads: ScrapedAd[] = [];
 
-    for (const item of jsonLdItems) {
+    for (const item of jsonLdJobs) {
       if (item.title) {
         const title = item.title.trim();
         const sourceUrl = item.url
@@ -42,20 +42,6 @@ async function fetchJoobleKeyword(query: string): Promise<ScrapedAd[]> {
         const locationText = item.location ? `Szczecin, ${item.location}` : 'Szczecin';
         const description = cleanText(item.description || title).slice(0, 400);
         const phone = extractPhoneNumber(`${title} ${description}`);
-
-        let priceStr: string | null = null;
-        let salaryRange: SalaryRange | null = null;
-        if (item.price != null) {
-          priceStr = `${item.price} zł`;
-          salaryRange = {
-            min: item.price,
-            max: item.price,
-            currency: 'PLN',
-            type: 'monthly',
-            isGross: true,
-            raw: priceStr,
-          };
-        }
 
         ads.push({
           id: hashId(sourceUrl || title, 'jooble'),
@@ -67,13 +53,13 @@ async function fetchJoobleKeyword(query: string): Promise<ScrapedAd[]> {
           location_text: locationText,
           latitude: null,
           longitude: null,
-          price: priceStr,
-          salary_range: salaryRange,
+          price: item.price,
+          salary_range: item.salaryRange,
           phone,
           scraped_at: new Date().toISOString(),
           published_at: item.datePublished || null,
-          company: null,
-          employment_type: 'Umowa o pracę',
+          company: item.company,
+          employment_type: item.employmentType || 'Umowa o pracę',
         });
       }
     }

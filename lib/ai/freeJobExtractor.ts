@@ -98,16 +98,16 @@ export function extractJobTraits(title: string, description: string, price?: str
   let salaryParsed: ExtractedJobTraits['salary_parsed'] = null;
 
   const hourlyMatch =
-    fullText.match(/(\d{2,3})\s*(?:–|-|do)\s*(\d{2,3})\s*zł(?:\/|\s*na\s*)(?:h|godz|godzinę)/i) ||
-    fullText.match(/(\d{2,3})\s*zł(?:\/|\s*na\s*)(?:h|godz|godzinę)/i);
+    fullText.match(/(\d{2,3})\s*(?:–|-|do)\s*(\d{2,3})\s*zł\s*(?:\/|\s*na\s*)\s*(?:h|godz|godzinę)/i) ||
+    fullText.match(/(\d{2,3})\s*zł\s*(?:\/|\s*na\s*)\s*(?:h|godz|godzinę)/i);
 
   const dailyMatch =
-    fullText.match(/(\d{2,3,4})\s*(?:–|-|do)\s*(\d{2,3,4})\s*zł(?:\/|\s*na\s*)(?:dzień|dniówk[ae])/i) ||
-    fullText.match(/(\d{2,3,4})\s*zł(?:\/|\s*na\s*)(?:dzień|dniówk[ae])/i);
+    fullText.match(/(\d{2,4})\s*(?:–|-|do)\s*(\d{2,4})\s*zł\s*(?:\/|\s*na\s*|\s*za\s*)\s*(?:dzień|dniówk[ae])/i) ||
+    fullText.match(/(\d{2,4})\s*zł\s*(?:\/|\s*na\s*|\s*za\s*)\s*(?:dzień|dniówk[ae])/i);
 
   const pieceworkMatch =
-    fullText.match(/(\d{2,3})\s*(?:–|-|do)\s*(\d{2,3})\s*zł(?:\/|\s*za\s*)(?:m2|m²|metr)/i) ||
-    fullText.match(/(\d{2,3})\s*zł(?:\/|\s*za\s*)(?:m2|m²|metr)/i);
+    fullText.match(/(\d{2,3})\s*(?:–|-|do)\s*(\d{2,3})\s*zł\s*(?:\/|\s*za\s*)\s*(?:m2|m²|metr)/i) ||
+    fullText.match(/(\d{2,3})\s*zł\s*(?:\/|\s*za\s*)\s*(?:m2|m²|metr)/i);
 
   const monthlyMatch =
     fullText.match(/(\d{4,5})\s*(?:–|-|do)\s*(\d{4,5})\s*(?:zł|pln)/i) ||
@@ -150,7 +150,7 @@ export function extractJobTraits(title: string, description: string, price?: str
 export function extractPhoneNumber(text: string): string | null {
   if (!text) return null;
 
-  const phoneRx = /(?:\+?48\s*)?(?:\(?\d{2,3}\)?[\s-]*){3,4}\d{2,4}/g;
+  const phoneRx = /(?:\+?48[\s-]*)?(?:\d[\s-]*){9}/g;
   const matches = text.match(phoneRx);
 
   if (!matches) return null;

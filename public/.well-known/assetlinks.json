@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "pl.naetacie.app",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7D:0F:52:AB:E0:85:41:8F:22:BE:5D:87:25:36:B3:1B:18:83:EF:33:84:EB:83:23:E4:64:26:6B:0B"
+      ]
+    }
+  }
+]

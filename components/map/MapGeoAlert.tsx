@@ -21,11 +21,21 @@ export interface MapGeoAlertProps {
     text: string;
     shadow: string;
   };
+  isOpen?: boolean;
+  onClose?: () => void;
+  hideTriggerButton?: boolean;
 }
 
-export function MapGeoAlert({ map, ui }: MapGeoAlertProps) {
+export function MapGeoAlert({
+  map,
+  ui,
+  isOpen: controlledOpen,
+  onClose,
+  hideTriggerButton = false,
+}: MapGeoAlertProps) {
   const { show } = useToast();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isPanelOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const [alertName, setAlertName] = useState('');
   const [radiusKm, setRadiusKm] = useState(5);
   const [savedAlerts, setSavedAlerts] = useState<SavedGeoAlert[]>(() => {
@@ -63,7 +73,8 @@ export function MapGeoAlert({ map, ui }: MapGeoAlertProps) {
     show('success', `🔔 Powiadomienie aktywne dla strefy "${name}" (${radiusKm} km)`);
 
     setAlertName('');
-    setOpen(false);
+    if (onClose) onClose();
+    setInternalOpen(false);
   };
 
   const handleDeleteAlert = (id: string) => {
@@ -81,45 +92,47 @@ export function MapGeoAlert({ map, ui }: MapGeoAlertProps) {
     <div
       style={{
         position: 'absolute',
-        top: '472px',
-        right: '10px',
-        zIndex: 10,
-        display: 'flex',
+        top: '120px',
+        left: '12px',
+        zIndex: 22,
+        display: isPanelOpen || !hideTriggerButton ? 'flex' : 'none',
         flexDirection: 'column',
-        alignItems: 'flex-end',
+        alignItems: 'flex-start',
       }}
     >
-      <button
-        onClick={() => setOpen(!open)}
-        title="Powiadomienia przestrzenne (Geo-Alerty)"
-        style={{
-          width: '44px',
-          height: '44px',
-          background: ui.surface,
-          border: `1px solid ${ui.border}`,
-          borderRadius: '12px',
-          boxShadow: ui.shadow,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '20px',
-          color: ui.text,
-          transition: 'transform 0.15s ease',
-        }}
-      >
-        🔔
-      </button>
+      {!hideTriggerButton && (
+        <button
+          onClick={() => {
+            if (onClose && isPanelOpen) onClose();
+            else setInternalOpen(!internalOpen);
+          }}
+          title="Powiadomienia przestrzenne (Geo-Alerty)"
+          style={{
+            width: '44px',
+            height: '44px',
+            background: ui.surface,
+            border: `1px solid ${ui.border}`,
+            borderRadius: '12px',
+            boxShadow: ui.shadow,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px',
+            color: ui.text,
+            transition: 'transform 0.15s ease',
+          }}
+        >
+          🔔
+        </button>
+      )}
 
-      {open && (
+      {isPanelOpen && (
         <div
           style={{
-            position: 'absolute',
-            top: 0,
-            right: '46px',
             background: ui.surface,
             border: `1.5px solid ${ui.border}`,
-            borderRadius: '14px',
+            borderRadius: '16px',
             boxShadow: ui.shadow,
             padding: '12px 14px',
             display: 'flex',
@@ -130,7 +143,19 @@ export function MapGeoAlert({ map, ui }: MapGeoAlertProps) {
             color: ui.text,
           }}
         >
-          <div style={{ fontWeight: 700, fontSize: '13px' }}>🔔 Geo-Alerty Ofert</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, fontSize: '13px' }}>
+            <span>🔔 Geo-Alerty Ofert</span>
+            <button
+              onClick={() => {
+                if (onClose) onClose();
+                setInternalOpen(false);
+              }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#9ca3af' }}
+              title="Zamknij"
+            >
+              ✕
+            </button>
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '11px', fontWeight: 600 }}>Nazwa obszaru:</label>

@@ -12,14 +12,29 @@ export interface MapLassoDrawProps {
     text: string;
     shadow: string;
   };
+  isDrawingActive?: boolean;
+  onToggleDrawing?: () => void;
+  hideTriggerButton?: boolean;
 }
 
 /**
  * Custom Lasso / Polygon Drawing tool for MapLibre GL JS.
  * Allows users to draw custom boundaries on the map to filter announcements.
  */
-export function MapLassoDraw({ map, onPolygonChange, ui }: MapLassoDrawProps) {
-  const [isDrawing, setIsDrawing] = useState(false);
+export function MapLassoDraw({
+  map,
+  onPolygonChange,
+  ui,
+  isDrawingActive: controlledDrawing,
+  onToggleDrawing,
+  hideTriggerButton = false,
+}: MapLassoDrawProps) {
+  const [internalDrawing, setInternalDrawing] = useState(false);
+  const isDrawing = controlledDrawing !== undefined ? controlledDrawing : internalDrawing;
+  const setIsDrawing = (val: boolean) => {
+    setInternalDrawing(val);
+    if (onToggleDrawing && val !== isDrawing) onToggleDrawing();
+  };
   const [points, setPoints] = useState<Array<[number, number]>>([]);
   const pointsRef = useRef<Array<[number, number]>>([]);
 
@@ -140,16 +155,18 @@ export function MapLassoDraw({ map, onPolygonChange, ui }: MapLassoDrawProps) {
     <div
       style={{
         position: 'absolute',
-        top: '238px',
-        right: '10px',
-        zIndex: 10,
-        display: 'flex',
+        top: isDrawing ? '110px' : '238px',
+        left: isDrawing ? '50%' : undefined,
+        right: isDrawing ? undefined : '10px',
+        transform: isDrawing ? 'translateX(-50%)' : undefined,
+        zIndex: 22,
+        display: isDrawing || !hideTriggerButton ? 'flex' : 'none',
         flexDirection: 'column',
         gap: '6px',
-        alignItems: 'flex-end',
+        alignItems: 'center',
       }}
     >
-      {!isDrawing && points.length === 0 && (
+      {!hideTriggerButton && !isDrawing && points.length === 0 && (
         <button
           onClick={handleStartDrawing}
           title="Narysuj własny obszar na mapie"

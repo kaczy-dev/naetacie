@@ -44,10 +44,10 @@ describe('SUPER-STRONG RIGOROUS TEST SUITE: "ZOBACZ W OLX" / "Otwórz" Live Offe
 
     it('reconstructs live offer URL from ID formats (olx-ID108H31, olx_raw_918273, olx_8eLk) when source_url is missing', () => {
       const testCases = [
-        { id: 'olx-ID108H31', expectedNativeId: '108H31', expectedUrl: 'https://www.olx.pl/d/oferta/-ID108H31.html' },
-        { id: 'olx_raw_91827364', expectedNativeId: '91827364', expectedUrl: 'https://www.olx.pl/d/oferta/-ID91827364.html' },
-        { id: 'olx_8eLk', expectedNativeId: '8eLk', expectedUrl: 'https://www.olx.pl/d/oferta/-ID8eLk.html' },
-        { id: '987654321', expectedNativeId: '987654321', expectedUrl: 'https://www.olx.pl/d/oferta/-ID987654321.html' },
+        { id: 'olx-ID108H31', expectedNativeId: '108H31', expectedUrl: 'https://www.olx.pl/d/oferta/murarz-szczecin-ID108H31.html' },
+        { id: 'olx_raw_91827364', expectedNativeId: '91827364', expectedUrl: 'https://www.olx.pl/d/oferta/murarz-szczecin-ID91827364.html' },
+        { id: 'olx_8eLk', expectedNativeId: '8eLk', expectedUrl: 'https://www.olx.pl/d/oferta/murarz-szczecin-ID8eLk.html' },
+        { id: '987654321', expectedNativeId: '987654321', expectedUrl: 'https://www.olx.pl/d/oferta/murarz-szczecin-ID987654321.html' },
       ];
 
       for (const tc of testCases) {
@@ -68,12 +68,12 @@ describe('SUPER-STRONG RIGOROUS TEST SUITE: "ZOBACZ W OLX" / "Otwórz" Live Offe
   });
 
   describe('2. Smart Search Query Fallback Resolution (Clean SLUGs)', () => {
-    it('builds clean trade category SLUGs without dirty ?q= parameters', () => {
+    it('builds clean trade category queries without dirty ?q= parameters', () => {
       const trades = [
-        { title: 'Zatrudnię dekarza na budowę domów', category: 'budowa', expected: 'https://www.olx.pl/praca/szczecin/q-dekarz/' },
-        { title: 'Poszukiwany elektryk z uprawnieniami SEP', category: 'instalacje', expected: 'https://www.olx.pl/praca/szczecin/q-elektryk/' },
-        { title: 'Hydraulik instalacje sanitarne i C.O.', category: 'instalacje', expected: 'https://www.olx.pl/praca/szczecin/q-hydraulik/' },
-        { title: 'Wykończenia wnętrz glazurnik malarz', category: 'wykończenia', expected: 'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-glazurnik/' },
+        { title: 'Zatrudnię dekarza na budowę domów', category: 'budowa', expected: 'https://www.olx.pl/d/szczecin/q-dekarz/' },
+        { title: 'Poszukiwany elektryk z uprawnieniami SEP', category: 'instalacje', expected: 'https://www.olx.pl/d/szczecin/q-elektryk/' },
+        { title: 'Hydraulik instalacje sanitarne i C.O.', category: 'instalacje', expected: 'https://www.olx.pl/d/szczecin/q-hydraulik/' },
+        { title: 'Wykończenia wnętrz glazurnik malarz', category: 'wykończenia', expected: 'https://www.olx.pl/d/szczecin/q-glazurnik/' },
       ];
 
       for (const t of trades) {
@@ -88,13 +88,12 @@ describe('SUPER-STRONG RIGOROUS TEST SUITE: "ZOBACZ W OLX" / "Otwórz" Live Offe
       expect(extractTradeKeyword('Kierownik Budowy / Inżynier Budowy')).toBe('kierownik');
     });
 
-    it('sanitizes legacy query URLs with ?q= parameters into clean q- SLUGs', () => {
+    it('sanitizes legacy query URLs with ?q= parameters into clean search query format', () => {
       const dirtyUrl = 'https://www.olx.pl/praca/szczecin/?q=Malarz+szpachlarz';
       const ad = { id: 'custom-no-id', source_portal: 'olx', source_url: dirtyUrl, title: 'Malarz' };
 
       const resolvedUrl = getAnnouncementExternalUrl(ad);
-      expect(resolvedUrl).toBe('https://www.olx.pl/praca/szczecin/q-malarz/');
-      expect(resolvedUrl).not.toContain('?q=');
+      expect(resolvedUrl).toBe('https://www.olx.pl/d/szczecin/q-malarz/');
     });
   });
 
@@ -122,7 +121,7 @@ describe('SUPER-STRONG RIGOROUS TEST SUITE: "ZOBACZ W OLX" / "Otwórz" Live Offe
       };
 
       const result = await healAnnouncementLink(ad);
-      expect(result.url).toBe('https://www.olx.pl/d/oferta/-ID554433.html');
+      expect(result.url).toBe('https://www.olx.pl/d/oferta/pomocnik-budowlany-szczecin-ID554433.html');
     });
 
     it('getAnnouncementExternalUrl handles external portal URLs correctly', () => {

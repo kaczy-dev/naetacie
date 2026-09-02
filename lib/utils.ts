@@ -141,6 +141,9 @@ export function extractTradeKeyword(title?: string | null): string {
 
   if (tradeMatch && tradeMatch[1]) {
     let word = tradeMatch[1].toLowerCase();
+    if (word === 'ciesla' || word === 'ciesle') {
+      return 'ciesla';
+    }
     if (word.endsWith('a') && word.length > 4) {
       word = word.slice(0, -1);
     }
@@ -173,6 +176,7 @@ export function getAnnouncementExternalUrl(ad?: {
   source_portal?: string | null;
   title?: string | null;
   id?: string;
+  deduplication_key?: string | null;
   category?: string | null;
 } | null): string {
   if (!ad) return 'https://www.olx.pl/praca/szczecin/';
@@ -180,12 +184,13 @@ export function getAnnouncementExternalUrl(ad?: {
   const portal = (ad.source_portal || 'olx').toLowerCase();
 
   // 1. OLX Portal URL resolution
-  if (portal === 'olx' || (!ad.source_portal && (!ad.source_url || ad.source_url.includes('olx')))) {
+  if (portal === 'olx' || portal === 'olx.pl' || (!ad.source_portal && (!ad.source_url || ad.source_url.includes('olx')))) {
     const resolved = resolveOlxLink({
       source_url: ad.source_url,
       source_portal: ad.source_portal,
       title: ad.title,
       id: ad.id,
+      deduplication_key: ad.deduplication_key,
       category: ad.category,
     });
     return resolved.url;
@@ -207,26 +212,30 @@ export function getAnnouncementExternalUrl(ad?: {
 
   // 3. Smart Search Fallbacks per portal
   const queryText = extractTradeKeyword(ad.title);
-  if (portal === 'pracuj') {
+  if (portal.includes('pracuj')) {
     return `https://www.pracuj.pl/praca/${encodeURIComponent(queryText)};kw/szczecin;wp`;
   }
-  if (portal === 'oferteo') {
+  if (portal.includes('oferteo')) {
     return `https://www.oferteo.pl/zlecenia-budowlane/szczecin?q=${encodeURIComponent(queryText)}`;
   }
-  if (portal === 'fixly') {
+  if (portal.includes('fixly')) {
     return `https://fixly.pl/szukaj?q=${encodeURIComponent(queryText)}&location=Szczecin`;
   }
-  if (portal === 'indeed') {
+  if (portal.includes('indeed')) {
     return `https://pl.indeed.com/jobs?q=${encodeURIComponent(queryText)}&l=Szczecin`;
   }
-  if (portal === 'jooble') {
+  if (portal.includes('jooble')) {
     return `https://pl.jooble.org/SearchResult?ukw=${encodeURIComponent(queryText)}&rgns=Szczecin`;
   }
-  if (portal === 'gowork') {
+  if (portal.includes('gowork')) {
     return `https://www.gowork.pl/praca/szczecin;l/${encodeURIComponent(queryText)};kw`;
   }
 
-  return `https://www.olx.pl/praca/szczecin/q-${encodeURIComponent(queryText)}/`;
+  const cleanSlug = removePolishDiacritics(queryText).toLowerCase().replace(/[^\w\s]/g, ' ').trim().replace(/\s+/g, '-');
+  if (cleanSlug && cleanSlug !== 'budowlana') {
+    return `https://www.olx.pl/d/szczecin/q-${cleanSlug}/`;
+  }
+  return 'https://www.olx.pl/praca/budowa-remonty/szczecin/';
 }
 
 

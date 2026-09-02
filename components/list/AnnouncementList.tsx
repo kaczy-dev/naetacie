@@ -286,7 +286,8 @@ export default function AnnouncementList({ onItemClick }: AnnouncementListProps)
 
               <OlxLinkActions
                 ad={{
-                  id: announcement.deduplication_key,
+                  id: announcement.id || announcement.deduplication_key,
+                  deduplication_key: announcement.deduplication_key,
                   title: announcement.title,
                   source_url: announcement.source_url,
                   source_portal: announcement.source_portal,

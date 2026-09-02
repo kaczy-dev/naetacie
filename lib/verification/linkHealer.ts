@@ -47,6 +47,7 @@ export async function healAnnouncementLink(
     source_portal?: string | null;
     title?: string | null;
     id?: string;
+    deduplication_key?: string | null;
   },
   options?: HealOptions
 ): Promise<HealedLinkResult> {
@@ -96,6 +97,7 @@ export async function healAnnouncementLink(
     source_portal: portal,
     title: ad.title,
     id: ad.id,
+    deduplication_key: ad.deduplication_key,
   });
 
   return {

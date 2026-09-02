@@ -8,6 +8,9 @@
 
 import { useState, useCallback, useEffect } from 'react';
 
+import type { ExtractedJobTraits } from '@/lib/ai/freeJobExtractor';
+import type { SalaryRange } from '@/lib/scraper/types';
+
 export interface ScrapedAd {
   id: string;
   title: string;
@@ -24,6 +27,9 @@ export interface ScrapedAd {
   company?: string | null;
   employment_type?: string | null;
   posted_days_ago?: number | null;
+  phone?: string | null;
+  traits?: ExtractedJobTraits;
+  salary_range?: SalaryRange | null;
 }
 
 interface UseScraperResult {

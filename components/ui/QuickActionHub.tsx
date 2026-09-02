@@ -39,7 +39,7 @@ export function QuickActionHub({
   };
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 right-4 z-40 flex flex-col items-end gap-2.5 pointer-events-none">
+    <div className="hidden md:flex fixed md:bottom-6 left-1/2 -translate-x-1/2 z-40 flex-col items-center gap-2.5 pointer-events-none">
       <AnimatePresence>
         {/* Back to Top Floating QOL Button */}
         {showBackToTop && (
@@ -51,7 +51,7 @@ export function QuickActionHub({
             onClick={scrollToTop}
             whileHover={{ scale: 1.1, y: -2 }}
             whileTap={{ scale: 0.9 }}
-            className="pointer-events-auto p-3 rounded-full bg-card/90 backdrop-blur-md text-foreground border border-border/80 shadow-xl hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+            className="pointer-events-auto p-3 rounded-full bg-zinc-950/90 backdrop-blur-2xl text-zinc-100 border border-white/10 shadow-2xl hover:border-emerald-500/50 hover:text-emerald-400 transition-all duration-200"
             title="Wróć na górę"
             aria-label="Wróć na górę"
           >
@@ -59,22 +59,22 @@ export function QuickActionHub({
           </motion.button>
         )}
 
-        {/* View Toggle (Mapa ↔ Lista) Floating Hub */}
+        {/* View Toggle (Mapa ↔ Lista) Floating Hub - Design 3.0 */}
         <motion.div
           key="quick-view-toggle"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="pointer-events-auto flex items-center gap-1 p-1.5 rounded-2xl bg-card/85 backdrop-blur-xl border border-border/80 shadow-2xl"
+          className="pointer-events-auto flex items-center gap-1.5 p-1.5 rounded-2xl bg-zinc-950/90 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/80 ring-1 ring-white/5"
         >
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.92 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.94 }}
             onClick={() => onTabChange(activeTab === 'map' ? 'list' : 'map')}
             className={cn(
-              'flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm',
+              'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md',
               activeTab === 'map'
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25'
-                : 'bg-primary text-primary-foreground shadow-primary/25'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25 border border-blue-400/30'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-500/25 border border-emerald-400/30'
             )}
           >
             {activeTab === 'map' ? (
@@ -91,10 +91,10 @@ export function QuickActionHub({
           {/* Quick Command Palette Button */}
           {onOpenCommandPalette && (
             <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={onOpenCommandPalette}
-              className="p-2 rounded-xl bg-accent/70 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-100 border border-white/5 hover:border-white/15 transition-all"
               title="Paleta Komend (Ctrl+K)"
             >
               <Command className="w-3.5 h-3.5" />
@@ -104,11 +104,11 @@ export function QuickActionHub({
           {/* Refresh Button */}
           {onRefresh && (
             <motion.button
-              whileHover={{ scale: 1.1, rotate: 180 }}
+              whileHover={{ scale: 1.08, rotate: 180 }}
               transition={{ duration: 0.3 }}
-              whileTap={{ scale: 0.9 }}
+              whileTap={{ scale: 0.92 }}
               onClick={onRefresh}
-              className="p-2 rounded-xl bg-accent/70 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-100 border border-white/5 hover:border-white/15 transition-all"
               title="Odśwież oferty na żywo"
             >
               <RefreshCw className="w-3.5 h-3.5" />

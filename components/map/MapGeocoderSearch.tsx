@@ -94,11 +94,10 @@ export function MapGeocoderSearch({
       ref={containerRef}
       style={{
         position: 'absolute',
-        top: '76px',
-        left: '10px',
-        right: '10px',
+        top: '64px',
+        left: '12px',
         zIndex: 25,
-        maxWidth: '300px',
+        maxWidth: '280px',
       }}
     >
       <div

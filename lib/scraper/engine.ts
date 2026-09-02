@@ -1,11 +1,16 @@
 /**
- * Master Multi-Portal Scraper Engine for Job Announcements.
- * Supports OLX, Pracuj.pl, Indeed, Jooble, and GoWork.
- * Coordinates parallel extraction, cross-portal fuzzy deduplication, NLP trait extraction,
- * Szczecin market benchmark evaluation, district geocoding, and Firestore persistence.
+ * Master Multi-Portal Scraper Engine for Job Announcements 2.0.
+ *
+ * Enterprise Orchestrator:
+ * - Supports OLX, Pracuj.pl, Indeed, Jooble, GoWork, Oferteo, and Fixly.
+ * - Strategy/Plugin Registry Pattern with per-portal circuit breaker & timeout bounds.
+ * - Cross-portal entity resolution & fuzzy deduplication.
+ * - Zero-latency NLP trait extraction, equipment detection & anti-fraud analysis.
+ * - Szczecin micro-district geocoding & market benchmark evaluation.
+ * - Resilient Firestore persistence & run logging.
  */
 
-import { ScrapedAd, PortalScraperResult } from './types';
+import { ScrapedAd, PortalScraperResult, SourcePortal, PortalScraperOptions } from './types';
 import { scrapeOlx } from './olxScraper';
 import { scrapePracuj } from './pracujScraper';
 import { scrapeIndeed } from './indeedScraper';
@@ -19,14 +24,16 @@ import { evaluateMarketSalary, MarketEvaluation } from '@/lib/stats/marketBenchm
 import { adminFirestore } from '@/lib/firebase/admin';
 import { filterAndAddAvailableOffers } from '@/lib/verification/offerAvailability';
 import { generateRunId, logScraperRun, type PortalRunResult } from './runLogger';
+import { getPortalCircuitBreaker } from './circuitBreaker';
+import { jitteredPosition } from '@/lib/geo/jitter';
 
 export interface EnrichedScrapedAd extends MergedScrapedAd {
   traits: ExtractedJobTraits;
   market_evaluation: MarketEvaluation;
 }
 
-/** Coordinates lookup table for Szczecin districts and surrounding towns. */
-const LOCATION_COORDINATES: Record<string, { lat: number; lon: number }> = {
+/** Comprehensive coordinates lookup table for Szczecin districts, osiedla, and surrounding towns. */
+export const LOCATION_COORDINATES: Record<string, { lat: number; lon: number }> = {
   gumieńce: { lat: 53.3973, lon: 14.5064 },
   gumience: { lat: 53.3973, lon: 14.5064 },
   prawobrzeże: { lat: 53.409, lon: 14.6133 },
@@ -36,6 +43,8 @@ const LOCATION_COORDINATES: Record<string, { lat: number; lon: number }> = {
   pogodno: { lat: 53.437, lon: 14.521 },
   niebuszewo: { lat: 53.4468, lon: 14.5622 },
   centrum: { lat: 53.4285, lon: 14.5528 },
+  śródmieście: { lat: 53.4285, lon: 14.5528 },
+  srodmiescie: { lat: 53.4285, lon: 14.5528 },
   bezrzecze: { lat: 53.3683, lon: 14.5789 },
   załom: { lat: 53.3932, lon: 14.6488 },
   zalom: { lat: 53.3932, lon: 14.6488 },
@@ -71,6 +80,10 @@ const LOCATION_COORDINATES: Record<string, { lat: number; lon: number }> = {
   przecław: { lat: 53.372, lon: 14.468 },
   przeclaw: { lat: 53.372, lon: 14.468 },
   warzymice: { lat: 53.375, lon: 14.482 },
+  wołczkowo: { lat: 53.465, lon: 14.455 },
+  wolczkowo: { lat: 53.465, lon: 14.455 },
+  kołbaskowo: { lat: 53.332, lon: 14.442 },
+  kolbaskowo: { lat: 53.332, lon: 14.442 },
   police: { lat: 53.5513, lon: 14.5692 },
   goleniów: { lat: 53.564, lon: 14.8298 },
   goleniow: { lat: 53.564, lon: 14.8298 },
@@ -80,33 +93,47 @@ const LOCATION_COORDINATES: Record<string, { lat: number; lon: number }> = {
   szczecin: { lat: 53.4285, lon: 14.5528 },
 };
 
-function enrichCoordinates(ad: ScrapedAd): ScrapedAd {
-  if (ad.latitude != null && ad.longitude != null) return ad;
+export function enrichCoordinates(ad: ScrapedAd): ScrapedAd {
+  let baseLat = ad.latitude;
+  let baseLng = ad.longitude;
 
-  const locLower = ad.location_text.toLowerCase();
-  for (const [key, coords] of Object.entries(LOCATION_COORDINATES)) {
-    if (locLower.includes(key)) {
-      return {
-        ...ad,
-        latitude: coords.lat,
-        longitude: coords.lon,
-      };
+  if (baseLat == null || baseLng == null) {
+    const locLower = (ad.location_text || '').toLowerCase();
+    let matched = false;
+    for (const [key, coords] of Object.entries(LOCATION_COORDINATES)) {
+      if (locLower.includes(key)) {
+        baseLat = coords.lat;
+        baseLng = coords.lon;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      baseLat = 53.4285;
+      baseLng = 14.5528;
     }
   }
 
+  const finalLat = baseLat ?? 53.4285;
+  const finalLng = baseLng ?? 14.5528;
+
+  // Apply stable golden-angle jitter (~240m radius) so markers in same district or center spread across streets
+  const [jitteredLat, jitteredLng] = jitteredPosition(finalLat, finalLng, ad.id, 240);
+
   return {
     ...ad,
-    latitude: 53.4285,
-    longitude: 14.5528,
+    latitude: jitteredLat,
+    longitude: jitteredLng,
   };
 }
 
-export type SupportedPortal = 'olx' | 'pracuj' | 'indeed' | 'jooble' | 'gowork' | 'oferteo' | 'fixly';
+export type SupportedPortal = SourcePortal;
 
 export interface MultiPortalScrapeOptions {
   query?: string;
   limit?: number;
   portals?: SupportedPortal[];
+  timeoutPerPortalMs?: number;
 }
 
 export interface MultiPortalScrapeResponse {
@@ -122,10 +149,81 @@ export interface MultiPortalScrapeResponse {
   };
 }
 
+/** Registry of active scrapers by portal ID */
+const SCRAPER_REGISTRY: Record<
+  SupportedPortal,
+  (opts: PortalScraperOptions) => Promise<ScrapedAd[]>
+> = {
+  olx: scrapeOlx,
+  pracuj: scrapePracuj,
+  indeed: scrapeIndeed,
+  jooble: scrapeJooble,
+  gowork: scrapeGoWork,
+  oferteo: scrapeOferteo,
+  fixly: scrapeFixly,
+};
+
+/**
+ * Runs scraper for a single portal wrapped in Circuit Breaker and Timeout guard.
+ */
+async function executePortalScraper(
+  portal: SupportedPortal,
+  options: PortalScraperOptions,
+  timeoutMs = 8000
+): Promise<PortalScraperResult> {
+  const breaker = getPortalCircuitBreaker(portal);
+  const start = Date.now();
+
+  if (!breaker.isAvailable()) {
+    return {
+      portal,
+      ads: [],
+      error: `Circuit breaker OPEN for ${portal}`,
+      durationMs: 0,
+    };
+  }
+
+  try {
+    const scraperFn = SCRAPER_REGISTRY[portal];
+    if (!scraperFn) {
+      throw new Error(`No registered scraper for portal: ${portal}`);
+    }
+
+    const scrapePromise = scraperFn(options);
+    const timeoutPromise = new Promise<ScrapedAd[]>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout of ${timeoutMs}ms exceeded for ${portal}`)), timeoutMs)
+    );
+
+    const ads = await Promise.race([scrapePromise, timeoutPromise]);
+    breaker.recordSuccess();
+
+    return {
+      portal,
+      ads,
+      durationMs: Date.now() - start,
+    };
+  } catch (err) {
+    const errorMsg = (err as Error).message;
+    breaker.recordFailure(err as Error);
+
+    return {
+      portal,
+      ads: [],
+      error: errorMsg,
+      durationMs: Date.now() - start,
+    };
+  }
+}
+
 export async function runMultiPortalScrape(
   options: MultiPortalScrapeOptions = {}
 ): Promise<MultiPortalScrapeResponse> {
-  const { query, limit = 60, portals = ['olx', 'pracuj', 'indeed', 'jooble', 'gowork', 'oferteo', 'fixly'] } = options;
+  const {
+    query,
+    limit = 60,
+    portals = ['olx', 'pracuj', 'indeed', 'jooble', 'gowork', 'oferteo', 'fixly'],
+    timeoutPerPortalMs = 8000,
+  } = options;
 
   const runId = generateRunId();
   const runStartedAt = new Date();
@@ -133,102 +231,13 @@ export async function runMultiPortalScrape(
 
   const tasks: Promise<PortalScraperResult>[] = [];
 
-  if (portals.includes('olx')) {
-    tasks.push(
-      (async () => {
-        const start = Date.now();
-        try {
-          const ads = await scrapeOlx({ query, limit });
-          return { portal: 'olx' as const, ads, durationMs: Date.now() - start };
-        } catch (e) {
-          return { portal: 'olx' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
-        }
-      })()
-    );
-  }
-
-  if (portals.includes('pracuj')) {
-    tasks.push(
-      (async () => {
-        const start = Date.now();
-        try {
-          const ads = await scrapePracuj({ query, limit: Math.ceil(limit / 2) });
-          return { portal: 'pracuj' as const, ads, durationMs: Date.now() - start };
-        } catch (e) {
-          return { portal: 'pracuj' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
-        }
-      })()
-    );
-  }
-
-  if (portals.includes('indeed')) {
-    tasks.push(
-      (async () => {
-        const start = Date.now();
-        try {
-          const ads = await scrapeIndeed({ query, limit: Math.ceil(limit / 2) });
-          return { portal: 'indeed' as const, ads, durationMs: Date.now() - start };
-        } catch (e) {
-          return { portal: 'indeed' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
-        }
-      })()
-    );
-  }
-
-  if (portals.includes('jooble')) {
-    tasks.push(
-      (async () => {
-        const start = Date.now();
-        try {
-          const ads = await scrapeJooble({ query, limit: Math.ceil(limit / 3) });
-          return { portal: 'jooble' as const, ads, durationMs: Date.now() - start };
-        } catch (e) {
-          return { portal: 'jooble' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
-        }
-      })()
-    );
-  }
-
-  if (portals.includes('gowork')) {
-    tasks.push(
-      (async () => {
-        const start = Date.now();
-        try {
-          const ads = await scrapeGoWork({ query, limit: Math.ceil(limit / 3) });
-          return { portal: 'gowork' as const, ads, durationMs: Date.now() - start };
-        } catch (e) {
-          return { portal: 'gowork' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
-        }
-      })()
-    );
-  }
-
-  if (portals.includes('oferteo')) {
-    tasks.push(
-      (async () => {
-        const start = Date.now();
-        try {
-          const ads = await scrapeOferteo({ query, limit: Math.ceil(limit / 3) });
-          return { portal: 'oferteo' as const, ads, durationMs: Date.now() - start };
-        } catch (e) {
-          return { portal: 'oferteo' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
-        }
-      })()
-    );
-  }
-
-  if (portals.includes('fixly')) {
-    tasks.push(
-      (async () => {
-        const start = Date.now();
-        try {
-          const ads = await scrapeFixly({ query, limit: Math.ceil(limit / 3) });
-          return { portal: 'fixly' as const, ads, durationMs: Date.now() - start };
-        } catch (e) {
-          return { portal: 'fixly' as const, ads: [], error: (e as Error).message, durationMs: Date.now() - start };
-        }
-      })()
-    );
+  for (const portal of portals) {
+    if (SCRAPER_REGISTRY[portal]) {
+      const portalLimit = portal === 'olx' ? limit : Math.ceil(limit / 2);
+      tasks.push(
+        executePortalScraper(portal, { query, limit: portalLimit }, timeoutPerPortalMs)
+      );
+    }
   }
 
   const results = await Promise.allSettled(tasks);
@@ -258,7 +267,7 @@ export async function runMultiPortalScrape(
     }
   }
 
-  // 1. Cross-portal fuzzy deduplication
+  // 1. Cross-portal fuzzy deduplication & entity resolution
   const mergedAds = deduplicateCrossPortalAds(rawAds);
 
   // 2. Enrich with zero-cost AI NLP traits, equipment detection, anti-fraud analysis & Szczecin market benchmarks
@@ -306,11 +315,15 @@ export async function runMultiPortalScrape(
             latitude: ad.latitude,
             longitude: ad.longitude,
             price: ad.price,
+            salary_range: ad.salary_range || null,
+            phone: ad.phone || null,
+            photos: ad.photos || null,
             company: ad.company,
             employment_type: ad.employment_type,
             traits: ad.traits,
             market_evaluation: ad.market_evaluation,
             available_portals: ad.available_portals,
+            source_urls: ad.source_urls || { [ad.source_portal]: ad.source_url },
             is_cross_posted: ad.is_cross_posted,
             is_active: true,
             availability_status: 'active',

@@ -52,7 +52,7 @@ describe('Utility Helper Functions (Unit Tests)', () => {
         title: 'Firma Onesto zatrudni dekarza z doświadczeniem',
         source_portal: 'olx',
       });
-      expect(url).toBe('https://www.olx.pl/praca/szczecin/q-dekarz/');
+      expect(url).toBe('https://www.olx.pl/d/szczecin/q-dekarz/');
     });
   });
 

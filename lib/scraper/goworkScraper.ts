@@ -6,38 +6,10 @@
 
 import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, SalaryRange } from './types';
 import { getRandomUserAgent, hashId, cleanText, inferCategory, fetchWithStealthRetry } from './network';
-import { extractJsonLd } from '@/functions/src/scraper/extractor';
+import { extractJsonLdJobs } from './universalExtractor';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
 
 const GOWORK_BASE = 'https://www.gowork.pl';
-
-/**
- * Extracts salary info from GoWork price text.
- */
-function parseSalaryText(text: string | null): { price: string; salaryRange: SalaryRange } | null {
-  if (!text) return null;
-
-  const rangeMatch = text.match(/(\d[\d\s]*)\s*(?:–|-|do)\s*(\d[\d\s]*)\s*(?:zł|PLN)/i);
-  if (rangeMatch) {
-    const min = parseFloat(rangeMatch[1].replace(/\s/g, ''));
-    const max = parseFloat(rangeMatch[2].replace(/\s/g, ''));
-    if (Number.isFinite(min) && Number.isFinite(max)) {
-      const raw = rangeMatch[0].trim();
-      return {
-        price: raw,
-        salaryRange: {
-          min, max,
-          currency: 'PLN',
-          type: 'monthly',
-          isGross: true,
-          raw,
-        },
-      };
-    }
-  }
-
-  return null;
-}
 
 /**
  * Fetch and extract GoWork job postings for a specific trade keyword in Szczecin.
@@ -57,11 +29,11 @@ async function fetchGoWorkKeyword(query: string): Promise<ScrapedAd[]> {
 
     const html = await res.text();
 
-    // 1. Try JSON-LD extraction
-    const jsonLdItems = extractJsonLd(html);
+    // 1. Try Universal JSON-LD extraction
+    const jsonLdJobs = extractJsonLdJobs(html);
     const ads: ScrapedAd[] = [];
 
-    for (const item of jsonLdItems) {
+    for (const item of jsonLdJobs) {
       if (item.title) {
         const title = item.title.trim();
         const sourceUrl = item.url
@@ -70,20 +42,6 @@ async function fetchGoWorkKeyword(query: string): Promise<ScrapedAd[]> {
         const locationText = item.location ? `Szczecin, ${item.location}` : 'Szczecin';
         const description = cleanText(item.description || title).slice(0, 400);
         const phone = extractPhoneNumber(`${title} ${description}`);
-
-        let priceStr: string | null = null;
-        let salaryRange: SalaryRange | null = null;
-        if (item.price != null) {
-          priceStr = `${item.price} zł`;
-          salaryRange = {
-            min: item.price,
-            max: item.price,
-            currency: 'PLN',
-            type: 'monthly',
-            isGross: true,
-            raw: priceStr,
-          };
-        }
 
         ads.push({
           id: hashId(sourceUrl || title, 'gowork'),
@@ -95,13 +53,13 @@ async function fetchGoWorkKeyword(query: string): Promise<ScrapedAd[]> {
           location_text: locationText,
           latitude: null,
           longitude: null,
-          price: priceStr,
-          salary_range: salaryRange,
+          price: item.price,
+          salary_range: item.salaryRange,
           phone,
           scraped_at: new Date().toISOString(),
           published_at: item.datePublished || null,
-          company: null,
-          employment_type: 'Umowa o pracę',
+          company: item.company,
+          employment_type: item.employmentType || 'Umowa o pracę',
         });
       }
     }

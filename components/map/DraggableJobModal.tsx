@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { GripHorizontal, X, MapPin, Compass, Globe, Heart, Phone, ListFilter, QrCode, Share2, Search, Check } from 'lucide-react';
+import { GripHorizontal, X, MapPin, Compass, Globe, Heart, Phone, ListFilter, QrCode, Share2, Search, Check, MessageSquare } from 'lucide-react';
 import type { DisplayAnnouncement } from '@/lib/types/display';
 import { CATEGORIES, normalizeCategory } from '@/lib/data/categories';
 import { getAnnouncementExternalUrl, triggerHaptic } from '@/lib/utils';
 import { haversineKm } from '@/lib/matching/engine';
 import { OlxLinkActions } from '@/components/olx/OlxLinkActions';
 import { OlxQrModal } from '@/components/olx/OlxQrModal';
+import { PitchGeneratorModal } from '@/components/contact/PitchGeneratorModal';
 
 export interface DraggableJobModalProps {
   ad: DisplayAnnouncement | null;
@@ -40,6 +41,7 @@ export function DraggableJobModal({
 }: DraggableJobModalProps) {
   const dragControls = useDragControls();
   const [qrOpen, setQrOpen] = useState(false);
+  const [pitchOpen, setPitchOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const distKm = useMemo(() => {
@@ -203,16 +205,31 @@ export function DraggableJobModal({
               )}
             </div>
 
-            {/* Phone Button if available */}
+            {/* Phone & SMS Pitch Buttons if available */}
             {ad.phone && (
-              <motion.a
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                href={`tel:${ad.phone}`}
-                className="flex items-center justify-center gap-1.5 py-1 px-2.5 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10.5px] font-bold rounded-lg transition-all"
-              >
-                <Phone className="w-3 h-3" /> {ad.phone}
-              </motion.a>
+              <div className="grid grid-cols-2 gap-1.5">
+                <motion.a
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  href={`tel:${ad.phone}`}
+                  className="flex items-center justify-center gap-1.5 py-1 px-2.5 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10.5px] font-bold rounded-lg transition-all"
+                >
+                  <Phone className="w-3 h-3" /> {ad.phone}
+                </motion.a>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(12);
+                    setPitchOpen(true);
+                  }}
+                  className="flex items-center justify-center gap-1 py-1 px-2 bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-[10.5px] font-bold rounded-lg transition-all cursor-pointer"
+                  title="Otwórz generator zgłoszenia SMS / WhatsApp"
+                >
+                  <MessageSquare className="w-3 h-3" /> SMS / WhatsApp
+                </motion.button>
+              </div>
             )}
 
             {/* Prominent Quick Features Bar: Kod QR | Udostępnij | Szukaj */}
@@ -318,6 +335,16 @@ export function DraggableJobModal({
         onClose={() => setQrOpen(false)}
         url={externalUrl}
         title={ad.title}
+      />
+
+      <PitchGeneratorModal
+        isOpen={pitchOpen}
+        onClose={() => setPitchOpen(false)}
+        phone={ad.phone}
+        title={ad.title}
+        location={ad.location_text}
+        sourcePortal={ad.source_portal}
+        defaultPrice={typeof ad.price === 'number' ? ad.price : null}
       />
     </>
   );

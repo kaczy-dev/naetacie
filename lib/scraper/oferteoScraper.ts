@@ -4,8 +4,9 @@
  */
 
 import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES } from './types';
-import { getRandomUserAgent, hashId, cleanText, inferCategory, fetchWithStealthRetry } from './network';
+import { getRandomUserAgent, hashId, cleanText, inferCategory, fetchWithStealthRetry, cleanHtml } from './network';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
+import { extractJsonLdJobs } from './universalExtractor';
 
 const OFERTEO_BASE = 'https://www.oferteo.pl';
 
@@ -25,7 +26,35 @@ async function fetchOferteoKeyword(query: string): Promise<ScrapedAd[]> {
     const html = await res.text();
     const ads: ScrapedAd[] = [];
 
-    // Parse HTML order links
+    // 1. Try Universal JSON-LD
+    const jsonLdJobs = extractJsonLdJobs(html);
+    for (const item of jsonLdJobs) {
+      if (item.title) {
+        ads.push({
+          id: hashId(item.url || item.title, 'oferteo'),
+          title: `[Zlecenie] ${item.title}`,
+          description: item.description ? item.description.slice(0, 400) : `Zlecenie budowlane: ${item.title}`,
+          source_url: item.url || searchUrl,
+          source_portal: 'oferteo',
+          category: inferCategory(item.title, item.description),
+          location_text: item.location || 'Szczecin',
+          latitude: null,
+          longitude: null,
+          price: item.price,
+          salary_range: item.salaryRange,
+          phone: extractPhoneNumber(`${item.title} ${item.description}`),
+          scraped_at: new Date().toISOString(),
+          published_at: item.datePublished || new Date().toISOString(),
+          company: item.company || 'Zleceniodawca Oferteo',
+          employment_type: 'B2B / Zlecenie',
+          contract_type: 'B2B / Podwykonawstwo',
+        });
+      }
+    }
+
+    if (ads.length > 0) return ads;
+
+    // 2. Parse HTML order links
     const linkRegex = /href=["'](\/zlecenia-[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
     let match: RegExpExecArray | null;
     const seenUrls = new Set<string>();
@@ -75,7 +104,7 @@ export async function scrapeOferteo(options: PortalScraperOptions = {}): Promise
     return results.slice(0, limit);
   }
 
-  const tradesToSearch = SEARCH_TRADES.slice(0, 5);
+  const tradesToSearch = SEARCH_TRADES.slice(0, 6);
   const tasks = tradesToSearch.map((t) => fetchOferteoKeyword(t));
 
   const results = await Promise.allSettled(tasks);

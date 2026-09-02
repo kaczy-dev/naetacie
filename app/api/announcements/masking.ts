@@ -37,6 +37,10 @@ export function applyTierMasking(
       published_at: a.published_at,
       source_url: a.source_url,
       contact_info: a.contact_info,
+      company: a.company ?? null,
+      employment_type: a.employment_type ?? null,
+      posted_days_ago: a.posted_days_ago ?? null,
+      traits: a.traits,
     }));
   }
 
@@ -57,6 +61,10 @@ export function applyTierMasking(
       price: a.price,
       scraped_at: a.scraped_at,
       published_at: a.published_at,
+      company: a.company ?? null,
+      employment_type: a.employment_type ?? null,
+      posted_days_ago: a.posted_days_ago ?? null,
+      traits: a.traits,
     }));
 }
 

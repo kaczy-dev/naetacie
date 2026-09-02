@@ -84,15 +84,15 @@ describe('OLX Link Resolver Suite', () => {
   });
 
   describe('buildOlxSearchFallback', () => {
-    it('builds job category search fallback for job titles', () => {
+    it('builds search fallback for job titles with query parameter', () => {
       expect(buildOlxSearchFallback('Zatrudnię dekarza w Szczecinie', 'budowa')).toBe(
-        'https://www.olx.pl/praca/szczecin/q-dekarz/'
+        'https://www.olx.pl/d/szczecin/q-dekarz/'
       );
     });
 
-    it('builds services category search fallback for renovation/wykończenie category', () => {
+    it('builds search fallback for renovation/wykończenie category', () => {
       expect(buildOlxSearchFallback('Glazurnik remont łazienek', 'wykończenia')).toBe(
-        'https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/q-glazurnik/'
+        'https://www.olx.pl/d/szczecin/q-glazurnik/'
       );
     });
   });
@@ -124,9 +124,34 @@ describe('OLX Link Resolver Suite', () => {
         id: 'olx-ID108H31',
         title: 'Dekarz',
       });
-      expect(res.url).toBe('https://www.olx.pl/d/oferta/-ID108H31.html');
+      expect(res.url).toBe('https://www.olx.pl/d/oferta/dekarz-ID108H31.html');
       expect(res.isDirectOffer).toBe(true);
       expect(res.type).toBe('direct_id_reconstructed');
+      expect(res.nativeId).toBe('108H31');
+    });
+
+    it('extracts native ID from deduplication_key when id is a generic UUID', () => {
+      const res = resolveOlxLink({
+        source_portal: 'olx',
+        source_url: null,
+        id: 'ann_uuid_12345',
+        deduplication_key: 'olx-91827364',
+        title: 'Elektryk',
+      });
+      expect(res.url).toBe('https://www.olx.pl/d/oferta/elektryk-ID91827364.html');
+      expect(res.isDirectOffer).toBe(true);
+      expect(res.nativeId).toBe('91827364');
+    });
+
+    it('extracts native ID from query parameters in redirect URLs', () => {
+      const res = resolveOlxLink({
+        source_portal: 'olx',
+        source_url: '/api/announcements/redirect?id=olx-ID108H31&title=Dekarz',
+        id: 'ann_uuid_555',
+        title: 'Dekarz',
+      });
+      expect(res.url).toBe('https://www.olx.pl/d/oferta/dekarz-ID108H31.html');
+      expect(res.isDirectOffer).toBe(true);
       expect(res.nativeId).toBe('108H31');
     });
 
@@ -137,7 +162,7 @@ describe('OLX Link Resolver Suite', () => {
         id: 'custom_hash',
         title: 'Poszukujemy kierownika budowy w Szczecinie',
       });
-      expect(res.url).toBe('https://www.olx.pl/praca/szczecin/q-kierownik/');
+      expect(res.url).toBe('https://www.olx.pl/d/szczecin/q-kierownik/');
       expect(res.isDirectOffer).toBe(false);
       expect(res.type).toBe('category_search_fallback');
     });
