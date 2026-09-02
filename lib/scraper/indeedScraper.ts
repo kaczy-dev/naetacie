@@ -8,7 +8,7 @@ import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, SalaryRange } from './t
 import { ensureAbsoluteUrl } from '@/lib/utils';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
 import { extractJsonLdJobs } from './universalExtractor';
-import { getRandomUserAgent, hashId, cleanText, inferCategory, fetchWithStealthRetry } from './network';
+import { hashId, cleanText, inferCategory, fetchWithStealthRetry } from './network';
 
 const INDEED_BASE = 'https://pl.indeed.com';
 

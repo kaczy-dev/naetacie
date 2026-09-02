@@ -144,29 +144,12 @@ export function extractJobTraits(title: string, description: string, price?: str
   };
 }
 
+import { unmaskPhoneNumber } from '@/lib/scraper/phoneUnmasker';
+
 /**
  * Extracts normalized Polish phone numbers from job text (e.g. +48 501 234 567 -> 501-234-567).
+ * Uses deep verbal unmasker for disguised and verbal contact numbers.
  */
 export function extractPhoneNumber(text: string): string | null {
-  if (!text) return null;
-
-  const phoneRx = /(?:\+?48[\s-]*)?(?:\d[\s-]*){9}/g;
-  const matches = text.match(phoneRx);
-
-  if (!matches) return null;
-
-  for (const m of matches) {
-    const digits = m.replace(/\D/g, '');
-    let cleanDigits = digits;
-
-    if (digits.startsWith('48') && digits.length === 11) {
-      cleanDigits = digits.slice(2);
-    }
-
-    if (cleanDigits.length === 9 && /^[456789]/.test(cleanDigits)) {
-      return `${cleanDigits.slice(0, 3)}-${cleanDigits.slice(3, 6)}-${cleanDigits.slice(6)}`;
-    }
-  }
-
-  return null;
+  return unmaskPhoneNumber(text);
 }

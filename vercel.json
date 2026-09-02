@@ -1,6 +1,27 @@
 {
   "framework": "nextjs",
   "regions": ["fra1"],
+  "crons": [
+    {
+      "path": "/api/cron/scrape",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/sweep",
+      "schedule": "0 */4 * * *"
+    }
+  ],
+  "functions": {
+    "app/api/cron/scrape/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/sweep/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/scrape/route.ts": {
+      "maxDuration": 60
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -8,6 +29,13 @@
         { "key": "X-DNS-Prefetch-Control", "value": "on" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(self)" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" },
+        { "key": "Content-Type", "value": "application/manifest+json" }
       ]
     }
   ]

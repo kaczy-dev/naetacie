@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { runMultiPortalScrape, SupportedPortal } from '@/lib/scraper/engine';
+import { getAdaptiveScheduleStatus } from '@/lib/scraper/adaptiveScheduler';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60s maximum duration for background cron execution
@@ -18,6 +19,7 @@ const CRON_DEFAULT_PORTALS: SupportedPortal[] = [
   'gowork',
   'oferteo',
   'fixly',
+  'bip_szczecin',
 ];
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -35,8 +37,10 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   try {
     const startTime = Date.now();
+    const scheduleStatus = getAdaptiveScheduleStatus();
+
     const result = await runMultiPortalScrape({
-      limit: 100,
+      limit: scheduleStatus.recommendedBatchLimit,
       portals: CRON_DEFAULT_PORTALS,
     });
 
@@ -46,6 +50,12 @@ export async function GET(request: Request): Promise<NextResponse> {
       success: true,
       message: 'Background cron job multi-portal scraping completed successfully',
       executionTimeMs,
+      adaptiveSchedule: {
+        phase: scheduleStatus.phase,
+        phaseLabel: scheduleStatus.phaseLabelPl,
+        isPeakHour: scheduleStatus.isPeakHour,
+        batchLimitUsed: scheduleStatus.recommendedBatchLimit,
+      },
       metadata: result.metadata,
       storedCount: result.data.length,
     });

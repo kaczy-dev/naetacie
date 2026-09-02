@@ -64,7 +64,7 @@ export function exportApplicationsToCSV(ads: Array<Record<string, any>>, getStat
   document.body.removeChild(link);
 }
 
-import { resolveOlxLink, extractOlxNativeId, normalizeOlxUrl } from '@/lib/olx/olxLinkResolver';
+import { resolveOlxLink } from '@/lib/olx/olxLinkResolver';
 
 export function ensureAbsoluteUrl(url: string | null | undefined, portalHint?: string | null): string | null {
   if (!url || typeof url !== 'string') return null;

@@ -15,7 +15,7 @@
  * A10: Server-Side Request Forgery - SSRF (Private IP / Metadata Gateway Shield)
  */
 
-import { createHash, createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 // =========================================================================
 // A01: BROKEN ACCESS CONTROL & IDOR DEFENSE

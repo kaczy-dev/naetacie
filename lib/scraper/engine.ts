@@ -18,9 +18,14 @@ import { scrapeJooble } from './joobleScraper';
 import { scrapeGoWork } from './goworkScraper';
 import { scrapeOferteoWithFirecrawl } from './firecrawl/firecrawlScraper';
 import { scrapeFixlyWithFirecrawl } from './firecrawl/firecrawlScraper';
+import { scrapeBipSzczecin } from './portals/bipSzczecinScraper';
 import { deduplicateCrossPortalAds, MergedScrapedAd } from '@/lib/deduplication/crossPortalDeduplicator';
 import { extractJobTraits, ExtractedJobTraits } from '@/lib/ai/freeJobExtractor';
 import { evaluateMarketSalary, MarketEvaluation } from '@/lib/stats/marketBenchmarks';
+import { classifyEmployer } from '@/lib/ai/employerClassifier';
+import { parseConstructionRate } from '@/lib/calculator/constructionRatesParser';
+import { cleanCanonicalUrl } from './canonicalUrlCleaner';
+import { resolveSzczecinMicroDistrict } from '@/lib/geo/szczecinMicroDistricts';
 import { adminFirestore } from '@/lib/firebase/admin';
 import { filterAndAddAvailableOffers } from '@/lib/verification/offerAvailability';
 import { generateRunId, logScraperRun, type PortalRunResult } from './runLogger';
@@ -161,6 +166,8 @@ const SCRAPER_REGISTRY: Record<
   gowork: scrapeGoWork,
   oferteo: scrapeOferteoWithFirecrawl,
   fixly: scrapeFixlyWithFirecrawl,
+  bip_szczecin: scrapeBipSzczecin,
+  facebook_group: scrapeBipSzczecin,
 };
 
 /**
@@ -273,10 +280,36 @@ export async function runMultiPortalScrape(
   // 2. Enrich with zero-cost AI NLP traits, equipment detection, anti-fraud analysis & Szczecin market benchmarks
   const enrichedAds: EnrichedScrapedAd[] = mergedAds
     .map((ad) => {
+      const cleanUrl = cleanCanonicalUrl(ad.source_url);
       const traits = extractJobTraits(ad.title, ad.description, ad.price, ad.phone);
       const market_evaluation = evaluateMarketSalary(ad.title, ad.price);
+      const employerClass = classifyEmployer(ad.title, ad.description, ad.company);
+      const rateParsed = parseConstructionRate(ad.price || ad.description);
+
+      // Micro-district pinpointing for Szczecin
+      const microDistrict = resolveSzczecinMicroDistrict(`${ad.location_text} ${ad.district || ''} ${ad.title} ${ad.description}`);
+      let lat = ad.latitude;
+      let lng = ad.longitude;
+      let district = ad.district;
+
+      if (microDistrict) {
+        district = district || microDistrict.name;
+        // If coords are default center of Szczecin, replace with precise microdistrict coordinates
+        if (lat === 53.4285 && lng === 14.5528) {
+          lat = microDistrict.lat;
+          lng = microDistrict.lng;
+        }
+      }
+
       return {
         ...ad,
+        source_url: cleanUrl || ad.source_url,
+        district,
+        latitude: lat,
+        longitude: lng,
+        employer_type: ad.employer_type || employerClass.type,
+        salary_range: ad.salary_range || rateParsed?.salaryRange || null,
+        price: rateParsed ? rateParsed.priceText : ad.price,
         traits,
         market_evaluation,
       };
@@ -319,6 +352,7 @@ export async function runMultiPortalScrape(
             phone: ad.phone || null,
             photos: ad.photos || null,
             company: ad.company,
+            employer_type: ad.employer_type || null,
             employment_type: ad.employment_type,
             traits: ad.traits,
             market_evaluation: ad.market_evaluation,

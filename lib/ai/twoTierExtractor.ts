@@ -7,7 +7,48 @@
 
 import { extractJobTraits, extractPhoneNumber, ExtractedJobTraits } from './freeJobExtractor';
 import { extractRequirements, ExtractedRequirement } from './extractor';
-import { parseCleanPrice } from '@/functions/src/scraper/extractor';
+
+/**
+ * Parses numeric PLN prices safely from dirty text strings (e.g. "1 500,00 zł", "1500 PLN", "do negocjacji").
+ */
+export function parseCleanPrice(priceText: string | null | undefined): number | null {
+  if (!priceText) return null;
+
+  const lower = priceText.toLowerCase().trim();
+  const nonNumericKeywords = [
+    'do negocjacji',
+    'zamienię',
+    'za darmo',
+    'bezpłatne',
+    'darmowe',
+    'zapytaj o cenę',
+    'cena do uzgodnienia',
+  ];
+  if (nonNumericKeywords.some((keyword) => lower.includes(keyword))) {
+    return null;
+  }
+
+  // Handle range formats like "35 - 45 zł", "6000 - 8000 zł", "35-45 zł/h"
+  const rangeMatch = lower.match(/(\d[\d\s,.]*)\s*(?:-|–|do)\s*(\d[\d\s,.]*)/);
+  if (rangeMatch && rangeMatch[1]) {
+    const cleanFrom = rangeMatch[1].replace(/\s+/g, '').replace(/,/g, '.');
+    const valFrom = parseFloat(cleanFrom);
+    if (Number.isFinite(valFrom) && valFrom > 0) return valFrom;
+  }
+
+  const cleaned = priceText
+    .replace(/\s+/g, '')
+    .replace(/zł/gi, '')
+    .replace(/PLN/gi, '')
+    .replace(/eur/gi, '')
+    .replace(/,/g, '.');
+
+  const match = cleaned.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+
+  const val = parseFloat(match[1]);
+  return Number.isFinite(val) && val > 0 ? val : null;
+}
 
 export interface EnrichedJobData {
   title: string;
