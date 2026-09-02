@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans, Inter } from 'next/font/google';
 import { Providers } from './providers';
-import { VercelToolbar } from '@vercel/toolbar/next';
 import './globals.css';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -40,10 +39,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const shouldInjectToolbar =
-    process.env.NODE_ENV === 'development' ||
-    process.env.VERCEL_ENV === 'preview';
-
   return (
     <html lang="pl" className={`${plusJakartaSans.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
@@ -51,7 +46,6 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased font-body">
         <Providers>{children}</Providers>
-        {shouldInjectToolbar && <VercelToolbar />}
       </body>
     </html>
   );
