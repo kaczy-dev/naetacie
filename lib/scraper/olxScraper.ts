@@ -14,6 +14,7 @@ import { ensureAbsoluteUrl, removePolishDiacritics } from '@/lib/utils';
 import { extractOlxNativeId, getOlxCanonicalUrl } from '@/lib/olx/olxLinkResolver';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
 import { getRandomUserAgent, hashId, cleanHtml, inferCategory, stealthDispatcher, getStealthHeaders } from './network';
+import { resolveSzczecinMicroDistrict } from '@/lib/geo/szczecinMicroDistricts';
 
 const OLX_API = 'https://www.olx.pl/api/v1/offers/';
 const REGION_ZACHODNIOPOMORSKIE = 11;
@@ -126,8 +127,8 @@ export async function fetchOlxPhone(offerId: number | string, sourceUrl: string)
 }
 
 export function parseOlxOffer(offer: OlxOffer): ScrapedAd | null {
-  const title = offer.title?.trim();
-  if (!title) return null;
+  const rawTitle = (offer.title || '').trim();
+  if (!rawTitle || rawTitle.startsWith('.css') || rawTitle.includes('{') || rawTitle.length < 4) return null;
 
   if (offer.status && offer.status !== 'active') return null;
 
@@ -146,17 +147,33 @@ export function parseOlxOffer(offer: OlxOffer): ScrapedAd | null {
   const nativeId = offer.id ? String(offer.id).replace(/^ID/i, '') : extractOlxNativeId(sourceUrl);
 
   if (!sourceUrl && nativeId) {
-    sourceUrl = getOlxCanonicalUrl(nativeId, title);
+    sourceUrl = getOlxCanonicalUrl(nativeId, rawTitle);
   }
 
   if (!sourceUrl) {
-    const cleanTitle = removePolishDiacritics(title).replace(/[^\w\s]/gi, ' ').trim();
+    const cleanTitle = removePolishDiacritics(rawTitle).replace(/[^\w\s]/gi, ' ').trim();
     sourceUrl = `https://www.olx.pl/praca/szczecin/q-${encodeURIComponent(cleanTitle)}/`;
   }
 
-  // Location handling & District extraction
-  const city = offer.location?.city?.name || 'Szczecin';
-  const district = offer.location?.district?.name || null;
+  // Location filtering: reject offers outside the Szczecin metropolitan region
+  const rawCity = (offer.location?.city?.name || '').trim();
+  const rawDistrict = (offer.location?.district?.name || '').trim();
+  const lowerCity = rawCity.toLowerCase();
+  const lowerDist = rawDistrict.toLowerCase();
+
+  const allowedMetro = [
+    'szczecin', 'police', 'mierzyn', 'przecław', 'przeclaw', 'bezrzecze',
+    'dobra', 'kołbaskowo', 'kolbaskowo', 'warzymice', 'wołczkowo', 'wolczkowo',
+    'gryfino', 'stargard', 'goleniów', 'goleniow', 'kobylanka'
+  ];
+
+  if (lowerCity && !allowedMetro.some(m => lowerCity.includes(m) || lowerDist.includes(m))) {
+    // Exclude foreign or distant towns (Koszalin, Kołobrzeg, Warszawa, Niemcy, Holandia)
+    return null;
+  }
+
+  const city = rawCity || 'Szczecin';
+  const district = rawDistrict || null;
   const locationText = district ? `${city}, ${district}` : city;
 
   let salary: string | null = null;
@@ -182,11 +199,15 @@ export function parseOlxOffer(offer: OlxOffer): ScrapedAd | null {
     }
   }
 
-  const description = cleanHtml(offer.description || '').slice(0, 500);
-  if (!isConstruction(title, description)) return null;
+  const description = cleanHtml(offer.description || '')
+    .replace(/\.css-[a-zA-Z0-9_-]+[^{]*\{[^}]*\}/gi, ' ')
+    .trim()
+    .slice(0, 500);
+
+  if (!isConstruction(rawTitle, description)) return null;
 
   const company = offer.business ? offer.user?.company_name || offer.user?.name || null : null;
-  const phone = extractPhoneNumber(`${title} ${description}`);
+  const phone = extractPhoneNumber(`${rawTitle} ${description}`);
 
   // Extract photos gallery if present
   const photos: string[] = [];
@@ -198,19 +219,34 @@ export function parseOlxOffer(offer: OlxOffer): ScrapedAd | null {
     }
   }
 
-  const adId = nativeId ? `olx-${nativeId}` : hashId(sourceUrl || String(title), 'olx');
+  // Geocoding & coordinate validation
+  let lat = offer.map?.lat ?? null;
+  let lon = offer.map?.lon ?? null;
+
+  if (lat == null || lon == null || lat < 53.25 || lat > 53.65 || lon < 14.40 || lon > 14.75) {
+    const micro = resolveSzczecinMicroDistrict(`${locationText} ${rawTitle}`);
+    if (micro) {
+      lat = micro.lat;
+      lon = micro.lng;
+    } else {
+      lat = 53.4285;
+      lon = 14.5528;
+    }
+  }
+
+  const adId = nativeId ? `olx-${nativeId}` : hashId(sourceUrl || String(rawTitle), 'olx');
 
   return {
     id: adId,
-    title,
+    title: rawTitle,
     description,
     source_url: sourceUrl,
     source_portal: 'olx',
-    category: inferCategory(title, description),
+    category: inferCategory(rawTitle, description),
     location_text: locationText,
     district,
-    latitude: offer.map?.lat ?? null,
-    longitude: offer.map?.lon ?? null,
+    latitude: lat,
+    longitude: lon,
     price: salary,
     phone,
     photos: photos.length > 0 ? photos : null,
@@ -411,6 +447,7 @@ export async function fetchOlxPageApi(
   const params = new URLSearchParams({
     offset: String(offset),
     limit: String(limit),
+    city_id: '8959', // Official OLX City ID for Szczecin
     region_id: String(REGION_ZACHODNIOPOMORSKIE),
     category_id: String(CATEGORY_JOBS_ROOT),
     sort_by: 'created_at:desc',
@@ -442,7 +479,7 @@ export async function fetchOlxPageApi(
 
 /**
  * Master Scraper Function for OLX.
- * Combines RSS Streams + API v1 + SSR State across all Szczecin trade categories.
+ * Combines High-Precision Szczecin API v1 + Direct HTML SSR State across construction trades.
  */
 export async function scrapeOlx(options: PortalScraperOptions = {}): Promise<ScrapedAd[]> {
   const { query, limit = 40 } = options;
@@ -475,19 +512,17 @@ export async function scrapeOlx(options: PortalScraperOptions = {}): Promise<Scr
     return ads.slice(0, limit);
   }
 
-  // 2. Default Multi-Channel Sweep for Szczecin
+  // 2. Default Multi-Channel Sweep strictly for Szczecin
   const primaryTasks: Promise<ScrapedAd[]>[] = [
-    fetchOlxRssFeed('https://www.olx.pl/praca/szczecin/rss/'),
-    fetchOlxRssFeed('https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/rss/'),
     fetchOlxPageApi(undefined, 0, Math.min(limit, 40)).then((r) => r.ads),
     fetchOlxFromHtmlState('https://www.olx.pl/praca/budownictwo/szczecin/'),
     fetchOlxFromHtmlState('https://www.olx.pl/uslugi-firmy/budowa-remont/szczecin/'),
   ];
 
   // Query popular Szczecin construction trades
-  const tradeQueries = SEARCH_TRADES.slice(0, 6);
+  const tradeQueries = SEARCH_TRADES.slice(0, 5);
   for (const t of tradeQueries) {
-    primaryTasks.push(fetchOlxPageApi(t, 0, 10).then((r) => r.ads));
+    primaryTasks.push(fetchOlxPageApi(t, 0, 8).then((r) => r.ads));
   }
 
   const results = await Promise.allSettled(primaryTasks);

@@ -445,38 +445,44 @@ function MarkerPopup({
 
   const estDriveMin = distKm != null ? Math.max(2, Math.round((distKm / 35) * 60)) : null;
 
-  const bg = isDark ? '#111827' : '#ffffff';
-  const textPrimary = isDark ? '#f9fafb' : '#111827';
-  const textMuted = isDark ? '#9ca3af' : '#6b7280';
-  const chipBg = isDark ? 'rgba(55,65,81,0.8)' : 'rgba(243,244,246,0.9)';
-  const divider = isDark ? 'rgba(55,65,81,0.6)' : 'rgba(229,231,235,0.8)';
+  const bg = isDark ? '#09090b' : '#ffffff';
+  const textPrimary = isDark ? '#f4f4f5' : '#111827';
+  const textMuted = isDark ? '#a1a1aa' : '#6b7280';
+  const chipBg = isDark ? 'rgba(39,39,42,0.85)' : 'rgba(244,244,245,0.95)';
+  const divider = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
 
   return (
-    <div style={{ minWidth: '140px', maxWidth: '175px', fontFamily: "'Inter', 'system-ui', sans-serif", background: bg, overflow: 'hidden', borderRadius: '4px' }}>
+    <div style={{
+      minWidth: '240px', maxWidth: '280px',
+      fontFamily: "'Plus Jakarta Sans', 'Inter', system-ui, sans-serif",
+      background: bg, overflow: 'hidden', borderRadius: '12px',
+      boxShadow: '0 12px 36px rgba(0,0,0,0.35)',
+      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+    }}>
 
       {/* ── Category Header Bar ── */}
       <div style={{
-        background: `linear-gradient(135deg, ${cat.color}22 0%, ${cat.color}08 100%)`,
-        borderBottom: `1px solid ${cat.color}30`,
-        padding: '5px 7px 4px',
+        background: `linear-gradient(135deg, ${cat.color}25 0%, ${cat.color}08 100%)`,
+        borderBottom: `1px solid ${cat.color}35`,
+        padding: '8px 12px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: '3px',
-          padding: '2px 6px', borderRadius: '99px',
-          background: `${cat.color}18`, border: `1px solid ${cat.color}35`,
-          color: cat.color, fontSize: '9px', fontWeight: 700, letterSpacing: '0.03em',
+          display: 'inline-flex', alignItems: 'center', gap: '5px',
+          padding: '3px 8px', borderRadius: '999px',
+          background: `${cat.color}20`, border: `1px solid ${cat.color}45`,
+          color: cat.color, fontSize: '10px', fontWeight: 800, letterSpacing: '0.04em',
         }}>
-          <span style={{ fontSize: '10px' }}>{cat.icon}</span>
+          <span style={{ fontSize: '12px' }}>{cat.icon}</span>
           {cat.label.toUpperCase()}
         </span>
         <button
           onClick={onToggleFavorite}
           aria-label={isFavorite ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
           style={{
-            border: 'none', background: isFavorite ? 'rgba(239,68,68,0.12)' : 'transparent',
-            cursor: 'pointer', fontSize: '13px', lineHeight: 1, padding: '2px 4px',
-            borderRadius: '4px', color: isFavorite ? '#ef4444' : textMuted,
+            border: 'none', background: isFavorite ? 'rgba(239,68,68,0.15)' : 'transparent',
+            cursor: 'pointer', fontSize: '15px', lineHeight: 1, padding: '4px 6px',
+            borderRadius: '6px', color: isFavorite ? '#ef4444' : textMuted,
             transition: 'all 0.2s ease',
           }}
         >
@@ -485,41 +491,49 @@ function MarkerPopup({
       </div>
 
       {/* ── Main Content ── */}
-      <div style={{ padding: '6px 8px' }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: 700, lineHeight: 1.2, color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ padding: '10px 12px' }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 800, lineHeight: 1.3, color: textPrimary }}>
           {ad.title}
         </h3>
 
         {ad.description && (
-          <p style={{ margin: '0 0 5px', fontSize: '10px', color: textMuted, lineHeight: 1.3,
-            display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden'
+          <p style={{
+            margin: '0 0 8px', fontSize: '11px', color: textMuted, lineHeight: 1.4,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
           }}>
             {ad.description}
           </p>
         )}
 
         {/* ── Info chips ── */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginBottom: '5px' }}>
-          <span style={{ fontSize: '9px', background: chipBg, color: textPrimary, padding: '2px 6px', borderRadius: '99px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+          <span style={{
+            fontSize: '10px', background: chipBg, color: textPrimary,
+            padding: '3px 8px', borderRadius: '999px', fontWeight: 600,
+            display: 'inline-flex', alignItems: 'center', gap: '4px',
+          }}>
             <span>📍</span> {ad.location_text}
           </span>
           {distKm != null && (
             <span style={{
-              fontSize: '9px', background: isDark ? 'rgba(16,185,129,0.2)' : '#d1fae5',
+              fontSize: '10px', background: isDark ? 'rgba(16,185,129,0.18)' : '#d1fae5',
               color: isDark ? '#34d399' : '#047857',
               border: `1px solid ${isDark ? 'rgba(16,185,129,0.35)' : '#a7f3d0'}`,
-              padding: '2px 6px', borderRadius: '99px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px'
+              padding: '3px 8px', borderRadius: '999px', fontWeight: 700,
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              fontVariantNumeric: 'tabular-nums',
             }}>
-              <span>🚗</span> {distKm}km (~{estDriveMin}m)
+              <span>🚗</span> {distKm} km (~{estDriveMin}m)
             </span>
           )}
           {priceDisplay && (
             <span style={{
-              fontSize: '9px', padding: '2px 6px', borderRadius: '99px', fontWeight: 700,
-              background: isDark ? 'rgba(37,99,235,0.2)' : '#dbeafe',
-              color: isDark ? '#60a5fa' : '#1d4ed8',
-              border: `1px solid ${isDark ? 'rgba(37,99,235,0.35)' : '#bfdbfe'}`,
-              display: 'inline-flex', alignItems: 'center', gap: '2px'
+              fontSize: '10px', padding: '3px 8px', borderRadius: '999px', fontWeight: 800,
+              background: isDark ? 'rgba(16,185,129,0.2)' : '#ecfdf5',
+              color: isDark ? '#10b981' : '#059669',
+              border: `1px solid ${isDark ? 'rgba(16,185,129,0.4)' : '#a7f3d0'}`,
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              fontVariantNumeric: 'tabular-nums',
             }}>
               <span>💰</span> {priceDisplay}
             </span>
@@ -529,32 +543,32 @@ function MarkerPopup({
         {/* ── Phone ── */}
         {ad.phone && (
           <a href={`tel:${ad.phone}`} style={{
-            display: 'flex', alignItems: 'center', gap: '4px',
-            padding: '4px 6px', marginBottom: '5px',
-            background: isDark ? 'rgba(22,163,74,0.15)' : 'rgba(220,252,231,0.8)',
-            border: `1px solid ${isDark ? 'rgba(22,163,74,0.3)' : '#86efac'}`,
-            borderRadius: '5px', fontSize: '10px', color: isDark ? '#4ade80' : '#15803d',
-            fontWeight: 600, textDecoration: 'none',
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '6px 10px', marginBottom: '8px',
+            background: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(220,252,231,0.85)',
+            border: `1px solid ${isDark ? 'rgba(16,185,129,0.3)' : '#86efac'}`,
+            borderRadius: '8px', fontSize: '11px', color: isDark ? '#34d399' : '#15803d',
+            fontWeight: 700, textDecoration: 'none', fontVariantNumeric: 'tabular-nums',
           }}>
             <span>📞</span> {ad.phone}
           </a>
         )}
 
         {/* ── Divider ── */}
-        <div style={{ height: '1px', background: divider, marginBottom: '5px' }} />
+        <div style={{ height: '1px', background: divider, marginBottom: '8px' }} />
 
         {/* ── Action Buttons ── */}
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
           <button
             onClick={onShowInList}
             style={{
-              flex: 1, textAlign: 'center', padding: '4px 5px',
+              flex: 1, textAlign: 'center', padding: '6px 8px',
               background: chipBg, color: textPrimary,
               border: `1px solid ${divider}`,
-              borderRadius: '5px', fontSize: '9px', fontWeight: 600,
+              borderRadius: '8px', fontSize: '10px', fontWeight: 700,
               cursor: 'pointer', transition: 'all 0.15s ease',
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isDark ? '#374151' : '#e5e7eb'; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isDark ? '#27272a' : '#e4e4e7'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = chipBg; }}
           >
             📋 Na liście
@@ -566,11 +580,11 @@ function MarkerPopup({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             style={{
-              flex: 1, textAlign: 'center', padding: '4px 5px',
-              background: `linear-gradient(135deg, ${cat.color}, ${cat.color}cc)`,
-              color: 'white', borderRadius: '5px', fontSize: '9px',
-              fontWeight: 700, textDecoration: 'none',
-              boxShadow: `0 2px 6px ${cat.color}44`,
+              flex: 1, textAlign: 'center', padding: '6px 8px',
+              background: `linear-gradient(135deg, ${cat.color}, ${cat.color}dd)`,
+              color: 'white', borderRadius: '8px', fontSize: '10px',
+              fontWeight: 800, textDecoration: 'none',
+              boxShadow: `0 2px 8px ${cat.color}50`,
               cursor: 'pointer',
             }}
           >
@@ -580,21 +594,21 @@ function MarkerPopup({
 
         {/* ── Navigate & Street View ── */}
         {ad.latitude != null && ad.longitude != null && (
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ display: 'flex', gap: '6px' }}>
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${ad.latitude},${ad.longitude}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
-                padding: '4px 2px', borderRadius: '5px', fontSize: '9px', fontWeight: 600,
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                padding: '5px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: 700,
                 textDecoration: 'none', color: isDark ? '#93c5fd' : '#1d4ed8',
-                background: isDark ? 'rgba(30,41,59,0.8)' : 'rgba(241,245,249,0.9)',
+                background: isDark ? 'rgba(30,41,59,0.7)' : 'rgba(241,245,249,0.9)',
                 border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`,
                 transition: 'opacity 0.15s ease',
               }}
             >
-              🧭 Nawigacja
+              🧭 Dojazd
             </a>
             <a
               href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ad.latitude},${ad.longitude}`}
@@ -602,15 +616,15 @@ function MarkerPopup({
               rel="noopener noreferrer"
               title="Zobacz widok sferyczny ulicy"
               style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
-                padding: '4px 2px', borderRadius: '5px', fontSize: '9px', fontWeight: 600,
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                padding: '5px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: 700,
                 textDecoration: 'none', color: isDark ? '#34d399' : '#047857',
                 background: isDark ? 'rgba(6,78,59,0.25)' : 'rgba(209,250,229,0.9)',
                 border: `1px solid ${isDark ? 'rgba(52,211,153,0.3)' : '#a7f3d0'}`,
                 transition: 'opacity 0.15s ease',
               }}
             >
-              🌐 Widok ulicy
+              🌐 Street View
             </a>
           </div>
         )}
@@ -915,8 +929,15 @@ export default function MapView({
 
       mapRef.current = map;
 
-      // Add navigation controls (zoom, compass)
-      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+      // Add Google Maps-style navigation controls in bottom-right (3D pitch compass + smooth zoom)
+      map.addControl(
+        new maplibregl.NavigationControl({
+          visualizePitch: true,
+          showCompass: true,
+          showZoom: true,
+        }),
+        'bottom-right'
+      );
 
       // Update URL query parameters on map move
       const updateUrlParams = () => {
@@ -1538,6 +1559,7 @@ export default function MapView({
             e.stopPropagation();
             triggerHaptic(10);
             onMarkerClick?.(ad.id);
+            openPopup(ad, targetCoords);
           });
 
           markersRef.current.set(ad.id, marker);
@@ -1593,7 +1615,8 @@ export default function MapView({
       essential: true,
       duration: prefersReducedMotion ? 0 : 1200,
     });
-  }, [selectedId, flyToken, geocodedAds, mapLoaded, prefersReducedMotion, sheetSnapState]);
+    openPopup(ad, coordinates);
+  }, [selectedId, flyToken, geocodedAds, mapLoaded, prefersReducedMotion, sheetSnapState, openPopup]);
 
   const handleCarouselSelect = useCallback((id: string) => {
     onMarkerClick?.(id);
@@ -1767,274 +1790,340 @@ export default function MapView({
           <span className="text-zinc-400 text-[11px] font-bold group-hover:text-emerald-400 transition-colors">{isMapMenuOpen ? '▲' : '▼'}</span>
         </button>
 
-        {/* Expanded Vertical Menu (Reduced by 1/3, Glass Design 3.0) */}
+        {/* Expanded Floating Palette (Modern Ergonomic Design) */}
         {isMapMenuOpen && (
-          <div className="p-2 rounded-2xl bg-zinc-950/95 backdrop-blur-2xl border border-white/10 shadow-2xl space-y-1.5 w-[92px] sm:w-[98px] h-[58vh] max-h-[58vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col custom-scrollbar">
-            <div className="text-[8px] font-black uppercase text-zinc-400 px-1 tracking-wider border-b border-white/5 pb-1 flex justify-between items-center shrink-0">
-              <span>Warstwy</span>
-              <span className="text-emerald-400 font-mono text-[9px] font-black">{geocodedAds.length}</span>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="p-2.5 rounded-2xl bg-zinc-950/95 backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/80 w-64 sm:w-72 max-h-[70vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col gap-3 custom-scrollbar z-30 select-none"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-1 pb-1.5 border-b border-white/10 shrink-0">
+              <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
+                <span>🧭</span> Narzędzia Mapy Szczecina
+              </span>
+              <span className="text-zinc-400 font-mono text-[10px] font-bold">
+                {geocodedAds.length} ofert
+              </span>
             </div>
 
-            <div className="flex flex-col justify-between flex-1 gap-1.5 py-0.5">
-              {/* Moja Pozycja */}
-              <button
-                onClick={handleLocateClick}
-                title="Moja lokalizacja"
-                aria-label="Pokaż moją lokalizację"
-                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="text-sm leading-none">{locating ? '⏳' : '📍'}</span>
-                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">Pozycja</span>
-              </button>
+            {/* Section 1: Nawigacja i Widok 3D */}
+            <div className="space-y-1">
+              <div className="text-[9px] font-bold uppercase text-zinc-400 px-1 tracking-wider">
+                Nawigacja & Widok
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {/* Moja Pozycja */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLocateClick();
+                  }}
+                  title="Moja lokalizacja"
+                  className="flex items-center gap-2 p-2 rounded-xl text-left text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all cursor-pointer text-xs font-semibold"
+                >
+                  <span className="text-base leading-none">{locating ? '⏳' : '📍'}</span>
+                  <span className="truncate">Lokalizacja</span>
+                </button>
 
-              {/* Centrum Szczecina */}
-              <button
-                onClick={() => mapRef.current?.flyTo({ center: SZCZECIN, zoom: DEFAULT_ZOOM, duration: prefersReducedMotion ? 0 : undefined })}
-                title="Powrót do Szczecina"
-                aria-label="Wycentruj na Szczecin"
-                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="text-sm leading-none">🏠</span>
-                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">Centrum</span>
-              </button>
+                {/* Centrum Szczecina */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    mapRef.current?.flyTo({ center: SZCZECIN, zoom: DEFAULT_ZOOM, duration: prefersReducedMotion ? 0 : undefined });
+                  }}
+                  title="Powrót do Centrum Szczecina"
+                  className="flex items-center gap-2 p-2 rounded-xl text-left text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all cursor-pointer text-xs font-semibold"
+                >
+                  <span className="text-base leading-none">🏠</span>
+                  <span className="truncate">Centrum</span>
+                </button>
 
-              {/* 3D Tilt */}
-              <button
-                onClick={() => {
-                  const map = mapRef.current;
-                  if (!map) return;
-                  const is3d = map.getPitch() > 10;
-                  map.easeTo({
-                    pitch: is3d ? 0 : 55,
-                    bearing: is3d ? 0 : -18,
-                    duration: prefersReducedMotion ? 0 : 800
-                  });
-                }}
-                title="Widok 3D / 2D"
-                aria-label="Przełącz perspektywę trójwymiarową"
-                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="text-sm leading-none">🧊</span>
-                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">3D</span>
-              </button>
-
-              {/* Panorama Wały Chrobrego & Łasztownia */}
-              <button
-                onClick={() => {
-                  const map = mapRef.current;
-                  if (!map) return;
-                  triggerHaptic(12);
-                  map.flyTo({
-                    center: [14.565, 53.429],
-                    zoom: 15.5,
-                    pitch: 62,
-                    bearing: 135,
-                    duration: prefersReducedMotion ? 0 : 1500,
-                  });
-                }}
-                title="Panorama Wałów Chrobrego & Łasztowni"
-                aria-label="Widok z perspektywy Wałów Chrobrego"
-                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="text-sm leading-none">🌊</span>
-                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">Wały</span>
-              </button>
-
-              {/* Blisko Mnie */}
-              <button
-                onClick={handleNearMeClick}
-                title="Praca blisko mnie (5km)"
-                aria-label="Pokaż oferty blisko mnie"
-                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="text-sm leading-none">🎯</span>
-                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">5 km</span>
-              </button>
-
-              {/* Statystyki */}
-              <button
-                onClick={() => setShowDistrictAnalytics(!showDistrictAnalytics)}
-                title="Statystyki dzielnic"
-                aria-label="Pokaż statystyki dzielnicowe"
-                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
-                  showDistrictAnalytics
-                    ? 'bg-amber-500 text-zinc-950 border-amber-300 font-black shadow-lg shadow-amber-500/30'
-                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
-                }`}
-              >
-                <span className="text-sm leading-none">📊</span>
-                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showDistrictAnalytics ? 'text-zinc-950' : 'text-zinc-400'}`}>Staty</span>
-              </button>
-
-              {/* Zarobki */}
-              <button
-                onClick={() => {
-                  triggerHaptic(10);
-                  setShowSalaryHeatmap(!showSalaryHeatmap);
-                }}
-                title="Zarobki dzielnicowe"
-                aria-label="Przełącz zarobki dzielnicowe"
-                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
-                  showSalaryHeatmap
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-emerald-300 font-black shadow-lg shadow-emerald-500/30'
-                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
-                }`}
-              >
-                <span className="text-sm leading-none">💰</span>
-                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showSalaryHeatmap ? 'text-white' : 'text-zinc-400'}`}>Stawki</span>
-              </button>
-
-              {/* Duże Budowy */}
-              <button
-                onClick={() => {
-                  triggerHaptic(10);
-                  setShowConstructionSites(!showConstructionSites);
-                }}
-                title="Inwestycje i duże budowy"
-                aria-label="Pokaż inwestycje budowlane"
-                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
-                  showConstructionSites
-                    ? 'bg-emerald-500 text-white border-emerald-300 font-black shadow-lg shadow-emerald-500/30'
-                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
-                }`}
-              >
-                <span className="text-sm leading-none">🏗️</span>
-                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showConstructionSites ? 'text-white' : 'text-zinc-400'}`}>Budowy</span>
-              </button>
-
-              {/* Przystanki ZTM */}
-              <button
-                onClick={() => {
-                  triggerHaptic(10);
-                  setShowTransitStops(!showTransitStops);
-                }}
-                title="Węzły i przystanki ZTM"
-                aria-label="Pokaż przystanki ZTM"
-                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
-                  showTransitStops
-                    ? 'bg-blue-600 text-white border-blue-400 font-black shadow-lg shadow-blue-600/30'
-                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
-                }`}
-              >
-                <span className="text-sm leading-none">🚏</span>
-                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showTransitStops ? 'text-white' : 'text-zinc-400'}`}>ZTM</span>
-              </button>
-
-              {/* Pogoń Szczecin */}
-              <button
-                onClick={() => {
-                  triggerHaptic(10);
-                  setShowPogonHub(!showPogonHub);
-                }}
-                title="Pogoń Szczecin"
-                aria-label="Pokaż Pogoń Szczecin"
-                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
-                  showPogonHub
-                    ? 'bg-indigo-600 text-white border-indigo-400 font-black shadow-lg shadow-indigo-600/30'
-                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
-                }`}
-              >
-                <span className="text-sm leading-none">⚓</span>
-                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showPogonHub ? 'text-white' : 'text-zinc-400'}`}>Pogoń</span>
-              </button>
-
-              {/* Zmień motyw */}
-              <button
-                onClick={() => {
-                  const next = mapStyle === 'emerald' ? 'dark' : mapStyle === 'dark' ? 'light' : 'emerald';
-                  handleSelectStyle(next);
-                  triggerHaptic(10);
-                }}
-                title={`Zmień motyw mapy (obecny: ${mapStyle})`}
-                aria-label="Zmień motyw mapy"
-                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="text-sm leading-none">{mapStyle === 'dark' ? '🌙' : mapStyle === 'light' ? '☀️' : '🌿'}</span>
-                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">Motyw</span>
-              </button>
-
-              {/* Narysuj własny obszar (Lasso) */}
-              <button
-                onClick={() => {
-                  triggerHaptic(10);
-                  setIsLassoDrawing(!isLassoDrawing);
-                }}
-                title="Narysuj własny obszar (Lasso)"
-                aria-label="Narysuj własny obszar na mapie"
-                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
-                  isLassoDrawing || lassoPolygon
-                    ? 'bg-amber-500 text-zinc-950 border-amber-300 font-black shadow-lg shadow-amber-500/30'
-                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
-                }`}
-              >
-                <span className="text-sm leading-none">✏️</span>
-                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${isLassoDrawing || lassoPolygon ? 'text-zinc-950' : 'text-zinc-400'}`}>Obszar</span>
-              </button>
-
-              {/* Strefa czasu dojazdu (Izochrona) */}
-              <button
-                onClick={() => {
-                  triggerHaptic(10);
-                  setShowIsochroneModal(!showIsochroneModal);
-                }}
-                title="Strefa czasu dojazdu (Izochrona)"
-                aria-label="Oblicz strefę czasu dojazdu"
-                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
-                  showIsochroneModal || isochronePolygon
-                    ? 'bg-blue-500 text-white border-blue-300 font-black shadow-lg shadow-blue-500/30'
-                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
-                }`}
-              >
-                <span className="text-sm leading-none">⏱️</span>
-                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showIsochroneModal || isochronePolygon ? 'text-white' : 'text-zinc-400'}`}>Dojazd</span>
-              </button>
-
-              {/* Powiadomienia przestrzenne (Geo-Alerty) */}
-              <button
-                onClick={() => {
-                  triggerHaptic(10);
-                  setShowGeoAlertModal(!showGeoAlertModal);
-                }}
-                title="Powiadomienia przestrzenne (Geo-Alerty)"
-                aria-label="Powiadomienia przestrzenne"
-                className={`w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center border hover:scale-105 active:scale-95 transition-all cursor-pointer ${
-                  showGeoAlertModal
-                    ? 'bg-purple-600 text-white border-purple-300 font-black shadow-lg shadow-purple-600/30'
-                    : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
-                }`}
-              >
-                <span className="text-sm leading-none">🔔</span>
-                <span className={`text-[7px] font-black mt-0.5 uppercase tracking-tighter leading-none ${showGeoAlertModal ? 'text-white' : 'text-zinc-400'}`}>Alert</span>
-              </button>
-
-              {/* Oświetlenie Słońca Szczecina (Sunlight Engine) */}
-              <button
-                onClick={() => {
-                  triggerHaptic(10);
-                  const map = mapRef.current;
-                  if (!map) return;
-                  const currentHour = new Date().getHours();
-                  const isNight = currentHour < 6 || currentHour >= 21;
-                  const isGolden = currentHour >= 17 && currentHour < 21;
-                  const targetMode = isNight ? 'night_cyberpunk' : isGolden ? 'golden_hour' : 'day';
-                  try {
-                    map.setLight({
-                      anchor: 'viewport',
-                      color: isNight ? '#38bdf8' : isGolden ? '#fbbf24' : '#ffffff',
-                      intensity: isNight ? 0.45 : 0.65,
-                      position: isNight ? [1.1, 0, 45] : [1.5, 240, 50],
+                {/* 3D Tilt */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    const map = mapRef.current;
+                    if (!map) return;
+                    const is3d = map.getPitch() > 10;
+                    map.easeTo({
+                      pitch: is3d ? 0 : 55,
+                      bearing: is3d ? 0 : -18,
+                      duration: prefersReducedMotion ? 0 : 800
                     });
-                  } catch {
-                    /* non-fatal */
-                  }
-                }}
-                title="Dynamiczne Oświetlenie Słońca Szczecina"
-                aria-label="Symuluj światło i cienie w Szczecinie"
-                className="w-full flex-1 min-h-[30px] max-h-[42px] rounded-xl flex flex-col items-center justify-center text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              >
-                <span className="text-sm leading-none">☀️</span>
-                <span className="text-[7px] font-black text-zinc-400 mt-0.5 uppercase tracking-tighter leading-none">Słońce</span>
-              </button>
+                  }}
+                  title="Przełącz perspektywę trójwymiarową"
+                  className="flex items-center gap-2 p-2 rounded-xl text-left text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all cursor-pointer text-xs font-semibold"
+                >
+                  <span className="text-base leading-none">🧊</span>
+                  <span className="truncate">Widok 3D</span>
+                </button>
+
+                {/* Wały Chrobrego */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const map = mapRef.current;
+                    if (!map) return;
+                    triggerHaptic(12);
+                    map.flyTo({
+                      center: [14.565, 53.429],
+                      zoom: 15.5,
+                      pitch: 62,
+                      bearing: 135,
+                      duration: prefersReducedMotion ? 0 : 1500,
+                    });
+                  }}
+                  title="Panorama Wałów Chrobrego & Łasztowni"
+                  className="flex items-center gap-2 p-2 rounded-xl text-left text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all cursor-pointer text-xs font-semibold"
+                >
+                  <span className="text-base leading-none">🌊</span>
+                  <span className="truncate">Wały & Odra</span>
+                </button>
+
+                {/* Motyw Mapy */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const next = mapStyle === 'emerald' ? 'dark' : mapStyle === 'dark' ? 'light' : 'emerald';
+                    handleSelectStyle(next);
+                    triggerHaptic(10);
+                  }}
+                  title={`Zmień motyw mapy (obecny: ${mapStyle})`}
+                  className="flex items-center gap-2 p-2 rounded-xl text-left text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all cursor-pointer text-xs font-semibold"
+                >
+                  <span className="text-base leading-none">{mapStyle === 'dark' ? '🌙' : mapStyle === 'light' ? '☀️' : '🌿'}</span>
+                  <span className="truncate capitalize">{mapStyle}</span>
+                </button>
+
+                {/* Oświetlenie Słońca */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    const map = mapRef.current;
+                    if (!map) return;
+                    const currentHour = new Date().getHours();
+                    const isNight = currentHour < 6 || currentHour >= 21;
+                    const isGolden = currentHour >= 17 && currentHour < 21;
+                    try {
+                      map.setLight({
+                        anchor: 'viewport',
+                        color: isNight ? '#38bdf8' : isGolden ? '#fbbf24' : '#ffffff',
+                        intensity: isNight ? 0.45 : 0.65,
+                        position: isNight ? [1.1, 0, 45] : [1.5, 240, 50],
+                      });
+                    } catch {
+                      /* non-fatal */
+                    }
+                  }}
+                  title="Dynamiczne Oświetlenie Słońca Szczecina"
+                  className="flex items-center gap-2 p-2 rounded-xl text-left text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all cursor-pointer text-xs font-semibold"
+                >
+                  <span className="text-base leading-none">☀️</span>
+                  <span className="truncate">Światło</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Section 2: Warstwy & Analizy Przestrzenne */}
+            <div className="space-y-1">
+              <div className="text-[9px] font-bold uppercase text-zinc-400 px-1 tracking-wider">
+                Warstwy & Analizy
+              </div>
+              <div className="flex flex-col gap-1">
+                {/* Blisko Mnie */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNearMeClick();
+                  }}
+                  title="Praca blisko mnie (5km)"
+                  className="flex items-center justify-between px-3 py-2 rounded-xl text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all cursor-pointer text-xs font-semibold"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">🎯</span>
+                    <span>W promieniu 5 km</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-400">GPS</span>
+                </button>
+
+                {/* Duże Budowy */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    setShowConstructionSites(!showConstructionSites);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer text-xs font-semibold border ${
+                    showConstructionSites
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm'
+                      : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">🏗️</span>
+                    <span>Wielkie Inwestycje</span>
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${showConstructionSites ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
+                </button>
+
+                {/* Zarobki & Stawki */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    setShowSalaryHeatmap(!showSalaryHeatmap);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer text-xs font-semibold border ${
+                    showSalaryHeatmap
+                      ? 'bg-teal-500/20 text-teal-300 border-teal-500/50 shadow-sm'
+                      : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">💰</span>
+                    <span>Stawki Dzielnicowe</span>
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${showSalaryHeatmap ? 'bg-teal-400 animate-pulse' : 'bg-zinc-600'}`} />
+                </button>
+
+                {/* Statystyki Dzielnic */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    setShowDistrictAnalytics(!showDistrictAnalytics);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer text-xs font-semibold border ${
+                    showDistrictAnalytics
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm'
+                      : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">📊</span>
+                    <span>Statystyki Dzielnic</span>
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${showDistrictAnalytics ? 'bg-amber-400 animate-pulse' : 'bg-zinc-600'}`} />
+                </button>
+
+                {/* Przystanki ZTM */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    setShowTransitStops(!showTransitStops);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer text-xs font-semibold border ${
+                    showTransitStops
+                      ? 'bg-blue-500/20 text-blue-300 border-blue-500/50 shadow-sm'
+                      : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">🚏</span>
+                    <span>Węzły ZTM Szczecin</span>
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${showTransitStops ? 'bg-blue-400 animate-pulse' : 'bg-zinc-600'}`} />
+                </button>
+
+                {/* Pogoń Szczecin */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    setShowPogonHub(!showPogonHub);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer text-xs font-semibold border ${
+                    showPogonHub
+                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-sm'
+                      : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">⚓</span>
+                    <span>Pogoń Szczecin (Miejsca)</span>
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${showPogonHub ? 'bg-indigo-400 animate-pulse' : 'bg-zinc-600'}`} />
+                </button>
+
+                {/* Lasso / Własny obszar */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    setIsLassoDrawing(!isLassoDrawing);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer text-xs font-semibold border ${
+                    isLassoDrawing || lassoPolygon
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm'
+                      : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">✏️</span>
+                    <span>Rysuj Obszar (Lasso)</span>
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${isLassoDrawing || lassoPolygon ? 'bg-amber-400 animate-pulse' : 'bg-zinc-600'}`} />
+                </button>
+
+                {/* Izochrona czasu dojazdu */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    setShowIsochroneModal(!showIsochroneModal);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer text-xs font-semibold border ${
+                    showIsochroneModal || isochronePolygon
+                      ? 'bg-blue-500/20 text-blue-300 border-blue-500/50 shadow-sm'
+                      : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">⏱️</span>
+                    <span>Strefa Dojazdu (Izochrona)</span>
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${showIsochroneModal || isochronePolygon ? 'bg-blue-400 animate-pulse' : 'bg-zinc-600'}`} />
+                </button>
+
+                {/* Geo-Alerty */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    setShowGeoAlertModal(!showGeoAlertModal);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer text-xs font-semibold border ${
+                    showGeoAlertModal
+                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-sm'
+                      : 'text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">🔔</span>
+                    <span>Alerty Przestrzenne</span>
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${showGeoAlertModal ? 'bg-purple-400 animate-pulse' : 'bg-zinc-600'}`} />
+                </button>
+              </div>
             </div>
           </div>
         )}

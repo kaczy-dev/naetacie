@@ -8,6 +8,7 @@ import { ensureAbsoluteUrl, removePolishDiacritics } from '@/lib/utils';
 import { extractJsonLdJobs, parseStructuredSalary } from './universalExtractor';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
 import { getRandomUserAgent, hashId, cleanText, inferCategory, fetchWithStealthRetry } from './network';
+import { resolveSzczecinMicroDistrict } from '@/lib/geo/szczecinMicroDistricts';
 
 const PRACUJ_BASE = 'https://www.pracuj.pl';
 
@@ -61,6 +62,12 @@ function parsePracujRawOffer(item: PracujApiOffer, queryFallback: string): Scrap
     : cleanText(`${title} - Praca w ${company ? company + ', ' : ''}${locationText}.`).slice(0, 300);
   const phone = extractPhoneNumber(`${title} ${description}`);
 
+  const normLocation = locationText.includes('Szczecin') ? locationText : `Szczecin, ${locationText}`;
+  const micro = resolveSzczecinMicroDistrict(`${normLocation} ${title}`);
+  const lat = micro ? micro.lat : 53.4285;
+  const lng = micro ? micro.lng : 14.5528;
+  const district = micro ? micro.name : null;
+
   return {
     id: hashId(sourceUrl || title + locationText, 'pracuj'),
     title,
@@ -68,9 +75,10 @@ function parsePracujRawOffer(item: PracujApiOffer, queryFallback: string): Scrap
     source_url: sourceUrl,
     source_portal: 'pracuj',
     category: inferCategory(title, description),
-    location_text: locationText.includes('Szczecin') ? locationText : `Szczecin, ${locationText}`,
-    latitude: null,
-    longitude: null,
+    location_text: normLocation,
+    district,
+    latitude: lat,
+    longitude: lng,
     price: salary,
     phone,
     scraped_at: new Date().toISOString(),

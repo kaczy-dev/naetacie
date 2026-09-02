@@ -71,7 +71,7 @@ export function MapPogonSzczecin({
   if (!isVisible) return null;
 
   return (
-    <div className="absolute top-16 left-4 z-20 max-w-sm w-full pointer-events-auto">
+    <div className="absolute top-16 right-4 z-20 max-w-sm w-full pointer-events-auto">
       <AnimatePresence>
         <motion.div
           key="pogon-szczecin-hub-panel"

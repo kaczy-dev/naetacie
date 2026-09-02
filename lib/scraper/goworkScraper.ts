@@ -8,6 +8,7 @@ import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES, SalaryRange } from './t
 import { getRandomUserAgent, hashId, cleanText, inferCategory, fetchWithStealthRetry } from './network';
 import { extractJsonLdJobs } from './universalExtractor';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
+import { resolveSzczecinMicroDistrict } from '@/lib/geo/szczecinMicroDistricts';
 
 const GOWORK_BASE = 'https://www.gowork.pl';
 
@@ -43,6 +44,10 @@ async function fetchGoWorkKeyword(query: string): Promise<ScrapedAd[]> {
         const description = cleanText(item.description || title).slice(0, 400);
         const phone = extractPhoneNumber(`${title} ${description}`);
 
+        const micro = resolveSzczecinMicroDistrict(`${locationText} ${title}`);
+        const lat = micro ? micro.lat : 53.4285;
+        const lng = micro ? micro.lng : 14.5528;
+
         ads.push({
           id: hashId(sourceUrl || title, 'gowork'),
           title,
@@ -51,8 +56,9 @@ async function fetchGoWorkKeyword(query: string): Promise<ScrapedAd[]> {
           source_portal: 'gowork',
           category: inferCategory(title, description),
           location_text: locationText,
-          latitude: null,
-          longitude: null,
+          district: micro ? micro.name : null,
+          latitude: lat,
+          longitude: lng,
           price: item.price,
           salary_range: item.salaryRange,
           phone,
@@ -79,6 +85,9 @@ async function fetchGoWorkKeyword(query: string): Promise<ScrapedAd[]> {
         seenUrls.add(path);
         const fullUrl = `${GOWORK_BASE}${path}`;
         const phone = extractPhoneNumber(linkText);
+        const micro = resolveSzczecinMicroDistrict(`Szczecin ${linkText}`);
+        const lat = micro ? micro.lat : 53.4285;
+        const lng = micro ? micro.lng : 14.5528;
 
         ads.push({
           id: hashId(fullUrl, 'gowork'),
@@ -87,9 +96,10 @@ async function fetchGoWorkKeyword(query: string): Promise<ScrapedAd[]> {
           source_url: fullUrl,
           source_portal: 'gowork',
           category: inferCategory(linkText, ''),
-          location_text: 'Szczecin',
-          latitude: null,
-          longitude: null,
+          location_text: micro ? `Szczecin, ${micro.name}` : 'Szczecin',
+          district: micro ? micro.name : null,
+          latitude: lat,
+          longitude: lng,
           price: null,
           phone,
           scraped_at: new Date().toISOString(),

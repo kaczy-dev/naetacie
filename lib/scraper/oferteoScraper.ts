@@ -7,6 +7,7 @@ import { ScrapedAd, PortalScraperOptions, SEARCH_TRADES } from './types';
 import { getRandomUserAgent, hashId, cleanText, inferCategory, fetchWithStealthRetry, cleanHtml } from './network';
 import { extractPhoneNumber } from '@/lib/ai/freeJobExtractor';
 import { extractJsonLdJobs } from './universalExtractor';
+import { resolveSzczecinMicroDistrict } from '@/lib/geo/szczecinMicroDistricts';
 
 const OFERTEO_BASE = 'https://www.oferteo.pl';
 
@@ -67,6 +68,9 @@ async function fetchOferteoKeyword(query: string): Promise<ScrapedAd[]> {
         seenUrls.add(path);
         const fullUrl = `${OFERTEO_BASE}${path}`;
         const phone = extractPhoneNumber(rawTitle);
+        const micro = resolveSzczecinMicroDistrict(`Szczecin ${rawTitle}`);
+        const lat = micro ? micro.lat : 53.4285;
+        const lng = micro ? micro.lng : 14.5528;
 
         ads.push({
           id: hashId(fullUrl, 'oferteo'),
@@ -75,9 +79,10 @@ async function fetchOferteoKeyword(query: string): Promise<ScrapedAd[]> {
           source_url: fullUrl,
           source_portal: 'oferteo',
           category: inferCategory(rawTitle, ''),
-          location_text: 'Szczecin',
-          latitude: null,
-          longitude: null,
+          location_text: micro ? `Szczecin, ${micro.name}` : 'Szczecin',
+          district: micro ? micro.name : null,
+          latitude: lat,
+          longitude: lng,
           price: null,
           phone,
           scraped_at: new Date().toISOString(),

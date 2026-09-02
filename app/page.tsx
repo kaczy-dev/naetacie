@@ -854,6 +854,15 @@ export default function HomePage() {
   const [showHero, setShowHero] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const hasMapQuery = params.has('lat') || params.has('lng') || params.get('tab') === 'map';
+      if (hasMapQuery) {
+        setActiveTab('map');
+        setShowHero(false);
+        return;
+      }
+    }
     if (!localStorage.getItem('naetacie-hero-dismissed')) {
       setShowHero(true);
     }
@@ -935,6 +944,7 @@ export default function HomePage() {
   const [commuteRadiusKm, setCommuteRadiusKm] = useState<number>(0);
   const [timelineAd, setTimelineAd] = useState<DisplayAnnouncement | null>(null);
   const [constructionCalcModalAd, setConstructionCalcModalAd] = useState<DisplayAnnouncement | null>(null);
+  const [pitchModalAd, setPitchModalAd] = useState<DisplayAnnouncement | null>(null);
 
   // --- Quick View Drawer & Command Palette State ---
   const [quickViewAd, setQuickViewAd] = useState<DisplayAnnouncement | null>(null);
@@ -1866,7 +1876,17 @@ export default function HomePage() {
         isLive={isLive}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-        onOpenEstimator={() => setConstructionCalcModalAd(allAnnouncements[0] || null)}
+        onOpenEstimator={() => {
+          triggerHaptic(12);
+          setConstructionCalcModalAd(allAnnouncements[0] || ({
+            id: 'general-estimator',
+            title: 'Wycena prac budowlano-remontowych Szczecin',
+            description: 'Szpachlowanie, malowanie, glazura, ścianki GK, hydraulika, elektryka',
+            price: 6500,
+            location_text: 'Szczecin',
+            category: 'remont',
+          } as unknown as DisplayAnnouncement));
+        }}
         onOpenAiInterview={() => setInterviewModalAd(allAnnouncements[0] || null)}
         onOpenSalaryBenchmark={() => setBenchmarkModalAd(allAnnouncements[0] || null)}
         onOpenCvGenerator={() => setCvGeneratorOpen(true)}
@@ -2012,6 +2032,26 @@ export default function HomePage() {
             showToast('success', `Zmieniono status na: ${STATUS_META[st].label}`);
           }
         }}
+      />
+
+      {/* Trade Bid Estimator Modal (Wycena Robocizny) */}
+      <TradeBidEstimatorModal
+        isOpen={constructionCalcModalAd !== null}
+        onClose={() => setConstructionCalcModalAd(null)}
+        title={constructionCalcModalAd?.title || 'Wycena prac budowlanych'}
+        description={constructionCalcModalAd?.description || ''}
+        phone={constructionCalcModalAd?.phone || null}
+      />
+
+      {/* Pitch / Application Message Generator Modal */}
+      <PitchGeneratorModal
+        isOpen={pitchModalAd !== null}
+        onClose={() => setPitchModalAd(null)}
+        phone={pitchModalAd?.phone || null}
+        title={pitchModalAd?.title || 'Zgłoszenie do pracy'}
+        location={pitchModalAd?.location_text || 'Szczecin'}
+        sourcePortal={pitchModalAd?.source_portal || 'Bezpośrednie'}
+        defaultPrice={typeof pitchModalAd?.price === 'number' ? pitchModalAd.price : null}
       />
 
       {/* Floating QOL Quick Action Hub */}
