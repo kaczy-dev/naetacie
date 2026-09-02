@@ -4,11 +4,7 @@
   "crons": [
     {
       "path": "/api/cron/scrape",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/sweep",
-      "schedule": "0 */4 * * *"
+      "schedule": "0 6 * * *"
     }
   ],
   "functions": {
