@@ -5,8 +5,8 @@ import {
 } from '@/lib/geo/szczecinMicroDistricts';
 
 describe('Szczecin Micro-Districts & Postal Code Resolution', () => {
-  it('contains at least 24 municipal Szczecin osiedla', () => {
-    expect(SZCZECIN_OSIEDLA.length).toBeGreaterThanOrEqual(24);
+  it('contains all 37 official municipal Szczecin osiedla', () => {
+    expect(SZCZECIN_OSIEDLA.length).toBe(37);
   });
 
   it('resolves direct osiedle names accurately', () => {
@@ -21,6 +21,14 @@ describe('Szczecin Micro-Districts & Postal Code Resolution', () => {
     const sloneczne = resolveSzczecinMicroDistrict('Remont mieszkania os. Słoneczne');
     expect(sloneczne?.id).toBe('sloneczne');
     expect(sloneczne?.quarter).toBe('Prawobrzeże');
+
+    const lasztownia = resolveSzczecinMicroDistrict('Nowe inwestycje Łasztownia bulwary');
+    expect(lasztownia?.id).toBe('lasztownia_miedzyodrze');
+    expect(lasztownia?.quarter).toBe('Śródmieście');
+
+    const pomorzany = resolveSzczecinMicroDistrict('Remont instalacji szpital Pomorzany');
+    expect(pomorzany?.id).toBe('pomorzany');
+    expect(pomorzany?.quarter).toBe('Zachód');
   });
 
   it('resolves landmark streets and locations to osiedla', () => {
@@ -32,6 +40,9 @@ describe('Szczecin Micro-Districts & Postal Code Resolution', () => {
 
     const bramaPortowa = resolveSzczecinMicroDistrict('Lokal usługowy Brama Portowa');
     expect(bramaPortowa?.id).toBe('centrum');
+
+    const nettoArena = resolveSzczecinMicroDistrict('Prace instalacyjne Netto Arena Szafera');
+    expect(nettoArena?.id).toBe('zawadzkiego');
   });
 
   it('resolves Szczecin postal codes correctly', () => {

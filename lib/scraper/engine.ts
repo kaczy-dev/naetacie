@@ -80,6 +80,8 @@ export const LOCATION_COORDINATES: Record<string, { lat: number; lon: number }> 
   swierczewo: { lat: 53.408, lon: 14.518 },
   turzyn: { lat: 53.425, lon: 14.532 },
   zawadzkiego: { lat: 53.452, lon: 14.502 },
+  łasztownia: { lat: 53.4241, lon: 14.5612 },
+  lasztownia: { lat: 53.4241, lon: 14.5612 },
   mierzyn: { lat: 53.421, lon: 14.462 },
   dobra: { lat: 53.488, lon: 14.385 },
   przecław: { lat: 53.372, lon: 14.468 },

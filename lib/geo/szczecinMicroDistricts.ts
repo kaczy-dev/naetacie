@@ -26,25 +26,38 @@ export const SZCZECIN_OSIEDLA: SzczecinMicroDistrict[] = [
 
   // Zachód
   { id: 'pogodno', name: 'Pogodno', quarter: 'Zachód', lat: 53.442, lng: 14.515, keywords: ['pogodno', 'pogodnie', 'mickiewicza', 'wernyhory', 'unruga', 'reymonta', 'żołnierska', 'traugutta', 'krasickiego'] },
-  { id: 'gumience', name: 'Gumieńce', quarter: 'Zachód', lat: 53.409, lng: 14.502, keywords: ['gumieńce', 'gumience', 'ku słońcu', 'harnasiów', 'derdowskiego', 'lwowska', 'chobolańska'] },
-  { id: 'krzekowo_bezrzecze', name: 'Krzekowo-Bezrzecze', quarter: 'Zachód', lat: 53.448, lng: 14.482, keywords: ['krzekowo', 'bezrzecze', 'modra', 'koralowa', 'szeroka'] },
-  { id: 'swierczewo', name: 'Świerczewo', quarter: 'Zachód', lat: 53.421, lng: 14.512, keywords: ['świerczewo', 'swierczewo', 'santocka', 'witkiewicza'] },
-  { id: 'zawadzkiego', name: 'Zawadzkiego-Klonowica', quarter: 'Zachód', lat: 53.452, lng: 14.505, keywords: ['zawadzkiego', 'klonowica', 'szafera', 'marlicza'] },
+  { id: 'gumience', name: 'Gumieńce', quarter: 'Zachód', lat: 53.409, lng: 14.502, keywords: ['gumieńce', 'gumience', 'ku słońcu', 'harnasiów', 'derdowskiego', 'lwowska', 'chobolańska', 'południowa', 'cukrowa'] },
+  { id: 'krzekowo_bezrzecze', name: 'Krzekowo-Bezrzecze', quarter: 'Zachód', lat: 53.448, lng: 14.482, keywords: ['krzekowo', 'bezrzecze', 'modra', 'koralowa', 'szeroka', 'żołnierska'] },
+  { id: 'swierczewo', name: 'Świerczewo', quarter: 'Zachód', lat: 53.421, lng: 14.512, keywords: ['świerczewo', 'swierczewo', 'santocka', 'witkiewicza', 'kaliny'] },
+  { id: 'zawadzkiego', name: 'Zawadzkiego-Klonowica', quarter: 'Zachód', lat: 53.452, lng: 14.505, keywords: ['zawadzkiego', 'klonowica', 'szafera', 'marlicza', 'zawadzkiego-klonowica', 'netto arena'] },
+  { id: 'glebokie_pilchowo', name: 'Głębokie-Pilchowo', quarter: 'Zachód', lat: 53.475, lng: 14.485, keywords: ['głębokie', 'glebokie', 'pilchowo', 'jezioro głębokie', 'jaworowa', 'kąpieliskowa'] },
+  { id: 'arkonskie_niemierzyn', name: 'Arkońskie-Niemierzyn', quarter: 'Zachód', lat: 53.456, lng: 14.532, keywords: ['arkońskie', 'arkonskie', 'niemierzyn', 'arkońska', 'chopina', 'las arkoński', 'szpital arkońska'] },
+  { id: 'pomorzany', name: 'Pomorzany', quarter: 'Zachód', lat: 53.402, lng: 14.532, keywords: ['pomorzany', 'pomorzanach', 'powstańców wielkopolskich', 'budziszyńska', 'starkiewicza', 'szpital pomorzany', 'włościańska', 'milczańska', 'ustowska'] },
 
   // Śródmieście
   { id: 'centrum', name: 'Centrum', quarter: 'Śródmieście', lat: 53.4285, lng: 14.5528, keywords: ['centrum', 'śródmieście', 'srodmiescie', 'brama portowa', 'plac grunwaldzki', 'plac rodła', 'krzywoustego', 'niepodległości', 'wojska polskiego', 'wyzwolenia'] },
-  { id: 'stare_miasto', name: 'Stare Miasto', quarter: 'Śródmieście', lat: 53.425, lng: 14.562, keywords: ['stare miasto', 'starówka', 'panieńska', 'podzamcze', 'zamek książąt'] },
-  { id: 'turzyn', name: 'Turzyn', quarter: 'Śródmieście', lat: 53.427, lng: 14.531, keywords: ['turzyn', 'turzynie', 'bohaterek warszawy', '26 kwietnia', 'turzyńska'] },
-  { id: 'lekno', name: 'Łękno', quarter: 'Śródmieście', lat: 53.443, lng: 14.536, keywords: ['łękno', 'lekno', 'jasne błonia', 'park kasprowicza', 'fałata', 'piotra skargi'] },
-  { id: 'nowe_miasto', name: 'Nowe Miasto', quarter: 'Śródmieście', lat: 53.418, lng: 14.551, keywords: ['nowe miasto', 'narutowicza', 'piastów', 'potulicka', 'kolumba'] },
+  { id: 'stare_miasto', name: 'Stare Miasto', quarter: 'Śródmieście', lat: 53.425, lng: 14.562, keywords: ['stare miasto', 'starówka', 'panieńska', 'podzamcze', 'zamek książąt', 'katedra'] },
+  { id: 'turzyn', name: 'Turzyn', quarter: 'Śródmieście', lat: 53.427, lng: 14.531, keywords: ['turzyn', 'turzynie', 'bohaterek warszawy', '26 kwietnia', 'turzyńska', 'plac kościuszki'] },
+  { id: 'drzetowo_grabowo', name: 'Drzetowo-Grabowo', quarter: 'Śródmieście', lat: 53.449, lng: 14.572, keywords: ['drzetowo', 'grabowo', 'drzetowo-grabowo', 'dubois', 'hutnicza', 'stocznia', 'firlika'] },
+  { id: 'lekno', name: 'Łękno', quarter: 'Śródmieście', lat: 53.443, lng: 14.536, keywords: ['łękno', 'lekno', 'jasne błonia', 'park kasprowicza', 'fałata', 'piotra skargi', 'solskiego'] },
+  { id: 'niebuszewo_bolinko', name: 'Niebuszewo-Bolinko', quarter: 'Śródmieście', lat: 53.442, lng: 14.555, keywords: ['niebuszewo-bolinko', 'bolinko', 'staszica', 'orzeszkowej', 'kołłątaja', 'rondo giedroycia'] },
+  { id: 'nowe_miasto', name: 'Nowe Miasto', quarter: 'Śródmieście', lat: 53.418, lng: 14.551, keywords: ['nowe miasto', 'narutowicza', 'piastów', 'potulicka', 'kolumba', 'dworzec główny'] },
+  { id: 'srodmiescie_polnoc', name: 'Śródmieście-Północ', quarter: 'Śródmieście', lat: 53.438, lng: 14.556, keywords: ['śródmieście-północ', 'srodmiescie polnoc', 'felczaka', 'wąska', 'odzieżowa', 'unisławy'] },
+  { id: 'srodmiescie_zachod', name: 'Śródmieście-Zachód', quarter: 'Śródmieście', lat: 53.429, lng: 14.542, keywords: ['śródmieście-zachód', 'srodmiescie zachod', 'jagiellońska', 'ściegiennego', 'bohaterów getta warszawskiego'] },
+  { id: 'lasztownia_miedzyodrze', name: 'Międzyodrze-Wyspa Pucka (Łasztownia)', quarter: 'Śródmieście', lat: 53.4241, lng: 14.5612, keywords: ['łasztownia', 'lasztownia', 'międzyodrze', 'miedzyodrze', 'wyspa pucka', 'zbożowa', 'celna', 'wendy', 'stara rzeźnia', 'dźwigozaury'] },
 
   // Prawobrzeże
-  { id: 'sloneczne', name: 'Słoneczne', quarter: 'Prawobrzeże', lat: 53.379, lng: 14.654, keywords: ['słoneczne', 'sloneczne', 'jasna', 'rydzla', 'łubinowa'] },
-  { id: 'majowe', name: 'Majowe', quarter: 'Prawobrzeże', lat: 53.382, lng: 14.671, keywords: ['majowe', 'majowym', 'botaniczna', 'zofii nałkowskiej'] },
+  { id: 'sloneczne', name: 'Słoneczne', quarter: 'Prawobrzeże', lat: 53.379, lng: 14.654, keywords: ['słoneczne', 'sloneczne', 'jasna', 'rydzla', 'łubinowa', 'heliosa'] },
+  { id: 'majowe', name: 'Majowe', quarter: 'Prawobrzeże', lat: 53.382, lng: 14.671, keywords: ['majowe', 'majowym', 'botaniczna', 'zofii nałkowskiej', 'drogowców'] },
   { id: 'bukowe', name: 'Bukowe-Klęskowo', quarter: 'Prawobrzeże', lat: 53.368, lng: 14.662, keywords: ['bukowe', 'bukowym', 'klęskowo', 'kolorowych domów', 'chłopickiego'] },
-  { id: 'dabie', name: 'Dąbie', quarter: 'Prawobrzeże', lat: 53.398, lng: 14.672, keywords: ['dąbie', 'dabie', 'goleniowska', 'gierczak', 'czarnogórska'] },
-  { id: 'zdroje', name: 'Zdroje', quarter: 'Prawobrzeże', lat: 53.377, lng: 14.628, keywords: ['zdroje', 'zdrojach', 'batalionów chłopskich', 'walecznych'] },
-  { id: 'podjuchy', name: 'Podjuchy', quarter: 'Prawobrzeże', lat: 53.359, lng: 14.604, keywords: ['podjuchy', 'podjuchach', 'granitowa', 'metalowa'] },
+  { id: 'dabie', name: 'Dąbie', quarter: 'Prawobrzeże', lat: 53.398, lng: 14.672, keywords: ['dąbie', 'dabie', 'goleniowska', 'gierczak', 'czarnogórska', 'jezioro dąbie'] },
+  { id: 'zdroje', name: 'Zdroje', quarter: 'Prawobrzeże', lat: 53.377, lng: 14.628, keywords: ['zdroje', 'zdrojach', 'batalionów chłopskich', 'walecznych', 'szmaragdowa'] },
+  { id: 'podjuchy', name: 'Podjuchy', quarter: 'Prawobrzeże', lat: 53.359, lng: 14.604, keywords: ['podjuchy', 'podjuchach', 'granitowa', 'metalowa', 'krzemienna'] },
+  { id: 'kijewo', name: 'Kijewo', quarter: 'Prawobrzeże', lat: 53.388, lng: 14.672, keywords: ['kijewo', 'kijewie', 'niedźwiedzia', 'jeleniogórska', 'zwierzyniecka'] },
+  { id: 'plonia_smierdnica_jezierzyce', name: 'Płonia-Śmierdnica-Jezierzyce', quarter: 'Prawobrzeże', lat: 53.342, lng: 14.685, keywords: ['płonia', 'plonia', 'śmierdnica', 'smierdnica', 'jezierzyce', 'pyrzycka', 'mostowa'] },
+  { id: 'wielgowo_slawociesze_zdunowo', name: 'Wielgowo-Sławociesze-Zdunowo', quarter: 'Prawobrzeże', lat: 53.395, lng: 14.735, keywords: ['wielgowo', 'sławociesze', 'slawociesze', 'zdunowo', 'szpital zdunowo', 'bałtycka', 'wiślana'] },
+  { id: 'zydowce_klucz', name: 'Żydowce-Klucz', quarter: 'Prawobrzeże', lat: 53.341, lng: 14.572, keywords: ['żydowce', 'zydowce', 'klucz', 'rymarska', 'bielańska', 'chmielna'] },
+  { id: 'zalom_kasztanowe', name: 'Załom-Kasztanowe', quarter: 'Prawobrzeże', lat: 53.435, lng: 14.688, keywords: ['załom', 'zalom', 'osiedle kasztanowe', 'kasztanowa', 'pucka', 'cyprysowa'] },
 ];
 
 /**
