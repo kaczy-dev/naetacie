@@ -70,10 +70,11 @@ export function resolveSzczecinMicroDistrict(
 
   const lower = text.toLowerCase();
 
-  // Try matching against all keywords
+  // Try matching against all keywords (supporting Polish diacritics in boundaries)
   for (const osiedle of SZCZECIN_OSIEDLA) {
     for (const kw of osiedle.keywords) {
-      const rx = new RegExp(`\\b${kw}\\b`, 'i');
+      const escapedKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const rx = new RegExp(`(^|[^a-ząćęłńóśźż0-9])${escapedKw}($|[^a-ząćęłńóśźż0-9])`, 'i');
       if (rx.test(lower)) {
         return osiedle;
       }

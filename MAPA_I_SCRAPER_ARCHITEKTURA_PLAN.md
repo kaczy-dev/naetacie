@@ -188,10 +188,12 @@ Interfejs zoptymalizowano pod kątem maksymalnej czytelności na ekranach OLED i
 - [x] Nowy, ergonomiczny panel *Narzędzia i Warstwy* (szerokość 260px, czytelny podział).
 - [x] Poprawki typowania TypeScript i pomyślna kompilacja produkcyjna `next build` (kod 0).
 
-### Etap 2: Autonomiczny Cron & Healthcheck (Kolejny Krok)
-- [ ] Konfiguracja darmowego Vercel Cron (`0 6 * * *`) odpytującego `/api/cron/scrape`.
-- [ ] Automatyczne usuwanie ofert wygasłych (sprawdzanie statusu HTTP 404/410 ogłoszenia źródłowego).
-- [ ] Rozbudowa bazy osiedli Szczecina o nowe inwestycje deweloperskie (Łasztownia, Warszewo-Północ).
+### Etap 2: Autonomiczny Cron & Healthcheck (Wdrożone)
+- [x] Konfiguracja darmowego Vercel Cron (`0 6 * * *`) odpytującego `/api/cron/scrape` z automatycznym łańcuchem czyszczenia stale listings.
+- [x] Reużywalny serwis Tombstone Sweep (`lib/verification/tombstoneSweep.ts`) wykrywający 404, wygaśnięcia HTTP oraz oferty starsze niż 30 dni.
+- [x] Kompletna baza wszystkich 37 oficjalnych osiedli miejskich Szczecina ze wsparciem polskich znaków w dopasowywaniu granic słów (`szczecinMicroDistricts.ts`).
+- [x] Wdrożenie nowych megaprojektów budowlanych (Łasztownia, Szpital Kliniczny PUM Pomorzany, Warszewo-Północ Podbórzańska w `szczecinMegaProjects.ts`).
+- [x] Dedykowany endpoint telemetryczny `/api/health` raportujący stan systemów i geokatalogu dla zewnętrznych monitorów uptime.
 
 ### Etap 3: Zaawansowany GIS Offline
 - [ ] Zapisywanie wektorowych kafelków obszaru Szczecina w `IndexedDB` (Service Worker PWA).

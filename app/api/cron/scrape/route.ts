@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { runMultiPortalScrape, SupportedPortal } from '@/lib/scraper/engine';
 import { getAdaptiveScheduleStatus } from '@/lib/scraper/adaptiveScheduler';
+import { runTombstoneSweep, TombstoneSweepResult } from '@/lib/verification/tombstoneSweep';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60s maximum duration for background cron execution
@@ -36,19 +37,32 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   try {
+    const url = new URL(request.url);
+    const shouldSweep = url.searchParams.get('sweep') !== 'false'; // Default to true
     const startTime = Date.now();
     const scheduleStatus = getAdaptiveScheduleStatus();
 
+    // 1. Scrape latest offers across portals
     const result = await runMultiPortalScrape({
       limit: scheduleStatus.recommendedBatchLimit,
       portals: CRON_DEFAULT_PORTALS,
     });
 
+    // 2. Run tombstone sweep to clean up 404s/expired offers in the same daily run
+    let sweepResult: TombstoneSweepResult | null = null;
+    if (shouldSweep) {
+      try {
+        sweepResult = await runTombstoneSweep({ limit: 25, httpTimeoutMs: 2500 });
+      } catch (sweepErr) {
+        console.warn('Cron sweep non-fatal failure:', (sweepErr as Error).message);
+      }
+    }
+
     const executionTimeMs = Date.now() - startTime;
 
     return NextResponse.json({
       success: true,
-      message: 'Background cron job multi-portal scraping completed successfully',
+      message: 'Background cron job completed successfully',
       executionTimeMs,
       adaptiveSchedule: {
         phase: scheduleStatus.phase,
@@ -58,6 +72,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       },
       metadata: result.metadata,
       storedCount: result.data.length,
+      tombstoneSweep: sweepResult,
     });
   } catch (error) {
     console.error('Background Cron Scraper Failed:', error);
