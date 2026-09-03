@@ -195,9 +195,10 @@ Interfejs zoptymalizowano pod kątem maksymalnej czytelności na ekranach OLED i
 - [x] Wdrożenie nowych megaprojektów budowlanych (Łasztownia, Szpital Kliniczny PUM Pomorzany, Warszewo-Północ Podbórzańska w `szczecinMegaProjects.ts`).
 - [x] Dedykowany endpoint telemetryczny `/api/health` raportujący stan systemów i geokatalogu dla zewnętrznych monitorów uptime.
 
-### Etap 3: Zaawansowany GIS Offline
-- [ ] Zapisywanie wektorowych kafelków obszaru Szczecina w `IndexedDB` (Service Worker PWA).
-- [ ] Dostęp do mapy i zapisanych ofert w trybie offline w wykopach budowlanych i piwnicach bez zasięgu GSM.
+### Etap 3: Zaawansowany GIS Offline (Wdrożone)
+- [x] Zapisywanie wektorowych kafelków obszaru Szczecina, styli CartoDB, glifów czcionek i ortofotomap w Service Workerze PWA (`public/sw.js`).
+- [x] Pełny dostęp do mapy, interfejsu i zcache'owanych ofert w trybie offline w piwnicach i na budowach bez zasięgu GSM.
+- [x] Rozszerzenie bazy testowej o weryfikację strategii cache kafelków GIS (`tests/unit/serviceWorkerGis.test.ts`).
 
 ---
 *Dokument zatwierdzony przez Architekta Systemowego NaEtacie.pl.*

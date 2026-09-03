@@ -1,7 +1,17 @@
 {
-  "mcpServers": {
-    "vercel": {
-      "serverUrl": "https://mcp.vercel.com/sse"
-    }
-  }
+    "mcpServers":  {
+                       "vercel":  {
+                                      "serverUrl":  "https://mcp.vercel.com"
+                                  },
+                       "github":  {
+                                      "args":  [
+                                                   "-y",
+                                                   "@modelcontextprotocol/server-github"
+                                               ],
+                                      "env":  {
+                                                  "GITHUB_PERSONAL_ACCESS_TOKEN":  "${GITHUB_TOKEN}"
+                                              },
+                                      "command":  "npx"
+                                  }
+                   }
 }

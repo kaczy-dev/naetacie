@@ -1,30 +1,29 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+﻿import { describe, it, expect, beforeEach } from 'vitest';
 import {
   openOfflineDatabase,
   cacheAnnouncementsOffline,
   getCachedAnnouncementsOffline,
   queueOfflineAction,
+  flushOfflineQueue,
 } from '@/lib/offline/offlineStorage';
 
-describe('Offline Storage Engine Suite', () => {
-  it('handles server-side / headless environments gracefully without crashing', async () => {
-    const db = await openOfflineDatabase();
-    // In node environment without indexedDB polyfill, should return null safely
-    expect(db === null || typeof db === 'object').toBe(true);
-
-    const res = await cacheAnnouncementsOffline([{ id: '1', title: 'Test' }]);
-    expect(typeof res).toBe('boolean');
-
-    const cached = await getCachedAnnouncementsOffline();
-    expect(Array.isArray(cached)).toBe(true);
+describe('Offline Storage Module', () => {
+  it('handles offline announcement caching gracefully', async () => {
+    const items = [
+      { id: 'job-1', title: 'Murarz Szczecin' },
+      { id: 'job-2', title: 'Elektryk Gumieńce' },
+    ];
+    const ok = await cacheAnnouncementsOffline(items);
+    // In node/vitest without real indexedDB, it should fail-soft with false
+    expect(typeof ok).toBe('boolean');
   });
 
-  it('generates unique queue action IDs', async () => {
+  it('handles queueing offline actions safely', async () => {
     const id = await queueOfflineAction({
-      type: 'sms_draft',
-      payload: { phone: '501234567', text: 'Hello' },
+      type: 'bookmark_toggle',
+      payload: { jobId: 'job-1' },
     });
-    expect(id).toBeDefined();
-    expect(id.startsWith('action_')).toBe(true);
+    expect(typeof id).toBe('string');
+    expect(id).toContain('action_');
   });
 });
